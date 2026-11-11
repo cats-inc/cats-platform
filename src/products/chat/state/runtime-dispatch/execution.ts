@@ -24,7 +24,7 @@ import {
   resolveExecutionMetadataForTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
-import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from '../orchestratorKnowledge.js';
+import { loadOrchestratorKnowledge } from '../orchestratorKnowledge.js';
 import {
   productKnowledgeInstructions,
   productKnowledgeReceipt,
@@ -203,9 +203,9 @@ export async function executeDispatch(
       request,
       transport,
     });
-    // The coordinator answers with product knowledge.
+    // The coordinator answers with product knowledge, wherever the conversation was created
+    // (SPEC-141 FR-19).
     const knowledge = channel.coordinatorParticipantId === request.target.participantId
-      && isOrchestratorKnowledgeChannel(channel)
       ? await loadOrchestratorKnowledge({
           channel,
           body: request.promptSourceMessage?.body ?? request.sourceMessage.body,

@@ -7,11 +7,12 @@ import type { SupervisedToolManifest, ToolResult } from '../../../platform/super
 import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from '../../../platform/supervision/contracts.js';
 import { evaluateToolSurface } from '../../../platform/supervision/toolRegistry.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { isCatPartOfChatProduct } from '../shared/directMessageSelectors.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
-import { isOrchestratorKnowledgeChannel } from './orchestratorKnowledge.js';
 import { collaborationExecutionRevision } from './collaborationExecutionSurface.js';
 import type { CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
 import { isAdminCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
@@ -26,7 +27,7 @@ export const COLLABORATION_TOOL_NAMES = [
 const TOOL_HINTS: Record<string, string[]> = {
   [DISCOVER_COLLABORATION_CATS]: [
     'Input: { query?: string (max 128), limit?: integer (1..16, default 8) }. No other fields.',
-    'Searches active Chat Cats by declared name/role. Roles are not verified capabilities. No sessions start.',
+    "Searches the owner's active Cats that take part in Chat, other than you, by declared name/role. Roles are not verified capabilities. No sessions start.",
   ],
   [INSPECT_COLLABORATION_CONTEXT]: [
     'Input: {}. Reads only the current server-bound conversation. No conversation ID override.',
@@ -37,7 +38,7 @@ const TOOL_HINTS: Record<string, string[]> = {
     'IDs must be distinct discovered Cats. expectedOutput: 1..1000 characters. missingInformation: at most 3 questions of 200 characters each; [] if intent is known.',
     'If fewer than two suitable Cats exist, omit implementerId/reviewerId to report unavailable. Missing user intent belongs in missingInformation, never invented details.',
     'Budget: positive integers, duration <= 3600000 ms and tokens <= 100000. Suggested only, never admitted execution.',
-    'Returns only a proposal: Chat origin, current goal/conversation context, review after actual implementation artifact/revision. No resource is created or started.',
+    "Returns only a proposal: the current conversation's origin, current goal/conversation context, review after actual implementation artifact/revision. No resource is created or started.",
   ],
 };
 
@@ -45,7 +46,7 @@ export function collaborationToolManifests(): SupervisedToolManifest[] {
   return COLLABORATION_TOOL_NAMES.map((name) => ({
     schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION, name, manifestVersion: '1.0',
     description: name === DISCOVER_COLLABORATION_CATS
-      ? 'Discover bounded eligible Cats for collaboration in the local owner Chat scope.'
+      ? "Discover bounded eligible Cats for collaboration among the local owner's Cats that take part in Chat."
       : name === INSPECT_COLLABORATION_CONTEXT
         ? 'Inspect the current authorized collaboration conversation without reading other conversations.'
         : 'Validate a collaboration proposal without changing conversations, membership or work.',
@@ -91,7 +92,8 @@ export interface CollaborationProposal {
   revision: string;
   goal: string;
   goalTruncated: boolean;
-  originSurface: 'chat';
+  /** The product the source conversation was created on (SPEC-141 FR-19). */
+  originSurface: PlatformSurfaceId;
   conversation: { intent: 'reuse_current' | 'create'; sourceConversationId: string };
   implementer: CollaborationCandidate;
   reviewer: CollaborationCandidate;
@@ -138,7 +140,9 @@ export interface CollaborationSnapshot {
   executionRevision?: string;
   candidates: CollaborationCandidate[];
   context: {
-    channelId: string; conversationId: string; originSurface: 'chat';
+    channelId: string; conversationId: string;
+    /** The product the conversation was created on; `chat` when none was recorded. */
+    originSurface: PlatformSurfaceId;
     topology: 'chat_channel'; status: string; workspaceConfigured: boolean;
     participantIds: string[]; participantsTruncated: boolean;
     routingStatus: string | null; workState: 'not_inspected';
@@ -150,7 +154,8 @@ export function collaborationSnapshot(
   state: ChatState, channelId: string, observation: ProviderAgentBoundedObservation,
 ): CollaborationSnapshot | null {
   const channel = state.channels.find((entry) => entry.id === channelId);
-  if (!channel || !isOrchestratorKnowledgeChannel(channel) || isDirectLaneChannel(channel)
+  // A conversation created on any product, as long as it is not a direct lane (SPEC-141 FR-19).
+  if (!channel || isDirectLaneChannel(channel)
     || channel.status === 'archived'
     || !isAdminCoordinatorActorRef(state, channelId, observation.actor.actorRef)) return null;
   const assignments = resolveChannelParticipantAssignments(channel)
@@ -174,7 +179,8 @@ export function collaborationSnapshot(
   });
   const context: CollaborationSnapshot['context'] = {
     channelId, conversationId: resolveChannelCanonicalIdentity(state, channelId).conversationId,
-    originSurface: 'chat', topology: 'chat_channel', status: channel.status,
+    originSurface: normalizePlatformSurface(channel.originSurface, 'chat'),
+    topology: 'chat_channel', status: channel.status,
     workspaceConfigured: Boolean(channel.repoPath || channel.chatCwd),
     participantIds: assignments.slice(0, 32).map((entry) => entry.participantId),
     participantsTruncated: assignments.length > 32,
@@ -300,7 +306,7 @@ export function executeCollaborationRead(input: {
   }
   return { status: 'applied', result: {
     status: 'prepared', revision: snapshot.revision, goal: input.goal.slice(0, 2000),
-    goalTruncated: input.goal.length > 2000, originSurface: 'chat',
+    goalTruncated: input.goal.length > 2000, originSurface: snapshot.context.originSurface,
     conversation: { intent: value.conversationIntent as 'reuse_current' | 'create',
       sourceConversationId: snapshot.context.conversationId },
     implementer: selected[0]!, reviewer: selected[1]!,

@@ -5,9 +5,9 @@ import type {
   ProviderAgentDecisionRequester,
 } from './runtime-dispatch/routing.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
-import { buildChannelView, requireChannel, resolveChannelCanonicalIdentity } from './model/index.js';
+import { buildChannelView, resolveChannelCanonicalIdentity } from './model/index.js';
 import { isCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
-import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
+import { loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
 import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
 import type { ChatState } from '../api/contracts.js';
 import type { ProviderAgentBoundedObservation } from '../../../platform/orchestration/providerAgentDecision.js';
@@ -56,9 +56,9 @@ export function createChatProviderAgentDecisionRequester(
       if (input.bossCat) {
         return await runBossCatDecision(input, input.bossCat, options);
       }
-      // The coordinator decides with product knowledge, bound to its own model.
+      // The coordinator decides with product knowledge, bound to its own model, wherever the
+      // conversation was created (SPEC-141 FR-19).
       const coordinator = isCoordinatorActorRef(input.state, input.channelId, input.observation.actor.actorRef)
-        && isOrchestratorKnowledgeChannel(requireChannel(input.state, input.channelId))
         ? resolveCoordinatorParticipant(input.state, input.channelId)
         : null;
       const isOrchestrator = coordinator !== null;

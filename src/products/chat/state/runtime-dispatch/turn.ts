@@ -2,9 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { resolveCollaborationPreparationBudget,
   type CollaborationPreparationBudget } from '../../shared/collaborationPreparationBudget.js';
 import { collaborationToolDescriptors } from '../orchestratorCollaboration.js';
-import { collaborationExecutionDescriptors, collaborationExecutionManifests,
+import { answersCollaborationProposalCard, collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
-import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { isAdminCoordinator } from '../coordinator.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
@@ -699,7 +698,13 @@ function buildProviderAgentObservationForTurn(input: {
     return null;
   }
   const providerAgentActorRef = `cat:${deciderTarget.participantId}`;
-  const exposeCatProductIntentProposalTool = shouldExposeCatProductIntentProposalTool({
+  // The owner's answer to a collaboration proposal card is that answer and nothing else. Its
+  // words are the card's own ("Execute this scope and budget?"), so no Work phase may match on
+  // them: a phase that did would withhold the collaboration tools, and the confirmation would
+  // run as an ordinary turn in the source folder instead of the bounded workflow it approves.
+  const workPhasesApply = !answersCollaborationProposalCard(
+    input.state, input.channelId, input.payload.choiceResponse);
+  const exposeCatProductIntentProposalTool = workPhasesApply && shouldExposeCatProductIntentProposalTool({
     channel,
     core: input.core,
     capabilityProfileKind: capabilityProfile.kind,
@@ -730,7 +735,7 @@ function buildProviderAgentObservationForTurn(input: {
     visibleWorkItemIds: visibleExecutionPreparationWorkItemIds,
   });
   const workExecutionPreparationToolObservation = createWorkExecutionPreparationToolObservation({
-    enabled: workExecutionPreparationPhase.kind === 'matched'
+    enabled: workPhasesApply && workExecutionPreparationPhase.kind === 'matched'
       && isSingleBossCatTarget(input.state, input.channelId, singleCatTarget)
       && Boolean(input.core),
     policy: policyDecision.result.policy,
@@ -767,7 +772,7 @@ function buildProviderAgentObservationForTurn(input: {
       })
     : null;
   const workExternalIssueImportToolObservation = createFilteredWorkToolObservation({
-    enabled: workExternalIssueImportPhase.kind === 'matched'
+    enabled: workPhasesApply && workExternalIssueImportPhase.kind === 'matched'
       && Boolean(input.core)
       && workExternalIssueImportPolicyDecision?.status === 'applied',
     phase: 'external_tracker_binding',
@@ -806,7 +811,7 @@ function buildProviderAgentObservationForTurn(input: {
       })
     : null;
   const workExternalBindingToolObservation = createWorkExternalBindingToolObservation({
-    enabled: workExternalBindingPhase.kind === 'matched'
+    enabled: workPhasesApply && workExternalBindingPhase.kind === 'matched'
       && Boolean(input.core)
       && workExternalBindingPolicyDecision?.status === 'applied',
     capabilityProfileKind: capabilityProfile.kind,
@@ -833,7 +838,7 @@ function buildProviderAgentObservationForTurn(input: {
     ? []
     : resolveWorkTriageContextRefs(input.payload.body);
   const workTriageToolObservation = createWorkTriageToolObservation({
-    enabled: workTriageContextRefs.length > 0 && Boolean(input.core),
+    enabled: workPhasesApply && workTriageContextRefs.length > 0 && Boolean(input.core),
     capabilityProfileKind: capabilityProfile.kind,
     policy: policyDecision.result.policy,
   });
@@ -859,7 +864,7 @@ function buildProviderAgentObservationForTurn(input: {
       })
     : null;
   const workProjectCreateToolObservation = createFilteredWorkToolObservation({
-    enabled: workProjectCreateMatched
+    enabled: workPhasesApply && workProjectCreateMatched
       && Boolean(input.core)
       && workProjectCreatePolicyDecision?.status === 'applied',
     phase: 'triage',
@@ -891,7 +896,7 @@ function buildProviderAgentObservationForTurn(input: {
       })
     : null;
   const workItemUpdateToolObservation = createFilteredWorkToolObservation({
-    enabled: workItemUpdateContextRefs.length > 0
+    enabled: workPhasesApply && workItemUpdateContextRefs.length > 0
       && Boolean(input.core)
       && workItemUpdatePolicyDecision?.status === 'applied',
     phase: 'triage',
@@ -926,7 +931,7 @@ function buildProviderAgentObservationForTurn(input: {
       })
     : null;
   const workItemAssignProjectToolObservation = createFilteredWorkToolObservation({
-    enabled: workItemAssignProjectContextRefs.length > 0
+    enabled: workPhasesApply && workItemAssignProjectContextRefs.length > 0
       && Boolean(input.core)
       && workItemAssignProjectPolicyDecision?.status === 'applied',
     phase: 'triage',
@@ -1008,11 +1013,12 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = companionPostPolicyDecision.result.policy;
   }
 
-  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it.
+  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it, in
+  // a conversation created on any product that is not a direct lane (SPEC-141 FR-19).
   const collaborationTools = input.enableCollaborationReads === true
     && singleCatTarget !== null
     && isAdminCoordinator(input.state, input.channelId, singleCatTarget.participantId)
-    && isOrchestratorKnowledgeChannel(channel) && !isDirectLaneChannel(channel)
+    && !isDirectLaneChannel(channel)
     && (!input.transport || input.transport === 'web' || input.transport === 'mobile')
     && !input.payload.body.trimStart().startsWith('/')
     && !exposeCatProductIntentProposalTool

@@ -60,12 +60,17 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
   }
   const clean = (value: string) => value.replace(/[\r\n]/gu, ' ');
   const preparation = report.preparation;
+  // The card names the product of the conversation it would reuse (SPEC-141 FR-19). A
+  // proposal stored before that field carried anything else says Chat, which it was.
+  const reusedProduct = preparation?.status === 'prepared'
+    ? ({ chat: 'Chat', code: 'Code', work: 'Work' } as const)[preparation.originSurface] ?? 'Chat'
+    : 'Chat';
   let body: string;
   if (report.status === 'prepared' && preparation?.status === 'prepared') {
     body = zh ? [
       '協作提案已準備好：',
       `實作：${clean(preparation.implementer.name)}；審查：${clean(preparation.reviewer.name)}。`,
-      preparation.conversation.intent === 'create' ? '建議建立新的 Chat 對話。' : '建議沿用目前的 Chat 對話。',
+      preparation.conversation.intent === 'create' ? '建議建立新的 Chat 對話。' : `建議沿用目前的 ${reusedProduct} 對話。`,
       `預期產出：${clean(preparation.expectedOutput)}`,
       '交接範圍是本次目標與目前對話；審查須等實作產物或版本確認後開始。',
       `建議預算：${preparation.budget.maxDurationMs / 1000} 秒、${preparation.budget.maxTokens} tokens，執行時仍需核定。`,
@@ -73,7 +78,7 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
     ].join('\n') : [
       'Collaboration proposal prepared:',
       `Implementation: ${clean(preparation.implementer.name)}; review: ${clean(preparation.reviewer.name)}.`,
-      preparation.conversation.intent === 'create' ? 'Propose a new Chat conversation.' : 'Propose reusing this Chat conversation.',
+      preparation.conversation.intent === 'create' ? 'Propose a new Chat conversation.' : `Propose reusing this ${reusedProduct} conversation.`,
       `Expected output: ${clean(preparation.expectedOutput)}`,
       'Handoff includes this goal and current conversation only. Review waits for a verified implementation artifact or revision.',
       `Suggested budget: ${preparation.budget.maxDurationMs / 1000} seconds, ${preparation.budget.maxTokens} tokens; not admitted for execution.`,

@@ -9,7 +9,7 @@
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | Plan | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) |
-| Last updated | 2026-09-25 |
+| Last updated | 2026-11-11 |
 
 ## Summary
 
@@ -110,10 +110,22 @@ Chat selects on the actual bounded goal, response language, current roster,
 surface and verified operation descriptors. Ordinary/global Orchestrator replies
 receive inline per-turn instructions, including the rewrite pass; structured
 decision requests receive the same content mechanism in their own JSON envelope.
-Provider-selected default Chat retains its ordinary assistant identity. Code and
+The role goes to the conversation's coordinator only: a turn that no
+coordinating participant answers keeps its ordinary assistant identity. Code and
 Work also reuse the internal actor slot; they retain product-owned instructions.
-K1 coordinator role injection requires explicit Chat origin and a real
-Orchestrator consumer. Other Cats do not inherit this role.
+K1 coordinator role injection requires a real Orchestrator consumer, the
+conversation's coordinator. Other Cats do not inherit this role.
+A conversation started without naming anyone is not such a turn. Its one
+participant is the remembered provider and model, which coordinates the
+conversation and so receives the role. An earlier revision of this section said
+that a provider-selected default Chat keeps its ordinary identity; the code as
+of 2026-11-11 does not do that.
+
+Until 2026-11-11 it also required a Chat origin. The owner ended that limit
+(ADR-149 D8, [SPEC-141](SPEC-141-conversation-product-scope.md) FR-19): the
+coordinator of a conversation created on Code or Work, or stored with no
+recorded origin, receives the same knowledge, added to its product's own
+instructions.
 
 Decision requests compare the current normalized provider/model/instance/control
 identity with the capability observation and send the actual Orchestrator binding,
@@ -153,11 +165,17 @@ other decision observations retain their existing metadata-only input contract.
 | `chat.collaboration.inspect_context` | Empty object; scope is server-bound | Current canonical conversation identity, topology, active participant IDs, workspace presence, current routing status and revision; no other conversation contents |
 | `chat.collaboration.prepare` | Observed revision, two distinct discovered Cat IDs, reuse-current/create intent, expected output, bounded missing-information list and proposed work budget | A validated proposal or a missing-input/capability result; no creation, membership, assignment or execution |
 
-Only a routed Chat Orchestrator can receive these descriptors. Read grants are
-intersected with policy; tool and output revisions are checked. Roles are
-declared metadata, not verified skill or permission claims. Light availability
-does not admit execution. Default-provider Chat, direct Cat replies, Code/Work
-and external transports do not inherit owner-directory access from an actor name.
+Only a routed Orchestrator, the conversation's Boss Cat coordinator, can receive
+these descriptors. Read grants are intersected with policy; tool and output
+revisions are checked. Roles are declared metadata, not verified skill or
+permission claims. Light availability does not admit execution.
+Default-provider conversations, direct Cat replies and external transports do not
+inherit owner-directory access from an actor name. A conversation started
+without naming anyone is offered the descriptors only when the remembered
+default is a Boss Cat.
+Since 2026-11-11 the conversation may have been created on Chat, Code or Work,
+or be stored with no recorded origin (ADR-149 D8, SPEC-141 FR-19). Until then
+only a conversation created on Chat was included.
 A Boss Cat's own direct lane is the one exception, and not through K2: SPEC-139's
 Boss Cat tools run there for an owner-started Desktop or mobile turn, in their own isolated
 decision session. Transports stay excluded.
@@ -217,8 +235,9 @@ message begin/retry obtains the same immutable snapshot for the turn builder;
 the loop independently intersects it with any narrower observation limits. Only
 the verified K2 read-descriptor surface receives it, after excluding K3 execution
 descriptors. It covers that entire attempt, including an ordinary first decision;
-no additional budget starts when a tool is selected. Other excluded Chat, direct,
-provider-default, Code/Work and external paths keep their existing budgets.
+no additional budget starts when a tool is selected. Other excluded direct,
+provider-default and external paths keep their existing budgets. A Code or Work
+conversation that receives the read surface receives this budget with it.
 Message/model input cannot set this policy. Host restart creates a new policy
 snapshot; no environment value is reread during an attempt. Existing K3 owner
 admission, model binding, grants and operation/request ceilings are unchanged.
@@ -233,7 +252,8 @@ and reject observed non-text/native-tool segments. This is not a universal
 provider-native tool prohibition: provider-specific enforcement and live/native
 acceptance remain K4, with no Runtime implementation changes in K2.
 
-The final proposal has Chat origin, goal/current-conversation-only handoff scope,
+The final proposal carries the origin of its source conversation (Chat, Code
+or Work; `chat` when none was recorded), goal/current-conversation-only handoff scope,
 expected output, distinct implementation/review roles and a review dependency on
 the actual implementation artifact/revision. An ordinary localized transcript
 message records preparation and tool receipts; it cannot claim collaboration
@@ -248,6 +268,23 @@ full CI pass (see PLAN-110).
 The following operations require an actual owner-confirmed proposal. This adds
 no public HTTP route and does not alter the default provider-agent opt-in.
 
+Since SPEC-141 FR-19 the confirmed proposal's source conversation may have
+been created on Code or Work, or be stored with no recorded origin. It still
+needs a folder and must not be a direct lane or archived. A conversation this
+workflow creates is still created on Chat, with its own worktree, read-write
+access and tool whitelist. Reusing the current conversation makes the two
+workers participants of it, so on a Code conversation they receive what its
+participants receive, Code's session tools included. The card names the product
+of the conversation it would reuse.
+
+The owner's answer to a proposal card is that answer and nothing else. Its body
+is the card's own question and the chosen label, and in English those words
+("Execute this scope and budget?", "Execute proposal") match Work's
+execution-preparation cues when the conversation has an open Work Item. An
+answer addressed to a proposal card therefore reaches no Work tool phase,
+whatever it selects. The same words typed by the owner, or answering any other
+card, still do.
+
 An executable preparation is displayed through the existing Chat choice surface.
 Its submitted owner choice binds the persisted proposal, original goal, two
 selected Cats, workspace policy and combined duration/token budget. Plain model
@@ -259,7 +296,7 @@ migration and must preserve old snapshots unchanged.
 | Operation (revision 1.0) | Owner | Result / boundary |
 |--------------------------|-------|-------------------|
 | `work.collaboration.request_execution` | Work | Accept the already confirmed fixed workflow with input `{}`; persist the request only. The host subsequently ensures Chat setup and drains implementation followed by proof-gated review |
-| `chat.collaboration.ensure_conversation` | Chat | Create or reuse the admitted Chat conversation through the canonical channel builder; return verified canonical identity and created/reused outcome |
+| `chat.collaboration.ensure_conversation` | Chat | Create the admitted conversation on Chat, or reuse the admitted source conversation whatever product it was created on, through the canonical channel builder; return verified canonical identity and created/reused outcome |
 | `chat.collaboration.ensure_participants` | Chat | Add only the two admitted existing Cats through membership delegates; return canonical membership postconditions |
 | `work.collaboration.request_role` | Work | Persist one queued role Run only, returning an accepted request; no Runtime calls inside this tool. Review queuing requires the implementation's verified immutable revision |
 | `work.collaboration.inspect` | Work | Read only this intent's authoritative records, stage, results and retained evidence |
@@ -395,6 +432,87 @@ without a session ID remains ambiguous and never triggers a replacement create.
 Concurrent edits, continuity resets, target changes, removed members,
 stale owner intent and revoked scope stop further effects. Partial completion is
 reported truthfully; already-created user work is never silently deleted.
+
+### Limits recorded with SPEC-141 FR-19
+
+An independent security review of the change that ended the Chat-only limit
+(2026-11-11) found no path that creates a conversation, adds a participant, or
+queues or starts a run without the owner's confirmation of a persisted
+proposal. The three collaboration sessions are the same for every origin and
+receive none of Code's tools. The review recorded the limits below. Each needs
+the decision flag unless it says otherwise, and each already held for a
+conversation created on Chat unless it says what is new.
+
+- **One-shot decision sessions are created outside the conversation's posture.**
+  A decision request that runs no collaboration loop creates its session with
+  no workspace kind, access or skill list, and the Platform client then sends
+  the permission mode `skip`. By the reviewer's reading of Runtime's main
+  branch that gives a read-write sandbox with approvals skipped; the Runtime
+  pinned for Desktop was not checked, and no live model was used. Among a
+  coordinator's decision requests, only the collaboration loops ask for a
+  read-only sandbox, default permission and no skills, and only they reject
+  native tool activity. A Boss Cat's own decision session does both.
+  - New: the owner's message, up to 4,000 characters, now enters that session
+    for a Code or Work coordinator. Before, its prompt held counts and
+    reference ids.
+  - A Code conversation set to read-only can so hand text its Cat wrote,
+    through a choice answer, to a session that is not read-only.
+  - Not fixed with FR-19. The fix is to create every decision session as the
+    loops do and to reject native activity in all of them, as a change of its
+    own.
+- **The card does not show what joining grants.** After a reuse the two Cats
+  stay participants of the source conversation. Their next ordinary turn runs
+  in its folder at its access and permission mode, with Code's session tools on
+  a Code conversation, and the coordinator can address them with no further
+  confirmation. Adding a participant by hand gives the same. SPEC-139's join
+  card shows the folder, access, permission mode and Code's tools; this card
+  shows the two names, the intent, the expected output and the budget.
+- **Text written by the coordinator can become the goal of a proposal.** A choice
+  answer goes back to the Cat that asked, with the Cat's question and label as
+  its body, and that body is the goal the read tools work from. New reach: on
+  Code and Work the coordinator reads repository content. The card does not
+  show the goal. The same holds for "Not now" on a proposal card: it admits
+  nothing and reaches no Work phase, but it is offered the read tools with the
+  card's own text as the goal, and a new proposal needs another click.
+- **Local knowledge reaches every coordinator.** Default settings, new. An
+  adopted local contribution replaces an entry's text, and that text now lands
+  in Code and Work conversations too. The store is a plain file under the
+  platform directory with no integrity check.
+- **The read tools give the coordinator's provider the owner's Cats that take
+  part in Chat**, other than the coordinator (name, roles, provider, instance,
+  model, availability, lease), and store them in the proposal message. New on
+  Code and Work. A Cat whose products exclude Chat is never found, on any
+  product.
+- **An accepted click can still run as an ordinary turn.** When the click is
+  not offered the execution tools, the turn falls through to ordinary dispatch:
+  the Boss Cat's session in the source folder, with the card's text as its
+  prompt. The re-check after the fix ran four cases on Chat and Work:
+  - the decision flag turned off after the card, or the Boss Cat demoted: both
+    need the owner to change a setting;
+  - a coordinator whose model has a `weak_worker` capability rule: the card
+    still offers Execute, and the supervision policy then refuses the write
+    scope, with nothing changed between card and click;
+  - a card found stale as it was published: its text and report say stopped,
+    but its choices stay and Desktop still draws the buttons. A narrow race.
+  - Chat behaved the same before FR-19; cards now also appear on Code and Work.
+  - The fix, as a change of its own: end such a turn with a notice instead of
+    dispatching it, drop the choices from a stale card, and show no Execute
+    button when admission cannot pass.
+- **A click retried from the Core record loses its choice answer.** When the
+  transcript has lost the message and Core still has it, the rebuilt message
+  has the body and the recipient but no `choiceResponse`, so Work's phase can
+  take it again. Traced, not run to the end.
+- **A conversation created from a Code or Work source** is a Chat conversation on
+  the source folder, with a worktree, read-write access and the tool whitelist,
+  coordinated by the implementer. Its title and topic are the goal, which
+  Chat-only readers such as the companion's review then read.
+- **A read-only source still yields a read-write worktree** and a commit once
+  the owner confirms. By the review's reading of Runtime, which it did not run,
+  that commit runs with hooks enabled, and the reviewer's CLI starts in the
+  implementer's worktree.
+- **The proposal's revision covers the origin and not the product scope.** There
+  is no gap while nothing can raise a scope. PLAN-134 Phase 5 makes the card's
+  binding cover the scope before the raise exists.
 
 ### Collaboration responsibility map
 

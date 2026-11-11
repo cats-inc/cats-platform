@@ -65,9 +65,9 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `cats.runtime.session.create` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
 | `cats.runtime.message.send` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
 | `/api/code/knowledge/agent` | Platform knowledge | Implemented; native provider acceptance pending | `http_route` via existing permitted HTTP/shell | Ordinary local Chat/Code agent with active turn grant | [Agent Knowledge Drafts](#agent-knowledge-drafts) |
-| `chat.collaboration.discover_cats` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
-| `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
-| `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | Authenticated Chat Orchestrator after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.discover_cats` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Boss Cat coordinator of a Chat, Code or Work conversation, on an authenticated owner turn, with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Boss Cat coordinator of a Chat, Code or Work conversation, on an authenticated owner turn, with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | The same coordinator, after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.ensure_conversation` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Orchestrator with admitted proposal and narrow write scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `chat.boss.status_board` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | A Boss Cat in its own direct lane, owner-started Desktop or mobile turn | [Boss Cat Tools](#boss-cat-tools) |
 | `chat.boss.create_group` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | Same, after a board in the same session, narrow write scope | [Boss Cat Tools](#boss-cat-tools) |
@@ -145,7 +145,7 @@ and [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.m
 | `chat.collaboration.inspect_context` | `{}` only | Current canonical conversation/topology, participants, routing, workspace presence and revision; Work state explicitly not inspected |
 | `chat.collaboration.prepare` | Observed revision, distinct discovered implementer/reviewer IDs, `reuse_current`/`create`, expected output, missing-information list, proposed duration/token budget | `prepared`, `needs_input` or `unavailable`; execution remains `not_started` and budget `not_admitted` |
 
-The server binds owner, conversation, actual goal, Chat origin, context scope and
+The server binds owner, conversation, actual goal, the conversation's origin, context scope and
 review-after-artifact dependency. Callers cannot override conversation scope or
 invent IDs, grants or readiness. Both successful discovery and context receipts
 are required before preparation; roles and light availability are not execution
@@ -160,10 +160,14 @@ Repeated reads create no collaboration entity; the normal Chat transcript and
 turn/run projections retain the coordinator result and bounded tool receipts.
 K3 separately provides durable mutation idempotency after owner confirmation.
 
-Only the existing opt-in provider-agent path in authenticated Chat message/retry
-continuation advertises these tools. Default-provider/direct/multi-target Chat,
-Code/Work, external transports, Work tool phases and direct Orchestrator dispatch
-do not gain the surface. The loop begins after ACK, reuses one decision session,
+Only the existing opt-in provider-agent path in authenticated message/retry
+continuation advertises these tools, to the Boss Cat coordinator of a
+conversation created on Chat, Code or Work, or stored with no recorded origin
+([SPEC-141](specs/SPEC-141-conversation-product-scope.md) FR-19; until 2026-11-11
+only on Chat). Default-provider, direct and multi-target conversations,
+external transports, Work tool phases and direct Orchestrator dispatch
+do not gain the surface. A conversation started without naming anyone gains it
+only when the remembered default is a Boss Cat. The loop begins after ACK, reuses one decision session,
 limits calls/elapsed time/usage, returns results to that model, and consumes
 ordinary cancellation. Publication revalidates revision and source message
 inside the existing merge gate. No new MCP or public HTTP operation is exposed.
@@ -204,7 +208,9 @@ and [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.m
 
 Only an actual persisted preparation accepted through Chat's `choiceResponse`
 admits the original goal, repository, distinct Cats, expected output and shared
-budget. The server supplies all IDs, context, workspace policy and grant;
+budget. An answer addressed to a proposal card reaches no Work tool phase,
+whatever it selects: its body repeats the card's question, and those words
+would otherwise match Work's execution-preparation cues. The server supplies all IDs, context, workspace policy and grant;
 additional input fields reject with `E_SCHEMA_INVALID`. The coordinator remains
 `narrow_write`. After persisting the queue receipt, the host revalidates the
 owner grant and drains Work through the existing expensive Runtime boundaries.

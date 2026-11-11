@@ -71,8 +71,14 @@ are specified in [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaborat
 and staged in [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
 Inline knowledge now reaches the applicable visible and decision requests, with
 `productKnowledge` provenance in request metadata and visible assistant receipts.
-Provider-selected default Chat keeps its own identity; Code/Work retain their
-product-owned instructions despite sharing the internal actor slot. K2's opt-in
+The Orchestrator role goes to a conversation's coordinator only. That includes
+the one participant of a conversation started without naming anyone, which is
+the remembered provider and model. Code/Work retain their
+product-owned instructions despite sharing the internal actor slot. Since
+SPEC-141 FR-19 the coordinator of a Code or Work conversation, or of one stored
+with no recorded origin, also receives the
+Orchestrator knowledge, added to those instructions, and a Boss Cat coordinator
+there can receive K2's operations. K2's opt-in
 read/preparation operations use the existing observation/decision policy gate
 and supervised tool boundary, with structured feedback to the same session.
 K3 adds owner-confirmed conversation/membership and fixed-role Work operations.

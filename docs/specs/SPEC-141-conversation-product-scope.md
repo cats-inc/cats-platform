@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation in progress: the field exists (FR-1 to FR-7, PLAN-134 Phase 1), and Recents, routes, labels, Work's own-record check and Code's tool checks read it (FR-12 to FR-15, and FR-8 for `code` only, Phase 2) |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation in progress: the field exists (FR-1 to FR-7, PLAN-134 Phase 1), Recents, routes, labels, Work's own-record check and Code's tool checks read it (FR-12 to FR-15, and FR-8 for `code` only, Phase 2), and the role tools are offered at every level (FR-19, Phase 3) |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |
@@ -270,7 +270,17 @@ inventory of every `originSurface` reader.
       - no direct lane and no archived conversation;
       - its exclusions of default-provider Chat, direct Cat replies, transports and direct
         Orchestrator dispatch.
+    - The lane condition is on the collaboration tools. The knowledge goes to a conversation's
+      coordinator, and a direct lane's Cat coordinates its lane: it received the knowledge
+      when the lane was created on Chat and still does, and a lane created elsewhere now
+      receives it too.
     - Code's and Work's own product instructions stay. Orchestrator knowledge is added to them.
+    - A conversation stored with no origin is included like any other. The Chat-only rule
+      had left it out, although it is Chat's everywhere else (S4).
+    - The knowledge goes to whoever coordinates. A conversation started without naming anyone
+      has the remembered provider and model as its one participant, which coordinates it, so
+      on Code and Work that agent now receives the Orchestrator role with each turn. On Chat
+      it already did.
     - A conversation that SPEC-118 creates is still created on Chat.
     - The companion's life review is not part of D8. It keeps reading the origin (S1), so a
       conversation created on Chat is still reviewed after a raise, and one created on Code or

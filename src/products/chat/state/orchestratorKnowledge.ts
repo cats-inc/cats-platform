@@ -7,7 +7,7 @@ import {
 import { resolveBundledPlatformConfigDir } from '../../../shared/platformPaths.js';
 import { applyLocalKnowledge } from '../../../platform/knowledge/localKnowledge.js';
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
-import type { ChatChannelState, ChatChannelView } from '../api/contracts.js';
+import type { ChatChannelView } from '../api/contracts.js';
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 
@@ -16,12 +16,11 @@ export const ORCHESTRATOR_KNOWLEDGE_CAPABILITIES = ['orchestrator-context-v1'] a
 // Existing product-owned mention routing, not a callable tool or membership mutation.
 const CURRENT_ROOM_HANDOFF = { id: 'chat.current-room.handoff', version: '1.0' };
 
-export function isOrchestratorKnowledgeChannel(channel: ChatChannelState | ChatChannelView): boolean {
-  // Work/Code and provider-default Chat also reuse this internal actor slot.
-  // Their product/assistant instructions remain owned by those consumers.
-  return channel.originSurface === 'chat';
-}
-
+/**
+ * A conversation's coordinator answers with this knowledge wherever the conversation was
+ * created (ADR-149 D8, SPEC-141 FR-19). Code and Work keep their own product instructions; this
+ * is added to them. Until D8 it went only to conversations created on Chat.
+ */
 export async function loadOrchestratorKnowledge(input: {
   channel: ChatChannelView;
   body: string;

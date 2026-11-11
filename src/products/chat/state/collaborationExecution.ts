@@ -84,7 +84,9 @@ function assertContext(chat: ChatState, core: CatsCoreState, intent: WorkCollabo
   }
   if (intent.channelId) {
     const target = requireChannel(chat, intent.channelId);
-    if (target.originSurface !== 'chat' || target.channelKind === 'direct_message'
+    // Any origin (SPEC-141 FR-19): a reused conversation may have been created on Code or Work,
+    // and one this workflow creates is created on Chat.
+    if (target.channelKind === 'direct_message'
       || target.status === 'archived' || target.repoPath !== intent.workspacePath
       || resolveChannelCanonicalIdentity(chat, target.id).conversationId !== intent.conversationId) throw new Error('stale_context');
     if (intent.conversationIntent === 'create' && (target.runtimeWorkspaceKind !== 'worktree'
@@ -143,7 +145,9 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
     const proposal = choice.proposal;
     const source = requireChannel(chat, options.channelId);
     if (proposal.executionRevision !== collaborationExecutionRevision(chat, options.channelId)) throw new Error('stale_context');
-    if (!source.repoPath?.trim() || source.originSurface !== 'chat' || source.channelKind === 'direct_message'
+    // The source needs a folder and must not be a direct lane or archived, wherever it was
+    // created (SPEC-141 FR-19).
+    if (!source.repoPath?.trim() || source.channelKind === 'direct_message'
       || source.status === 'archived') throw new Error('repository_required');
     if (!Number.isInteger(proposal.budget.maxDurationMs) || proposal.budget.maxDurationMs <= 0
       || proposal.budget.maxDurationMs > 3600000 || !Number.isInteger(proposal.budget.maxTokens)
