@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress: Phases 1 and 2 are done, Phases 3 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | In progress: Phases 1 to 3 are done, Phases 4 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -168,22 +168,39 @@ No conversation can have a scope above its origin until Phase 5 adds the raise.
 **Goal:** orchestrator knowledge and SPEC-118's collaboration tools are offered in Code and
 Work conversations too (D8; FR-19).
 
-- [ ] `isOrchestratorKnowledgeChannel` stops reading the origin. Through it, knowledge, the
-      decision request, the collaboration descriptors and the snapshot open to every
-      conversation that is not a direct lane.
-- [ ] SPEC-118's execution checks stop requiring a Chat origin. They keep refusing a direct
+- [x] `isOrchestratorKnowledgeChannel` stops reading the origin. It had no other term, so it
+      is gone, and each of its four callers keeps its own conditions.
+  - The knowledge on a visible turn and the decision request go to the conversation's
+    coordinator. Neither had a lane condition: a Chat lane's Cat coordinates its lane and
+    received both before, and still does. A lane created outside Chat now receives them like
+    any other lane.
+  - The collaboration descriptors and the snapshot keep refusing a direct lane, and keep
+    requiring a Boss Cat coordinator. Nothing changes for a conversation created on Chat.
+- [x] SPEC-118's execution checks stop requiring a Chat origin. They keep refusing a direct
       lane, an archived conversation and a source without a folder.
-- [ ] The proposal and snapshot shapes that hard-code a `chat` origin carry the real one.
-- [ ] Check that Code's and Work's own product instructions are still delivered, with
-      orchestrator knowledge added to them.
-- [ ] Tests for FR-19: every origin and scope, each remaining condition, and a created
-      conversation still stamped `chat`.
+- [x] The proposal and snapshot shapes that hard-code a `chat` origin carry the real one, and
+      `chat` when none was recorded. No validator read the literal, and a proposal's digest
+      is taken over the stored proposal, so one prepared before this change stays valid.
+- [x] Check that Code's and Work's own product instructions are still delivered, with
+      orchestrator knowledge added to them. Code's enricher still adds its label and marker
+      to a Code conversation only.
+- [x] Tests for FR-19: every origin, each remaining condition, and a created conversation
+      still stamped `chat`.
+  - Two existing expectations flipped, as D8 intends: a Code or Work coordinator now receives
+    the knowledge, and a Boss Cat coordinator there is offered the read tools. The other 511
+    tests around these gates passed unchanged.
 - [ ] An independent security review before merge. This phase ends a limit SPEC-118 set on
       purpose.
-- [ ] Amend SPEC-118, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` in the same
+- [x] Amend SPEC-118, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` in the same
       pull request, since they state the limit.
 
 **Deliverables:** the role tools no longer depend on where a conversation was created.
+
+**Result at default settings.** The decision flag is off by default, so the collaboration
+tools stay off everywhere. What changes without any setting is the knowledge: the coordinator
+of every Code and Work conversation now receives the orchestrator knowledge with each turn,
+added to its own instructions. That includes a conversation whose only participant is a
+provider and model, since its first participant coordinates it.
 
 ### Phase 4: Work includes Code
 

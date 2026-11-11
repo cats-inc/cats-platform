@@ -4,7 +4,6 @@ import { resolveCollaborationPreparationBudget,
 import { collaborationToolDescriptors } from '../orchestratorCollaboration.js';
 import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
-import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { isAdminCoordinator } from '../coordinator.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
@@ -1008,11 +1007,12 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = companionPostPolicyDecision.result.policy;
   }
 
-  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it.
+  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it, in
+  // a conversation created on any product that is not a direct lane (SPEC-141 FR-19).
   const collaborationTools = input.enableCollaborationReads === true
     && singleCatTarget !== null
     && isAdminCoordinator(input.state, input.channelId, singleCatTarget.participantId)
-    && isOrchestratorKnowledgeChannel(channel) && !isDirectLaneChannel(channel)
+    && !isDirectLaneChannel(channel)
     && (!input.transport || input.transport === 'web' || input.transport === 'mobile')
     && !input.payload.body.trimStart().startsWith('/')
     && !exposeCatProductIntentProposalTool

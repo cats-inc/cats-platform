@@ -45,13 +45,14 @@ function respond() { return { contractVersion: 1, kind: 'semantic_plan', decisio
   confidence: 'high', rationaleSummary: 'Acknowledge observed results.',
   steps: [{ stepId: 'report', summary: 'Report actual results only.', action: 'respond' }] }; }
 
-function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null, development = false } = {}) {
+function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null, development = false,
+  originSurface = 'chat', repoPath = join(tmpdir(), 'cats-k3-source') } = {}) {
   const now = new Date();
   let state = createDefaultChatState();
   // A Boss Cat coordinates the room; only an admin coordinator may collaborate beyond it.
   state = createCat(state, { name: 'Boss', provider: 'claude', instance, group: 'admin' }, now);
   const bossId = state.cats[0].id;
-  state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface: 'chat', repoPath: join(tmpdir(), 'cats-k3-source'),
+  state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface, repoPath,
     roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }],
     participantCatIds: [bossId], participantOrder: [`cat:${bossId}`] }, now);
   const channelId = state.selectedChannelId;
@@ -1025,4 +1026,42 @@ test('Cats development cannot replace an ordinary owner confirmation or survive 
   } });
   await assert.rejects(service(owner, ownerClient, ownerStore), /stale_context/u);
   assert.equal(ownerClient.calls.create.length, 0); assert.equal((await intents(ownerStore)).length, 0);
+});
+
+test('SPEC-141 FR-19: a confirmed collaboration is admitted from a conversation created on Code or Work', async () => {
+  for (const originSurface of ['code', 'work']) {
+    // Reusing the current conversation: the Code or Work conversation itself is the target.
+    const reuse = fixture({ intent: 'reuse_current', originSurface }); const c = clients(reuse);
+    const s = await service(reuse, c);
+    await s.execute(conversation, {});
+    await s.execute(participants, {});
+    const reused = (await s.execute(inspectWork, {})).result;
+    assert.equal(reused.channelId, reuse.channelId, originSurface);
+    assert.equal(reused.membershipVerified, true, originSurface);
+    const source = (await s.store.read()).channels.find(channel => channel.id === reuse.channelId);
+    assert.equal(source.originSurface, originSurface, 'joining does not change where it was created');
+    assert.equal(source.productScope, originSurface, 'and it raises no scope');
+
+    // Creating one: the new conversation is still created on Chat, at chat.
+    const fresh = fixture({ intent: 'create', originSurface }); const fc = clients(fresh);
+    const fsvc = await service(fresh, fc);
+    await fsvc.execute(conversation, {});
+    const createdId = (await fsvc.execute(inspectWork, {})).result.channelId;
+    assert.notEqual(createdId, fresh.channelId, originSurface);
+    const created = (await fsvc.store.read()).channels.find(channel => channel.id === createdId);
+    assert.equal(created.originSurface, 'chat', originSurface);
+    assert.equal(created.productScope, 'chat', originSurface);
+    assert.equal(created.runtimeWorkspaceKind, 'worktree');
+    assert.equal(created.runtimePermissionMode, 'whitelist');
+  }
+});
+
+test('SPEC-141 FR-19: a source without a folder is refused on every origin, and nothing is created', async () => {
+  for (const originSurface of ['chat', 'code', 'work']) {
+    const h = fixture({ intent: 'reuse_current', originSurface, repoPath: null }); const c = clients(h);
+    const store = new MemoryChatStore(h.state);
+    await assert.rejects(service(h, c, store), /repository_required/u, originSurface);
+    assert.equal((await intents(store)).length, 0, originSurface);
+    assert.equal(c.calls.create.length, 0, originSurface);
+  }
 });

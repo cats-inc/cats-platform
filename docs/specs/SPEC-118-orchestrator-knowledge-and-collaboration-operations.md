@@ -9,7 +9,7 @@
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | Plan | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) |
-| Last updated | 2026-09-25 |
+| Last updated | 2026-11-11 |
 
 ## Summary
 
@@ -112,8 +112,13 @@ receive inline per-turn instructions, including the rewrite pass; structured
 decision requests receive the same content mechanism in their own JSON envelope.
 Provider-selected default Chat retains its ordinary assistant identity. Code and
 Work also reuse the internal actor slot; they retain product-owned instructions.
-K1 coordinator role injection requires explicit Chat origin and a real
-Orchestrator consumer. Other Cats do not inherit this role.
+K1 coordinator role injection requires a real Orchestrator consumer, the
+conversation's coordinator. Other Cats do not inherit this role.
+
+Until 2026-11-11 it also required a Chat origin. The owner ended that limit
+(ADR-149 D8, [SPEC-141](SPEC-141-conversation-product-scope.md) FR-19): the
+coordinator of a conversation created on Code or Work receives the same
+knowledge, added to its product's own instructions.
 
 Decision requests compare the current normalized provider/model/instance/control
 identity with the capability observation and send the actual Orchestrator binding,
@@ -153,11 +158,14 @@ other decision observations retain their existing metadata-only input contract.
 | `chat.collaboration.inspect_context` | Empty object; scope is server-bound | Current canonical conversation identity, topology, active participant IDs, workspace presence, current routing status and revision; no other conversation contents |
 | `chat.collaboration.prepare` | Observed revision, two distinct discovered Cat IDs, reuse-current/create intent, expected output, bounded missing-information list and proposed work budget | A validated proposal or a missing-input/capability result; no creation, membership, assignment or execution |
 
-Only a routed Chat Orchestrator can receive these descriptors. Read grants are
-intersected with policy; tool and output revisions are checked. Roles are
-declared metadata, not verified skill or permission claims. Light availability
-does not admit execution. Default-provider Chat, direct Cat replies, Code/Work
-and external transports do not inherit owner-directory access from an actor name.
+Only a routed Orchestrator, the conversation's Boss Cat coordinator, can receive
+these descriptors. Read grants are intersected with policy; tool and output
+revisions are checked. Roles are declared metadata, not verified skill or
+permission claims. Light availability does not admit execution.
+Default-provider conversations, direct Cat replies and external transports do not
+inherit owner-directory access from an actor name.
+Since 2026-11-11 the conversation may have been created on Chat, Code or Work
+(ADR-149 D8, SPEC-141 FR-19). Until then Code and Work were excluded.
 A Boss Cat's own direct lane is the one exception, and not through K2: SPEC-139's
 Boss Cat tools run there for an owner-started Desktop or mobile turn, in their own isolated
 decision session. Transports stay excluded.
@@ -217,8 +225,9 @@ message begin/retry obtains the same immutable snapshot for the turn builder;
 the loop independently intersects it with any narrower observation limits. Only
 the verified K2 read-descriptor surface receives it, after excluding K3 execution
 descriptors. It covers that entire attempt, including an ordinary first decision;
-no additional budget starts when a tool is selected. Other excluded Chat, direct,
-provider-default, Code/Work and external paths keep their existing budgets.
+no additional budget starts when a tool is selected. Other excluded direct,
+provider-default and external paths keep their existing budgets. A Code or Work
+conversation that receives the read surface receives this budget with it.
 Message/model input cannot set this policy. Host restart creates a new policy
 snapshot; no environment value is reread during an attempt. Existing K3 owner
 admission, model binding, grants and operation/request ceilings are unchanged.
@@ -233,7 +242,8 @@ and reject observed non-text/native-tool segments. This is not a universal
 provider-native tool prohibition: provider-specific enforcement and live/native
 acceptance remain K4, with no Runtime implementation changes in K2.
 
-The final proposal has Chat origin, goal/current-conversation-only handoff scope,
+The final proposal carries the origin of its source conversation (Chat, Code
+or Work; `chat` when none was recorded), goal/current-conversation-only handoff scope,
 expected output, distinct implementation/review roles and a review dependency on
 the actual implementation artifact/revision. An ordinary localized transcript
 message records preparation and tool receipts; it cannot claim collaboration
@@ -247,6 +257,13 @@ K3's complete provider call/result path is implemented; scoped validation and
 full CI pass (see PLAN-110).
 The following operations require an actual owner-confirmed proposal. This adds
 no public HTTP route and does not alter the default provider-agent opt-in.
+
+Since SPEC-141 FR-19 the confirmed proposal's source conversation may have
+been created on Code or Work. It still needs a folder and must not be a direct
+lane or archived. A conversation this workflow creates is still created on Chat,
+with its own worktree, read-write access and tool whitelist. Reusing the current
+conversation makes the two workers participants of it, so on a Code conversation
+they receive what its participants receive, Code's session tools included.
 
 An executable preparation is displayed through the existing Chat choice surface.
 Its submitted owner choice binds the persisted proposal, original goal, two

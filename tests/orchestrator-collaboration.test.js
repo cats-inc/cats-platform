@@ -293,12 +293,78 @@ test('production turn exposes discovery only for verified local coordinator rout
         preparationBudget: { maxDurationMs: 60000, maxTokens: 12000 },
         ...(mode === 'telegram' ? { transport: 'telegram' } : {}) });
     const tools = prepared.providerAgentObservation?.availableTools ?? [];
-    assert.equal(tools.some(({ manifest }) => manifest.name === discover), mode === 'coordinator', mode);
-    assert.equal(prepared.providerAgentObservation?.goal === goal, mode === 'coordinator');
+    // SPEC-141 FR-19: the Boss Cat coordinator has the tools in a conversation created on any
+    // product. Until then `code` and `work` had none. Every other condition is unchanged.
+    const offered = mode === 'coordinator' || mode === 'code' || mode === 'work';
+    assert.equal(tools.some(({ manifest }) => manifest.name === discover), offered, mode);
+    assert.equal(prepared.providerAgentObservation?.goal === goal, offered, mode);
     if (prepared.providerAgentObservation) assert.deepEqual(prepared.providerAgentObservation.budget,
-      mode === 'coordinator' ? { maxDurationMs: 60000, maxTokens: 12000, hardStop: true }
+      offered ? { maxDurationMs: 60000, maxTokens: 12000, hardStop: true }
         : { maxDurationMs: 30000, hardStop: true }, mode);
   }
+});
+
+test('SPEC-141 FR-19: the other conditions on the collaboration tools hold on Code and Work too', () => {
+  for (const originSurface of ['code', 'work']) {
+    for (const mode of ['provider_default', 'direct', 'multi', 'telegram', 'unverified_entry', 'slash', 'not_admin']) {
+      const h = fixture(originSurface);
+      const channel = h.state.channels.find((entry) => entry.id === h.channelId);
+      const payload = { body: mode === 'slash' ? `/work ${goal}` : goal, messageMetadata: { recipientParticipantIds: [h.bossId] } };
+      if (mode === 'provider_default') { channel.catAssignments = []; channel.participantAssignments = []; }
+      if (mode === 'direct') { channel.channelKind = 'direct_message'; channel.roomRouting.mode = 'direct_message'; }
+      if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: [h.bossId, channel.catAssignments[0].participantId], workflowShape: 'concurrent' };
+      if (mode === 'not_admin') h.state.cats.find((cat) => cat.id === h.bossId).group = 'standard';
+      const appended = appendMessage(h.state, h.channelId, { senderKind: 'user', senderName: 'Owner', body: payload.body }, now);
+      const prepared = prepareDispatchTurnForUserMessage(appended.state, h.channelId, payload, appended.message,
+        now, undefined, { enableCollaborationReads: mode !== 'unverified_entry',
+          preparationBudget: { maxDurationMs: 60000, maxTokens: 12000 },
+          ...(mode === 'telegram' ? { transport: 'telegram' } : {}) });
+      const tools = prepared.providerAgentObservation?.availableTools ?? [];
+      assert.equal(tools.some(({ manifest }) => manifest.name === discover), false, `${originSurface}: ${mode}`);
+    }
+  }
+});
+
+test('SPEC-141 FR-19: the snapshot and the proposal carry the product the conversation was created on', () => {
+  for (const originSurface of ['chat', 'code', 'work']) {
+    const h = fixture(originSurface);
+    const snapshot = collaborationSnapshot(h.state, h.channelId, h.observation);
+    assert.ok(snapshot, `${originSurface}: the coordinator can read its conversation`);
+    assert.equal(snapshot.context.originSurface, originSurface);
+    assert.doesNotMatch(JSON.stringify(snapshot), /PRIVATE-/u);
+    const receipts = [];
+    const read = (toolName, toolInput) => {
+      const result = executeCollaborationRead({ toolName, toolInput, snapshot, goal, receipts });
+      receipts.push({ toolName, decisionId: toolName, result });
+      return result;
+    };
+    read(discover, {});
+    read(inspect, {});
+    const [first, second] = snapshot.candidates;
+    const prepared = read(prepare, { revision: snapshot.revision, implementerId: first.id, reviewerId: second.id,
+      conversationIntent: 'reuse_current', expectedOutput: 'A reviewed fix', missingInformation: [],
+      budget: { maxDurationMs: 120000, maxTokens: 4000 } }).result;
+    assert.equal(prepared.status, 'prepared', JSON.stringify(prepared));
+    assert.equal(prepared.originSurface, originSurface);
+
+    // The conditions that are not about the origin still close the read.
+    const lane = structuredClone(h.state);
+    const laneChannel = lane.channels.find((entry) => entry.id === h.channelId);
+    laneChannel.channelKind = 'direct_message';
+    laneChannel.roomRouting.mode = 'direct_message';
+    assert.equal(collaborationSnapshot(lane, h.channelId, h.observation), null, `${originSurface}: direct lane`);
+    const archived = structuredClone(h.state);
+    archived.channels.find((entry) => entry.id === h.channelId).status = 'archived';
+    assert.equal(collaborationSnapshot(archived, h.channelId, h.observation), null, `${originSurface}: archived`);
+    const notAdmin = structuredClone(h.state);
+    notAdmin.cats.find((cat) => cat.id === h.bossId).group = 'standard';
+    assert.equal(collaborationSnapshot(notAdmin, h.channelId, h.observation), null, `${originSurface}: not a Boss Cat`);
+  }
+
+  // No recorded origin reads as chat, as everywhere else (S4).
+  const legacy = fixture();
+  legacy.state.channels.find((entry) => entry.id === legacy.channelId).originSurface = null;
+  assert.equal(collaborationSnapshot(legacy.state, legacy.channelId, legacy.observation).context.originSurface, 'chat');
 });
 
 test('production begin/retry returns a localized proposal with receipts and creates no collaboration resources', async () => {

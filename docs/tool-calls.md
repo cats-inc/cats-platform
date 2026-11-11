@@ -145,7 +145,7 @@ and [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.m
 | `chat.collaboration.inspect_context` | `{}` only | Current canonical conversation/topology, participants, routing, workspace presence and revision; Work state explicitly not inspected |
 | `chat.collaboration.prepare` | Observed revision, distinct discovered implementer/reviewer IDs, `reuse_current`/`create`, expected output, missing-information list, proposed duration/token budget | `prepared`, `needs_input` or `unavailable`; execution remains `not_started` and budget `not_admitted` |
 
-The server binds owner, conversation, actual goal, Chat origin, context scope and
+The server binds owner, conversation, actual goal, the conversation's origin, context scope and
 review-after-artifact dependency. Callers cannot override conversation scope or
 invent IDs, grants or readiness. Both successful discovery and context receipts
 are required before preparation; roles and light availability are not execution
@@ -160,9 +160,12 @@ Repeated reads create no collaboration entity; the normal Chat transcript and
 turn/run projections retain the coordinator result and bounded tool receipts.
 K3 separately provides durable mutation idempotency after owner confirmation.
 
-Only the existing opt-in provider-agent path in authenticated Chat message/retry
-continuation advertises these tools. Default-provider/direct/multi-target Chat,
-Code/Work, external transports, Work tool phases and direct Orchestrator dispatch
+Only the existing opt-in provider-agent path in authenticated message/retry
+continuation advertises these tools, to the Boss Cat coordinator of a
+conversation created on Chat, Code or Work
+([SPEC-141](specs/SPEC-141-conversation-product-scope.md) FR-19; until 2026-11-11
+only on Chat). Default-provider, direct and multi-target conversations,
+external transports, Work tool phases and direct Orchestrator dispatch
 do not gain the surface. The loop begins after ACK, reuses one decision session,
 limits calls/elapsed time/usage, returns results to that model, and consumes
 ordinary cancellation. Publication revalidates revision and source message

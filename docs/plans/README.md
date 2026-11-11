@@ -5,8 +5,9 @@
   the base tools, proposals and cards, the Work tools, a conversation in a Project, then
   documents and acceptance. Builds on PLAN-134 Phases 1, 2 and 4.
 - [PLAN-134: Conversation product scope](PLAN-134-conversation-product-scope.md)
-  — in progress, 2026-11-11; Phases 1 and 2 are implemented: every conversation carries a
-  `productScope`, and Recents, routes, labels and Code's tool checks read it. Seven phases for
+  — in progress, 2026-11-11; Phases 1 to 3 are implemented: every conversation carries a
+  `productScope`, Recents, routes, labels and Code's tool checks read it, and orchestrator
+  knowledge and the collaboration tools no longer need a Chat origin. Seven phases for
   SPEC-141: the field, readers on the
   scope, the role tools at every level, Work including Code, the raise on the server with the
   state version rise, the raise in Desktop, then documents and acceptance. Holds the inventory
