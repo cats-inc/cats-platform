@@ -483,8 +483,9 @@ conversation created on Chat unless it says what is new.
   coordinated by the implementer. Its title and topic are the goal, which
   Chat-only readers such as the companion's review then read.
 - **A read-only source still yields a read-write worktree** and a commit once
-  the owner confirms. Runtime commits with hooks enabled, and the reviewer's CLI
-  starts in the implementer's worktree.
+  the owner confirms. By the review's reading of Runtime, which it did not run,
+  that commit runs with hooks enabled, and the reviewer's CLI starts in the
+  implementer's worktree.
 - **The proposal's revision covers the origin and not the product scope.** There
   is no gap while nothing can raise a scope. PLAN-134 Phase 5 makes the card's
   binding cover the scope before the raise exists.
