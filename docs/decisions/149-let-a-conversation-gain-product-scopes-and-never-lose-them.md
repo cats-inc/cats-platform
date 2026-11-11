@@ -2,7 +2,7 @@
 
 ## Status
 
-Decided by the owner on 2026-11-11 (D1 to D7), who left the name to the agent (Decision 1).
+Decided by the owner on 2026-11-11 (D1 to D10), who left the name to the agent (Decision 1).
 P1 to P3 and P6 are proposed defaults the owner may change. P4 became D7, and P5 is now a
 proposal of the SPEC. Nothing is implemented. The draft
 [SPEC-141](../specs/SPEC-141-conversation-product-scope.md) specifies it and
@@ -150,8 +150,10 @@ product records the conversation anchors:
 - `code`: everything in `chat`, plus its codespace (the conversation's folder, or its sandbox),
   its Task family and Runs, artifacts, the canvas and live previews.
 - `work`: everything in `code`, plus a place in Work, which counts the conversation's WorkItem
-  as its own. No Work tool is delivered to sessions today, and
-  [SPEC-141](../specs/SPEC-141-conversation-product-scope.md) leaves Work's agent tools open.
+  as its own.
+  - Work's own agent tools are the workspace and the project (D10). No Work tool is delivered
+    to sessions today, and a separate SPEC will specify them.
+  - Task and Run are the foundation under every level, not Work tools (D10).
 
 A tool still appears only once it is delivered to the session (ADR-126 point 5).
 
@@ -164,6 +166,9 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   ([SPEC-125](../specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md)
   FR-17, SPEC-118, SPEC-139). Work intake from Chat and Telegram stays there too, so a Chat
   conversation does not need `work` to capture a work item.
+  - The role tools belong to every level (D8). Orchestrator knowledge and SPEC-118's
+    collaboration tools are offered in Code and Work conversations too. SPEC-118 had limited
+    them to conversations created on Chat.
 - **Turns the owner did not start.** They keep their own gates (ADR-141, SPEC-139).
 
 ### 7. Owner decisions (2026-11-11)
@@ -178,6 +183,13 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   owner sets the starting product scope.
 - D7: A conversation lives in the Recents of its product scope and opens on that product's
   surface. A raise moves it there; `originSurface` still records where it started.
+- D8: Orchestrator knowledge and SPEC-118's collaboration tools are part of the base. Code and
+  Work conversations have them too.
+- D9: The state version rises with the new field, so an older build refuses the file instead
+  of dropping the field and lowering a raised conversation.
+- D10: Task and Run are the foundation, not Work tools. Work's own tools are the workspace and
+  the project, and they get their own SPEC. That SPEC also settles what "workspace" names
+  here; this record does not.
 
 ### 8. Proposed defaults (the owner may change them)
 
@@ -241,18 +253,22 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   PLAN-134 holds the sorted list. Readers of the Core conversation kind do not change.
 - A raise moves the conversation out of the Recents the owner last saw it in (D7). The SPEC
   must make the move visible, so the conversation is not lost.
-- It changes a frozen shared contract, the channel state in
-  `src/products/chat/api/contracts.ts`, which needs integration review. SPEC-141 found no
-  change needed under `src/app/server/**`.
+- It changes two frozen shared contracts, which need integration review: the channel state in
+  `src/products/chat/api/contracts.ts` and, for D9, the state version in `src/core/types.ts`.
+  SPEC-141 found no change needed under `src/app/server/**`.
+- D8 ends SPEC-118's limit to conversations created on Chat. Its collaboration tools then
+  reach Code and Work conversations, which run in a folder. SPEC-118's other conditions stay.
+- D9 means a build older than the upgrade can no longer open the profile.
 - Product scope is not a security boundary (D3, D4), and the Work risk stays open.
 - A raise cannot be taken back. A mistaken one means a new conversation.
 
 ### Neutral
 
 - `originSurface` keeps meaning where the conversation started.
-- The role and owner-started gates are unchanged.
-- For existing data, the SPEC chooses between a one-time migration and deriving the scope on
-  read, under the Pre-Release Compatibility Policy.
+- The owner-started gates are unchanged. The role gates keep their conditions and lose only
+  their limit to conversations created on Chat (D8).
+- Existing data is upgraded once, with a backup, when the state version rises (D9). The scope
+  itself is derived from the origin.
 
 ## Alternatives Considered
 
@@ -307,4 +323,4 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ---
 
 *Decision made: 2026-11-11*
-*Decision makers: owner (D1 to D7); drafted by Claude*
+*Decision makers: owner (D1 to D10); drafted by Claude*

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; not started. It waits for the owner's answers to SPEC-141's proposals and to Q1 to Q4 |
+| **Status** | Draft; not started. The owner answered SPEC-141's Q1, Q2 and Q4 on 2026-11-11 (ADR-149 D8 to D10). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -16,16 +16,19 @@
 
 ## Overview
 
-Six phases, one pull request each.
+Seven phases, one pull request each.
 
 - Phases 1 and 2 add the field and move its readers. For a conversation that has an origin and
   is not a direct lane, they change no behavior, and tests prove that.
-- Phase 3 is the main intended change for existing conversations: Work gains Code's tools
-  (D5).
-- Phases 4 and 5 add the raise, first on the server and then in Desktop.
-- Phase 6 updates the documents and runs the acceptance.
+- Phase 3 opens the role tools to every level (D8). It does not need the field and can land
+  on its own.
+- Phase 4 gives Work Code's tools (D5).
+- Phases 5 and 6 add the raise, first on the server and then in Desktop.
+- Phase 7 updates the documents and runs the acceptance.
 
-No version bump or publication is part of this plan.
+No version bump or publication is part of this plan. Phase 5 raises the state version (D9),
+which is a persisted-data boundary: the release that ships Phase 5 starts a new minor line, and
+that pull request records it.
 
 ## Implementation Phases
 
@@ -45,13 +48,11 @@ No version bump or publication is part of this plan.
 - [ ] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
 - [ ] Core metadata projected from a conversation gains `productScope` beside `originSurface`:
       Task, WorkItem, Run, Mission, Trace, Checkpoint, Outcome and Activity.
-- [ ] If the owner chooses the version boundary (Q4): raise the state version with a tested
-      upgrade, a backup and an atomic replacement.
 - [ ] Tests for FR-1 to FR-7, with a load-and-save round trip that shows only the new field
       added.
 
-**Deliverables:** the field exists everywhere. This phase changes the frozen contract
-`src/products/chat/api/contracts.ts`, and `src/core/types.ts` under Q4, so it needs integration
+**Deliverables:** the field exists everywhere and the state version is unchanged. This phase
+changes the frozen contract `src/products/chat/api/contracts.ts`, so it needs integration
 review.
 
 ### Phase 2: Readers follow the scope
@@ -73,7 +74,29 @@ FR-15, and FR-8's checks still limited to `code`).
 **Deliverables:** readers are on the scope, with no behavior change for a conversation that has
 an origin and is not a direct lane.
 
-### Phase 3: Work includes Code
+### Phase 3: Role tools at every level
+
+**Goal:** orchestrator knowledge and SPEC-118's collaboration tools are offered in Code and
+Work conversations too (D8; FR-19).
+
+- [ ] `isOrchestratorKnowledgeChannel` stops reading the origin. Through it, knowledge, the
+      decision request, the collaboration descriptors and the snapshot open to every
+      conversation that is not a direct lane.
+- [ ] SPEC-118's execution checks stop requiring a Chat origin. They keep refusing a direct
+      lane, an archived conversation and a source without a folder.
+- [ ] The proposal and snapshot shapes that hard-code a `chat` origin carry the real one.
+- [ ] Check that Code's and Work's own product instructions are still delivered, with
+      orchestrator knowledge added to them.
+- [ ] Tests for FR-19: every origin and scope, each remaining condition, and a created
+      conversation still stamped `chat`.
+- [ ] An independent security review before merge. This phase ends a limit SPEC-118 set on
+      purpose.
+- [ ] Amend SPEC-118, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` in the same
+      pull request, since they state the limit.
+
+**Deliverables:** the role tools no longer depend on where a conversation was created.
+
+### Phase 4: Work includes Code
 
 **Goal:** conversations on Work have Code's tools and can show them (D5; FR-8 to FR-11).
 
@@ -98,7 +121,7 @@ an origin and is not a direct lane.
 **Deliverables:** a conversation created on Work receives the `cats` server, and its canvas,
 previews and work areas appear under `/work`.
 
-### Phase 4: The raise on the server
+### Phase 5: The raise on the server
 
 **Goal:** an owner principal can read what a raise would do and perform it (FR-20 to FR-26).
 
@@ -107,6 +130,18 @@ previews and work areas appear under `/work`.
       first conversation route that checks a role.
 - [ ] The system line, with event metadata that names the old and the new level, and the update
       events.
+- [ ] Raise the state version (D9) in this pull request, the first that can store a raised
+      conversation.
+  - The version 6 upgrade in `store.ts` cannot be reused as it is. It runs on any version
+    mismatch and writes one fixed backup name, so a profile that already upgraded to 6 would
+    fail. The new upgrade needs its own branch and its own backup name.
+  - It accepts only a recognized file, keeps the original bytes, replaces the file atomically
+    and leaves the original in place on failure.
+  - Tests: a round trip that shows only the version changed; a failed upgrade; an upgrade
+    with the version 6 backup already present; and the previous build refusing the new file,
+    both on a normal read and through the store's `.bak` recovery path.
+  - Record the persisted-data boundary for the release notes here. `src/core/types.ts` is
+    frozen, so this needs integration review.
 - [ ] Confirm how a turn whose session was lost is handled today. FR-25 relies on it for a
       failed recycle, and this plan has not read that code.
 - [ ] Tests that a session created without the `cats` server gains it on its next send, that a
@@ -118,7 +153,7 @@ previews and work areas appear under `/work`.
 
 **Deliverables:** the raise works through the API and nowhere else.
 
-### Phase 5: The raise in Desktop
+### Phase 6: The raise in Desktop
 
 **Goal:** the owner raises a conversation from its chip (FR-27 to FR-32).
 
@@ -133,31 +168,30 @@ previews and work areas appear under `/work`.
 
 **Deliverables:** the complete raise flow in Desktop.
 
-### Phase 6: Documents and acceptance
+### Phase 7: Documents and acceptance
 
 - [ ] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
       SPEC-101 too, if a canvas surface kind was added.
-- [ ] If S1 stands, reword SPEC-118 and SPEC-137 FR-7 from "Chat conversation" to "created on
-      Chat".
+- [ ] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
 - [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10, and make its join card's binding cover the
       scope. PLAN-133 is building SPEC-139 now, in another session.
   - Its join slice binds the card to `collaborationExecutionRevision`, which FR-7 keeps free of
     the scope, and names Code's tools for Code only.
-  - Whichever lands second, PLAN-133's join slice or this plan's Phase 3, updates the hint, the
+  - Whichever lands second, PLAN-133's join slice or this plan's Phase 4, updates the hint, the
     card's text and the binding. This plan does not edit SPEC-139 or PLAN-133 before then.
 - [ ] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
       that describe records the code does not create.
 - [ ] `docs/tool-calls.md`: who receives the `cats` tools.
-- [ ] Record the persisted-data boundary for the release notes, as Q4 was answered. No bump
-      here.
+- [ ] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
+      bump here.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
 - [ ] Update ADR-149's status.
 
 ## Not in This Plan
 
-- Work agent tools (SPEC-141 Q1).
-- Role-gated tools in every conversation (Q2).
-- A raise control in the mobile app (Q3).
+- Work's own agent tools, the workspace and the project (ADR-149 D10). They get their own
+  SPEC.
+- A raise control in the mobile app (SPEC-141 Q3).
 - A raise proposed by an agent.
 - Raising direct lanes or parallel groups.
 - Work's supervised runs.
@@ -194,6 +228,19 @@ Three links hard-code a product prefix and rely on the redirect:
 `products/code/state/codeSessionOperation.ts:45` and
 `products/code/renderer/components/ArtifactDetailView.tsx:32`. They keep working (FR-13).
 
+### Stops reading the origin (D8)
+
+These gates open to every conversation that is not a direct lane.
+
+- `products/chat/state/orchestratorKnowledge.ts:22`. Through it:
+  - orchestrator knowledge at `runtime-dispatch/execution.ts:208`;
+  - decisions at `providerAgentDecisionRequester.ts:50`;
+  - the collaboration descriptors at `runtime-dispatch/turn.ts:925`;
+  - snapshot eligibility at `orchestratorCollaboration.ts:153`.
+- `products/chat/state/collaborationExecution.ts:87`, `:146`.
+- `products/chat/state/orchestratorCollaboration.ts:94`, `:141`, `:177`, `:303`, which write a
+  literal `chat` origin into proposals and snapshots.
+
 ### Stays with the origin
 
 - **Creation and validation.**
@@ -223,17 +270,9 @@ Three links hard-code a product prefix and rely on the redirect:
 
 ### Stays with the origin by S1
 
-The owner has not confirmed these.
+The owner has not seen this one.
 
-- `products/chat/state/orchestratorKnowledge.ts:22`. Through it:
-  - orchestrator knowledge at `runtime-dispatch/execution.ts:208`;
-  - decisions at `providerAgentDecisionRequester.ts:50`;
-  - the collaboration descriptors at `runtime-dispatch/turn.ts:925`;
-  - snapshot eligibility at `orchestratorCollaboration.ts:153`.
-- `products/chat/state/collaborationExecution.ts:87`, `:146`.
-- `products/chat/state/orchestratorCollaboration.ts:94`, `:141`, `:177`, `:303`, which write a
-  literal `chat` origin into proposals and snapshots.
-- `products/chat/companion/life/review.ts:47`.
+- `products/chat/companion/life/review.ts:47`, the companion's life review.
 
 ### Not this field
 
@@ -254,10 +293,12 @@ scope.
 |------|--------|-------------|
 | `src/products/chat/api/contracts.ts`, `src/products/shared/api/workspaceContracts.ts`, `src/mobile/contracts.ts` | Modify | `productScope` on the state, summary and view types |
 | `src/shared/productScope.ts` | Create | The order, the comparison, the derivation and the raise revision |
+| `src/core/types.ts`, `src/products/chat/state/store.ts`, `chat-snapshot/index.ts` | Modify | The state version and its upgrade (D9), in Phase 5 |
 | `src/products/chat/state/model/index.ts`, `chat-snapshot/entities.ts`, `model/readModels.ts` | Modify | Stamp, derive, raise and summarize |
 | `src/products/chat/state/core-projection/entities.ts`, `workflow.ts` | Modify | The metadata copy |
 | `src/platform/runtime/invocationEnrichment.ts` | Modify | The scope on the enricher's channel type |
 | The "follows the scope" files in the inventory | Modify | Read the scope |
+| `src/products/chat/state/orchestratorKnowledge.ts`, `collaborationExecution.ts`, `orchestratorCollaboration.ts` | Modify | The role tools at every level (D8) |
 | `src/products/code/agentTools/*`, `src/products/code/livePreview/*`, `src/products/shared/artifactCanvas/*` | Modify | The canvas route by scope, earlier state, and the grant's folder |
 | `src/products/code/renderer/components/*` to `src/products/shared/renderer/` | Move | Code's conversation parts, so Work may mount them |
 | `src/products/work/renderer/AppRoutes.tsx`, `src/products/shared/renderer/WorkspaceAppRoutes.tsx` | Modify | Work's conversation parts |
@@ -265,9 +306,8 @@ scope.
 | `src/products/shared/renderer/components/ComposerSurfaceChip.tsx`, `conversation-view/ConversationView.tsx` | Modify | The scope chip and its menu |
 | `src/products/shared/renderer/components/ProductScopeRaiseDialog.tsx` | Create | The confirmation |
 | `src/shared/i18n/catalogs/en.ts`, `zh-TW.ts`, `messageKeys.ts` | Modify | Copy |
-| `src/core/types.ts`, `src/products/chat/state/store.ts` | Modify, only under Q4 | The state version and its upgrade |
-| `tests/` | Create | Field, reader equality, D5, raise and renderer tests |
-| `docs/api.md` and the documents in Phase 6 | Modify | Contracts and amendments |
+| `tests/` | Create | Field, upgrade, reader equality, D8, D5, raise and renderer tests |
+| `docs/api.md` and the documents in Phases 3 and 7 | Modify | Contracts and amendments |
 
 No file under `src/app/server/` needs to change: Work conversations already use the shared
 Runtime client that carries the Code tools wrapper.
@@ -276,9 +316,17 @@ Runtime client that carries the Code tools wrapper.
 
 - **One ordered value.** The owner chose the ladder (ADR-149 D5), so the field is one level and
   "only up" is one comparison.
-- **Derive on load.** Loading already completes missing fields, and the stored value appears on
-  the next save. Whether the state version also rises is the owner's choice (Q4).
-- **The canvas route, to decide in Phase 3.** A canvas surface kind fixes its route today, so
+- **Derive the scope on load.** Loading already completes missing fields, so the scope needs no
+  separate migration.
+- **Raise the state version with the raise, not with the field.** Until a conversation can be
+  raised, a dropped field derives again to the same value, so Phases 1 to 4 stay inside the
+  current data format. The version rises in Phase 5 so that an older build refuses the file
+  instead of lowering a raised conversation (D9).
+  - One corner exists before Phase 5: a direct lane created outside Chat that later became an
+    ordinary conversation. If an older build wrote the file, it would load at its origin's
+    level. No client is known to create such a lane.
+  - The version 6 upgrade cannot be reused as it is (see Phase 5).
+- **The canvas route, to decide in Phase 4.** A canvas surface kind fixes its route today, so
   `code_conversation` always opens under `/code`. Two ways forward:
   - add a kind for Work conversations, which needs every kind list updated and a rule for
     state recorded under the old kind;
@@ -294,28 +342,30 @@ Runtime client that carries the Code tools wrapper.
 
 ## Testing Strategy
 
-- **Unit tests**: the scope helper, creation, loading, the raise function and its refusals, the
-  raise revision, and each moved reader.
+- **Unit tests**: the scope helper, creation, loading, the upgrade, the raise function and its
+  refusals, the raise revision, each moved reader and each opened gate.
 - **Integration tests**: the two routes with and without an owner principal, the reader
   equality fixtures, tool delivery by scope, the grant's folder, and the mid-conversation
   delivery through the wrapper.
-- **Manual testing**: isolated candidates for Phase 3 and Phase 5, and the provider acceptance
-  in Phase 6. The State Hygiene Policy applies: no test records in the owner's profile.
+- **Manual testing**: isolated candidates for Phase 4 and Phase 6, and the provider acceptance
+  in Phase 7. The State Hygiene Policy applies: no test records in the owner's profile.
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | D5 changes every conversation created on Work | Medium | Its own phase and pull request, with a candidate check before merge |
-| A build without the field drops it on write and undoes a raise | Medium | The owner's choice in Q4: a version boundary that makes older builds refuse the file, or accepting the loss |
-| The first turn after a raise, or after D5 ships, fails because Runtime cannot recycle the worker | Medium | Handled as a lost session is today; a test in Phase 4 and the provider acceptance in Phase 6 |
+| D8 brings SPEC-118's tools to Code and Work conversations, which run in a folder | Medium | SPEC-118's other conditions stay; an independent security review in Phase 3 |
+| A build older than the upgrade cannot open the profile | Medium | Intended (D9). The upgrade keeps a backup of the original bytes, and the release notes record the boundary |
+| The first turn after a raise, or after D5 ships, fails because Runtime cannot recycle the worker | Medium | Handled as a lost session is today; a test in Phase 5 and the provider acceptance in Phase 7 |
 | A session that gains the tools mid-conversation gets a grant for the wrong folder | Medium | Bind the grant to the session's folder (FR-25), with worktree and sandbox tests |
 | Mid-conversation tool delivery differs by provider | Medium | Acceptance with Claude Code and Codex; adapters without session MCP keep reporting `unsupported` |
 | A raised conversation seems to disappear from its old Recents | Low | Desktop opens it at its new route, shows a toast, and old links redirect |
-| A frozen shared contract changes | Medium | Integration review in Phase 1 |
+| Two frozen shared contracts change | Medium | Integration review in Phase 1 and in Phase 5 |
+| Phase 3 edits decision-path files that PLAN-133 is changing now | Medium | Rebase on PLAN-133's latest slice before starting, and keep the change to the three gates |
 | A no-origin conversation becomes visible in Chat's Recents | Low | Stated as S4 for the owner; covered by a test |
 | A direct lane created outside Chat loses Code's tools | Low | Stated as S6 for the owner; covered by a test |
-| PLAN-133 builds SPEC-139's join card while this plan changes what joining a Work conversation grants | Medium | Whichever lands second updates the join hint, the card's text and its binding (Phase 6) |
+| PLAN-133 builds SPEC-139's join card while this plan changes what joining a Work conversation grants | Medium | Whichever lands second updates the join hint, the card's text and its binding (Phase 7) |
 
 ---
 
