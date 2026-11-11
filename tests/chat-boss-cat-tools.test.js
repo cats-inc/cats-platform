@@ -612,6 +612,9 @@ test('SPEC-139 FR-11/FR-12: a join changes nothing else, and the Boss Cat sees 8
   await h.send('Join Ops again.');
   state = await h.chatStore.read();
   const rejoined = membershipOf(state, hooks.conversationId, h.ids.boss);
+  assert.equal(state.channels.find((entry) => entry.id === hooks.conversationId).messages
+    .filter((message) => message.metadata?.event === 'cat_assigned' && message.metadata.catId === h.ids.boss).length, 2,
+  'FR-16: the conversation shows the rejoin as a join');
   const afterRejoin = await sendInConversation(h, hooks.conversationId, rejoined.participantId, 'Q3-AFTER-REJOIN');
   assert.match(afterRejoin, /Q3-AFTER-REJOIN/u);
   assert.doesNotMatch(afterRejoin, /OLD-MARKER|AWAY-MARKER/u);
@@ -799,8 +802,11 @@ test('SPEC-139 FR-10: under 「每次問我」 a join posts the owner\'s card, w
   state = await h.chatStore.read();
   assert.ok(membershipOf(state, hooks.conversationId, h.ids.boss));
   assert.ok(state.channels.find((entry) => entry.id === hooks.conversationId).bossCatJoins[h.ids.boss].since);
-  assert.ok(state.channels.find((entry) => entry.id === h.bossLane).messages
-    .some((message) => message.metadata?.event === 'boss_cat_joined'));
+  const laneAfter = state.channels.find((entry) => entry.id === h.bossLane).messages;
+  assert.equal(laneAfter.some((message) => message.metadata?.event === 'boss_cat_joined'), false,
+    'the card itself says the Boss Cat joined; no second notice');
+  assert.equal(laneAfter.find((message) => message.metadata?.bossCatJoinRequest?.id === record.id)
+    .metadata.bossCatJoinRequest.status, 'approved');
   const replay = await decide(h, record.id, 'approve');
   assert.deepEqual([replay.body.outcome.status, replay.body.outcome.refusal], ['approved', 'card_consumed']);
   const boss = membershipOf(state, hooks.conversationId, h.ids.boss);
@@ -882,11 +888,17 @@ test('SPEC-139 FR-10: a later prompt shows lane notices but never the owner\'s c
   const h = await start(t, { failLane: true, seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
   const { card } = await postCardRequest(h);
   assert.equal((await decide(h, card.metadata.bossCatJoinRequest.id, 'approve')).body.outcome.status, 'approved');
+  // Positive control: an ordinary system notice after the card.
+  const state = await h.chatStore.read();
+  state.channels.find((entry) => entry.id === h.bossLane).messages.push({ id: 'notice-control', channelId: h.bossLane,
+    senderKind: 'system', senderName: 'Chat', body: 'LANE-NOTICE-CONTROL', mentions: [], metadata: { event: 'notice' },
+    usage: null, createdAt: new Date().toISOString() });
+  await h.chatStore.write(state);
   h.calls.failLane = false;
   hooks.action = 'none';
   await h.send('What happened with Ops?');
   const prompt = `${h.calls.laneSends.at(-1).content}\n${h.calls.laneSends.at(-1).instructions}`;
-  assert.match(prompt, /Boss joined a code conversation/u, 'positive control: a lane notice is in the recent context');
+  assert.match(prompt, /LANE-NOTICE-CONTROL/u, 'positive control: a lane notice is in the recent context');
   assert.ok(!prompt.includes(card.body), 'the card is not');
   assert.ok(!prompt.includes(card.metadata.bossCatJoinRequest.id));
 });

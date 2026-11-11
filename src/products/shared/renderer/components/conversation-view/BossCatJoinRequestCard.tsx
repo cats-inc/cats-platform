@@ -21,19 +21,28 @@ const REFUSAL_LABELS: Record<string, MessageKey> = {
 export interface BossCatJoinRequestCardProps {
   laneId: string;
   requestId: string;
-  /** The status the transcript carries; the card re-reads live details when it changes. */
+  /** The status the card's message carries. Only a pending card reads live details. */
   status: string;
+  refusal?: string | null;
 }
+
+const SURFACE_LABELS: Record<string, string> = { chat: 'Chat', code: 'Code', work: 'Work' };
+const PERMISSION_LABELS: Record<string, MessageKey> = {
+  default: messageKeys.chatBossCatCardPermissionDefault,
+  skip: messageKeys.chatBossCatCardPermissionSkip,
+};
 
 /**
  * SPEC-139 FR-10: the owner's join card. Everything shown comes from live state through an
  * owner-only route; the model never sees any of it.
  */
-export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoinRequestCardProps) {
+export function BossCatJoinRequestCard({ laneId, requestId, status, refusal = null }: BossCatJoinRequestCardProps) {
   const { t } = useI18n();
   const [request, setRequest] = useState<BossCatJoinRequestView | null | 'missing'>(null);
+  const [answered, setAnswered] = useState<{ status: string; refusal: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const settled = answered ?? (status !== 'pending' ? { status, refusal } : null);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -44,40 +53,52 @@ export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoi
   }, [laneId, requestId]);
 
   useEffect(() => {
+    if (settled) return undefined;
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
-  }, [load, status]);
+  }, [load, settled === null]);
 
   async function answer(decision: 'approve' | 'decline'): Promise<void> {
     setBusy(true);
     setFailed(false);
     try {
-      await decideBossCatJoinRequest(laneId, requestId, decision);
+      const outcome = await decideBossCatJoinRequest(laneId, requestId, decision);
+      setAnswered({ status: outcome.status, refusal: outcome.refusal ?? null });
     } catch {
       setFailed(true);
     } finally {
       setBusy(false);
-      await load();
     }
   }
 
+  const settledLine = (value: { status: string; refusal: string | null }) => value.status === 'approved'
+    ? t(messageKeys.chatBossCatCardApproved)
+    : value.status === 'declined' ? t(messageKeys.chatBossCatCardDeclined)
+      : value.status === 'expired' ? t(messageKeys.chatBossCatCardExpired)
+        : t(messageKeys.chatBossCatCardRefused, {
+            reason: t(REFUSAL_LABELS[value.refusal ?? ''] ?? messageKeys.chatBossCatCardRefusedNotJoinable),
+          });
+
+  // A settled card is one line: what was decided, not today's live grants.
+  if (settled) {
+    return <div className="messageChoices"><p className="messageChoiceResolved">{settledLine(settled)}</p></div>;
+  }
   if (request === null) return null;
   if (request === 'missing') {
     return <div className="messageChoices"><p className="messageChoiceResolved">{t(messageKeys.chatBossCatCardMissing)}</p></div>;
+  }
+  if (request.status !== 'pending') {
+    return (
+      <div className="messageChoices">
+        <p className="messageChoiceResolved">{settledLine({ status: request.status, refusal: request.refusal })}</p>
+      </div>
+    );
   }
 
   const conversation = request.conversation;
   const grants = request.grants;
   const boss = request.bossCat;
-  const statusLine = request.status === 'approved' ? t(messageKeys.chatBossCatCardApproved)
-    : request.status === 'declined' ? t(messageKeys.chatBossCatCardDeclined)
-      : request.status === 'expired' ? t(messageKeys.chatBossCatCardExpired)
-        : request.status === 'refused'
-          ? t(messageKeys.chatBossCatCardRefused, {
-              reason: t(REFUSAL_LABELS[request.refusal ?? ''] ?? messageKeys.chatBossCatCardRefusedNotJoinable),
-            })
-          : null;
 
   return (
     <div className="messageChoices bossCatJoinCard">
@@ -90,7 +111,7 @@ export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoi
         {conversation ? (
           <p className="bossCatJoinCardLine">
             {t(messageKeys.chatBossCatCardConversation, {
-              surface: conversation.surface,
+              surface: SURFACE_LABELS[conversation.surface] ?? conversation.surface,
               participants: conversation.participantNames.join(', '),
             })}
           </p>
@@ -106,7 +127,9 @@ export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoi
                 access: grants.workspaceAccess === 'read_only'
                   ? t(messageKeys.chatBossCatCardReadOnly)
                   : t(messageKeys.chatBossCatCardReadWrite),
-                mode: grants.permissionMode,
+                mode: PERMISSION_LABELS[grants.permissionMode]
+                  ? t(PERMISSION_LABELS[grants.permissionMode]!)
+                  : grants.permissionMode,
               })}</li>
               {grants.codeTools ? <li>{t(messageKeys.chatBossCatCardCodeTools)}</li> : null}
             </ul>
@@ -139,8 +162,7 @@ export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoi
           })}
         </p>
       </section>
-      {statusLine ? <p className="messageChoiceResolved">{statusLine}</p> : null}
-      {request.status === 'pending' ? (
+      {(
         <div className="messageChoiceActions">
           <button
             type="button"
@@ -159,7 +181,7 @@ export function BossCatJoinRequestCard({ laneId, requestId, status }: BossCatJoi
             {t(messageKeys.chatBossCatCardDecline)}
           </button>
         </div>
-      ) : null}
+      )}
       {failed ? <p className="messageChoiceResolved">{t(messageKeys.chatBossCatCardDecisionFailure)}</p> : null}
     </div>
   );

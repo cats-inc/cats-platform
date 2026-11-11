@@ -2328,6 +2328,8 @@ export const messageKeys = {
   chatBossCatCardRefusedParticipantLimit: 'chat.bossCatCard.refusedParticipantLimit',
   chatBossCatCardMissing: 'chat.bossCatCard.missing',
   chatBossCatCardDecisionFailure: 'chat.bossCatCard.decisionFailure',
+  chatBossCatCardPermissionDefault: 'chat.bossCatCard.permissionDefault',
+  chatBossCatCardPermissionSkip: 'chat.bossCatCard.permissionSkip',
   chatCompanionPostRemoveAction: 'chat.companionPostRemoveAction',
   chatCompanionPostRemoveConfirmTitle: 'chat.companionPostRemoveConfirmTitle',
   chatCompanionPostRemoveConfirmMessage: 'chat.companionPostRemoveConfirmMessage',

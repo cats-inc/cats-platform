@@ -165,7 +165,7 @@ export function TranscriptMessageItem({
 
   // SPEC-139 FR-10: the server's own join card, a system notice with the card event.
   const bossCatJoinRequest = message.senderKind === 'system' && message.metadata?.event === 'boss_cat_join_request'
-    ? message.metadata.bossCatJoinRequest as { id?: unknown; status?: unknown } | undefined
+    ? message.metadata.bossCatJoinRequest as { id?: unknown; status?: unknown; refusal?: unknown } | undefined
     : undefined;
   const speakerHeader = (showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
           transcriptParticipant ? (
@@ -244,7 +244,8 @@ export function TranscriptMessageItem({
           busy={choiceBusy} onSubmit={onChoiceSubmit} />
       ) : last && typeof bossCatJoinRequest?.id === 'string' ? (
         <BossCatJoinRequestCard laneId={selectedChannelId} requestId={bossCatJoinRequest.id}
-          status={String(bossCatJoinRequest.status ?? '')} />
+          status={String(bossCatJoinRequest.status ?? '')}
+          refusal={typeof bossCatJoinRequest.refusal === 'string' ? bossCatJoinRequest.refusal : null} />
       ) : null}
     >
         {last ? <CatImageAttachment key={message.id} metadata={message.metadata} /> : null}

@@ -241,12 +241,14 @@ are tested as live behaviour.
       - the companion path: a joined Cat's `buildSessionContext` gets `excludeChannelMemory`
         and no working memory, with an ordinary Cat as the control. The memory service returns
         a channel record without the flag and leaves it out with it.
-- [ ] Before slice 6 adds the setter, check:
+- [x] Checked with slice 6: a rejoin now shows "joined the chat" too (FR-16), and no Code or
+      Work prompt builder reads `channel.messages`.
+- [ ] Before the decision flag is turned on, check:
       - where a transport or dispatch message lands in a single-participant conversation after
         a join, and the composer's default audience;
-      - that a rejoin shows "joined the chat";
-      - Code and Work prompt builders that read `channel.messages`;
-      - that `participant_limit` labels every `assignCatToChannel` throw, which is coarse.
+      - that `participant_limit` labels every `assignCatToChannel` throw, which is coarse;
+      - one real board-then-join run against a real model in an isolated source candidate, and
+        its latency, since every Boss-lane message waits for the decision loop.
 
 ### Slice 5b: The owner's card under 「每次問我」
 
@@ -319,15 +321,20 @@ Claimed with slice 5b, by the same session.
       join policy.
 - [x] The join card in the Desktop conversation view (`BossCatJoinRequestCard.tsx`, under the
       card's own notice):
-      - it reads the live details and answers through the owner-only routes;
-      - each state reads differently: pending with the two buttons, approved, declined,
-        expired, refused with its reason (policy changed, stale, demoted, archived, already a
-        member, full), and gone.
+      - a pending card reads the live details and answers through the owner-only routes;
+        permission modes and surfaces read as words, not raw values;
+      - a settled card is one line from its own record (approved, declined, expired, refused
+        with its reason), not today's live grants, and reads nothing;
+      - a pending card that expired or is gone says so;
+      - an approval on the card posts no second lane notice: the card's line says it;
+      - its styles live in the Chat thread stylesheet, not `src/design`.
 - [x] Tests:
       - `tests/chat-boss-cat-tools.test.js`: the owner-only setter (400, 401, 403 for a member)
         and the shell payload, and the visibility switch;
       - `tests/boss-cat-settings-ui.test.tsx`: the route and section, the page's default and its
-        save, and the card's grants, approval and every settled state.
+        save, the card's grants and approval, settled cards without a fetch, an expired or gone
+        pending card, and the transcript item showing the card under its notice with an
+        ordinary notice as the control.
 - [ ] 6c: the join card in the mobile conversation view. Until then mobile shows the card's
       notice, and the owner answers on Desktop; the routes already accept the mobile bearer.
 - [ ] Not yet seen in the running app: the page, the switch and the card were checked by tests

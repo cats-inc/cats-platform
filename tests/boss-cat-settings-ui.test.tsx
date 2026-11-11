@@ -8,19 +8,24 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { resolveSettingsSectionConfig } from '../src/app/renderer/settings/PlatformSettingsRoutes.tsx';
 import { SettingsBossCat } from '../src/app/renderer/settings/SettingsBossCat.tsx';
 import { BossCatJoinRequestCard } from '../src/products/shared/renderer/components/conversation-view/BossCatJoinRequestCard.tsx';
+import { TranscriptMessageItem } from '../src/products/shared/renderer/components/conversation-view/TranscriptMessageItem.tsx';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 
-function setup(t: TestContext, respond: (url: string, init?: RequestInit) => Response | Promise<Response>) {
+type Responder = (url: string, init?: RequestInit) => Response | Promise<Response>;
+
+/** One fetch mock per test; `respond` swaps the responder without stacking mocks. */
+function setup(t: TestContext, initial: Responder) {
   resetTestDom();
   const originalFetch = globalThis.fetch;
   const calls: Array<{ url: string; init?: RequestInit }> = [];
+  let responder = initial;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, init });
-    return respond(url, init);
+    return responder(url, init);
   }) as typeof fetch;
   t.after(() => { cleanup(); resetTestDom(); globalThis.fetch = originalFetch; });
-  return calls;
+  return Object.assign(calls, { respond: (next: Responder) => { responder = next; } });
 }
 
 /** SettingsBossCat reads only `chat.bossCatJoinPolicy`; the rest of the payload is irrelevant here. */
@@ -74,7 +79,7 @@ test('SPEC-139 FR-10: the card shows what joining grants and the owner answers i
   const view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status="pending" />);
   await waitFor(() => assert.ok(view.queryByText(/Ops/u)));
   const text = view.container.textContent ?? '';
-  for (const expected of ['/repo', 'Kiki, Mochi', 'skip', 'shell', 'claude · opus', 'companion memory', '8']) {
+  for (const expected of ['/repo', 'Kiki, Mochi', 'acts without asking', 'shell', 'claude · opus', 'companion memory', '8']) {
     assert.ok(text.includes(expected), expected);
   }
   fireEvent.click(view.getByRole('button', { name: /Allow the join/u }));
@@ -86,22 +91,58 @@ test('SPEC-139 FR-10: the card shows what joining grants and the owner answers i
   view.unmount();
 });
 
-test('SPEC-139 FR-10: every settled state reads differently, and a missing card says so', async (t) => {
-  const cases: Array<[Record<string, unknown> | null, RegExp]> = [
-    [{ status: 'declined' }, /Declined/u],
-    [{ status: 'expired' }, /Expired/u],
-    [{ status: 'refused', refusal: 'card_stale' }, /changed since the request/u],
-    [{ status: 'refused', refusal: 'policy_changed' }, /join setting changed/u],
-    [null, /no longer available/u],
+test('SPEC-139 FR-10: a settled card is one line from its own record, read without the live details', async (t) => {
+  const calls = setup(t, () => new Response('{}', { status: 500 }));
+  const cases: Array<[string, string | null, RegExp]> = [
+    ['approved', null, /The Boss Cat joined/u],
+    ['declined', null, /Declined/u],
+    ['expired', null, /Expired/u],
+    ['refused', 'card_stale', /changed since the request/u],
+    ['refused', 'policy_changed', /join setting changed/u],
   ];
-  for (const [overrides, expected] of cases) {
-    setup(t, () => overrides
-      ? new Response(JSON.stringify({ request: details(overrides) }), { status: 200 })
-      : new Response('{}', { status: 404 }));
-    const view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status="x" />);
-    await waitFor(() => assert.match(view.container.textContent ?? '', expected));
-    assert.equal(view.queryByRole('button', { name: /Allow the join/u }), null);
+  for (const [status, refusal, expected] of cases) {
+    const view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status={status} refusal={refusal} />);
+    assert.match(view.container.textContent ?? '', expected);
+    assert.equal(view.queryByRole('button'), null);
     view.unmount();
-    cleanup();
   }
+  assert.equal(calls.length, 0, 'a settled card fetches nothing');
+});
+
+test('SPEC-139 FR-10: a pending card that expired or is gone says so', async (t) => {
+  const calls = setup(t, () => new Response(JSON.stringify({ request: details({ status: 'expired' }) }), { status: 200 }));
+  let view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status="pending" />);
+  await waitFor(() => assert.match(view.container.textContent ?? '', /Expired/u));
+  view.unmount();
+  calls.respond(() => new Response('{}', { status: 404 }));
+  view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status="pending" />);
+  await waitFor(() => assert.match(view.container.textContent ?? '', /no longer available/u));
+  view.unmount();
+});
+
+test('SPEC-139 FR-10: the transcript shows the card under its notice, and an ordinary notice without one', async (t) => {
+  setup(t, () => new Response(JSON.stringify({ request: details() }), { status: 200 }));
+  const message = (id: string, metadata: Record<string, unknown>) => ({
+    id, channelId: 'lane', senderKind: 'system' as const, senderName: 'Chat', body: `${id} body`, mentions: [],
+    metadata, usage: null, createdAt: '2026-11-11T00:00:00.000Z',
+  });
+  const props = (item: ReturnType<typeof message>) => ({
+    message: item, stackClassName: 'stack', cats: [], selectedChannelId: 'lane', disabledMentionNames: [],
+    compareBusy: false, choiceBusy: false, isCompareGroup: false, relayMenuOpen: false,
+    userTurnStatus: 'idle' as const, retryBusy: false, onChoiceSubmit: () => {}, onCopyMessage: async () => {},
+    onToggleRelayMenu: () => {}, onCloseRelayMenu: () => {}, resolveMessageParticipant: () => null,
+    resolveParticipantCatRecord: () => null, buildParticipantAvatarClassName: () => '',
+    buildParticipantAvatarStyle: () => undefined, resolveParticipantAvatarUrl: () => null,
+    resolveParticipantDisplayName: () => '',
+  });
+  // The props are the transcript's own; message shapes are the minimum the item reads.
+  const card = render(<TranscriptMessageItem {...(props(message('card', { event: 'boss_cat_join_request',
+    bossCatJoinRequest: { id: 'request-1', status: 'pending' } })) as never)} />);
+  await waitFor(() => assert.ok(card.queryByRole('button', { name: /Allow the join/u })));
+  assert.match(card.container.textContent ?? '', /card body/u);
+  card.unmount();
+  const notice = render(<TranscriptMessageItem {...(props(message('notice', { event: 'boss_cat_group_created' })) as never)} />);
+  assert.match(notice.container.textContent ?? '', /notice body/u);
+  assert.equal(notice.queryByRole('button', { name: /Allow the join/u }), null);
+  notice.unmount();
 });

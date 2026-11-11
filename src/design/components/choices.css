@@ -88,24 +88,3 @@
   font-size: 0.8rem;
   color: var(--muted-soft);
 }
-
-/* SPEC-139 FR-10: the owner's Boss Cat join card. */
-.bossCatJoinCardLabel {
-  margin: 0.5rem 0 0.15rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--muted-soft);
-}
-
-.bossCatJoinCardLine {
-  margin: 0.25rem 0 0;
-  font-size: 0.82rem;
-  color: var(--text);
-}
-
-.bossCatJoinCardList {
-  margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.82rem;
-  color: var(--text);
-}
