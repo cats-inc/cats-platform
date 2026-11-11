@@ -64,7 +64,8 @@ are tested as live behaviour.
 
 - [x] `bossCatBoard.ts` builds FR-3 as a pure function of Chat state, own-initiative profiles
       and Core approvals. Nothing reads it yet. Definitions it fixes:
-      - a lane's presence follows the UI's status dot (its lead lease, `resolveChatLifecycleState`);
+      - a lane's presence starts from the UI's status dot (its lead lease,
+        `resolveChatLifecycleState`), see below;
       - initiative is read as the life loop reads it (SPEC-137), only for companion Cats;
       - a choice card waits while nobody answered it and the owner has not written past it;
         a Cat's count covers the cards it posted;
@@ -74,6 +75,12 @@ are tested as live behaviour.
         failed, was blocked, or was cancelled, with no later completed turn for that Cat in
         that conversation (as Cats Bot SPEC-012 FR-2 defines attention);
       - group participants are Cat names only; temporary participants' names are free text.
+      - a Cat's running turns, failed or interrupted turns, waiting choices and approvals
+        count in its group conversations only; its direct lane leaves it only as its presence
+        (awake or asleep), its message times and the Cat's own-initiative state (SPEC-139 FR-3,
+        Goals and Privacy; the owner's call on 2026-11-11, matching the peer section of slice 7).
+      - a lane's presence follows the UI's status dot, coarsened to awake or asleep: waking and
+        an error read as asleep.
 - [x] FR-4 title rule: `manual` is the creation default and what older data was normalized
       to, so it proves nothing. The owner's renames (`renameChannel`, `renameParallelChatGroup`)
       now set a new value, `titleSource: 'owner'`, and the board shows only those. The board
