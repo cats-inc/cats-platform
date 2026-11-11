@@ -825,7 +825,8 @@ test('a conversation object without the field still reads as its derived scope',
 });
 
 test('Core records projected from a conversation carry the scope beside the origin', async () => {
-  const store = new FileChatStore(await newStatePath());
+  const statePath = await newStatePath();
+  const store = new FileChatStore(statePath);
   let state = createCat(await store.read(), { name: 'Smelly', provider: 'claude', roles: ['boss'] }, NOW);
   const smellyId = state.cats.find((cat) => cat.name === 'Smelly').id;
   state.cats.find((cat) => cat.id === smellyId).group = 'admin';
@@ -886,6 +887,10 @@ test('Core records projected from a conversation carry the scope beside the orig
     { body: '@Smelly Start the room workflow.' },
     runtimeClient,
     NOW,
+    // The turn's attachment folder and its local knowledge stay in this test's own directory.
+    // Without these they resolve under the developer's `~/.cats`.
+    { runtimeDataDir: path.join(path.dirname(statePath), 'runtime-data'),
+      platformDir: path.join(path.dirname(statePath), 'platform') },
   );
 
   const projected = async (chatState) => {

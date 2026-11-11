@@ -278,13 +278,16 @@ test('cancel, malformed response, unsupported tool and wrong revision fail witho
 });
 
 test('production turn exposes discovery only for verified local coordinator routing, and includes actual goal', () => {
-  for (const mode of ['coordinator', 'code', 'work', 'provider_default', 'direct', 'multi', 'telegram', 'unverified_entry']) {
+  for (const mode of ['coordinator', 'code', 'work', 'no_origin', 'provider_default', 'direct', 'multi', 'telegram', 'unverified_entry']) {
     const h = fixture(mode === 'code' || mode === 'work' ? mode : 'chat');
     const channel = h.state.channels.find((entry) => entry.id === h.channelId);
     const payload = { body: goal, messageMetadata: { recipientParticipantIds: [h.bossId] } };
     if (mode === 'provider_default') {
       channel.catAssignments = []; channel.participantAssignments = [];
     }
+    // Stored data from before origins were recorded (SPEC-141 S4), as the loader leaves it:
+    // Chat's, as everywhere else.
+    if (mode === 'no_origin') channel.originSurface = null;
     if (mode === 'direct') { channel.channelKind = 'direct_message'; channel.roomRouting.mode = 'direct_message'; }
     if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: [h.bossId, channel.catAssignments[0].participantId], workflowShape: 'concurrent' };
     const appended = appendMessage(h.state, h.channelId, { senderKind: 'user', senderName: 'Owner', body: goal }, now);
@@ -294,8 +297,9 @@ test('production turn exposes discovery only for verified local coordinator rout
         ...(mode === 'telegram' ? { transport: 'telegram' } : {}) });
     const tools = prepared.providerAgentObservation?.availableTools ?? [];
     // SPEC-141 FR-19: the Boss Cat coordinator has the tools in a conversation created on any
-    // product. Until then `code` and `work` had none. Every other condition is unchanged.
-    const offered = mode === 'coordinator' || mode === 'code' || mode === 'work';
+    // product. Until then `code`, `work` and a conversation with no recorded origin had none.
+    // Every other condition is unchanged.
+    const offered = mode === 'coordinator' || mode === 'code' || mode === 'work' || mode === 'no_origin';
     assert.equal(tools.some(({ manifest }) => manifest.name === discover), offered, mode);
     assert.equal(prepared.providerAgentObservation?.goal === goal, offered, mode);
     if (prepared.providerAgentObservation) assert.deepEqual(prepared.providerAgentObservation.budget,
@@ -325,6 +329,38 @@ test('SPEC-141 FR-19: the other conditions on the collaboration tools hold on Co
   }
 });
 
+test('SPEC-141 FR-19: a conversation started without naming anyone offers the tools only when a Boss Cat is the default', () => {
+  // The shape the product really creates: the remembered default as the one participant, which
+  // coordinates the conversation. The remembered model is not a Boss Cat, so it gets no tool on
+  // any product. A Boss Cat remembered as the default is the case D8 opens on Code and Work.
+  for (const originSurface of ['chat', 'code', 'work']) {
+    for (const remembered of ['model', 'standard_cat', 'boss_cat']) {
+      let state = createDefaultChatState();
+      if (remembered !== 'model') {
+        state = createCat(state, { name: 'Default Cat', provider: 'claude', instance: 'native',
+          group: remembered === 'boss_cat' ? 'admin' : 'standard' }, now);
+        state.newChatDefaults = { ...state.newChatDefaults, catId: state.cats[0].id };
+      }
+      state = createChannel(state, { title: 'New conversation', titleSource: 'draft', topic: '', originSurface }, now);
+      const channelId = state.selectedChannelId;
+      const channel = state.channels.find((entry) => entry.id === channelId);
+      assert.equal(channel.participantAssignments.length, 1);
+      const only = channel.participantAssignments[0];
+      assert.equal(only.sourceKind === 'cat', remembered !== 'model', remembered);
+      assert.equal(channel.coordinatorParticipantId, only.participantId, 'the one participant coordinates');
+      const appended = appendMessage(state, channelId, { senderKind: 'user', senderName: 'Owner', body: goal }, now);
+      const prepared = prepareDispatchTurnForUserMessage(appended.state, channelId,
+        { body: goal, messageMetadata: { recipientParticipantIds: [only.participantId] } }, appended.message,
+        now, undefined, { enableCollaborationReads: true, enableCollaborationExecution: true });
+      assert.ok(prepared.providerAgentObservation, `${originSurface}: ${remembered} is observed`);
+      const tools = prepared.providerAgentObservation.availableTools.map(({ manifest }) => manifest.name);
+      assert.equal(tools.includes(discover), remembered === 'boss_cat', `${originSurface}: ${remembered}`);
+      assert.equal(collaborationSnapshot(appended.state, channelId, prepared.providerAgentObservation) !== null,
+        remembered === 'boss_cat', `${originSurface}: ${remembered} reads the directory`);
+    }
+  }
+});
+
 test('SPEC-141 FR-19: the snapshot and the proposal carry the product the conversation was created on', () => {
   for (const originSurface of ['chat', 'code', 'work']) {
     const h = fixture(originSurface);
@@ -346,6 +382,20 @@ test('SPEC-141 FR-19: the snapshot and the proposal carry the product the conver
       budget: { maxDurationMs: 120000, maxTokens: 4000 } }).result;
     assert.equal(prepared.status, 'prepared', JSON.stringify(prepared));
     assert.equal(prepared.originSurface, originSurface);
+
+    // The card the owner confirms names that product when it proposes reusing the conversation.
+    // A new conversation is created on Chat, so that line says Chat from every source, and so
+    // does a proposal stored before the field carried anything else.
+    const card = (preparation, locale) => describeCollaborationReport({ schemaVersion: 1, revision: snapshot.revision,
+      status: 'prepared', preparation, feedbackDelivered: true, receipts: [] }, locale);
+    const product = { chat: 'Chat', code: 'Code', work: 'Work' }[originSurface];
+    assert.ok(card(prepared, 'en').includes(`Propose reusing this ${product} conversation.`), card(prepared, 'en'));
+    assert.ok(card(prepared, 'zh-TW').includes(`建議沿用目前的 ${product} 對話。`), card(prepared, 'zh-TW'));
+    const fresh = { ...prepared, conversation: { ...prepared.conversation, intent: 'create' } };
+    assert.ok(card(fresh, 'en').includes('Propose a new Chat conversation.'), originSurface);
+    assert.ok(card(fresh, 'zh-TW').includes('建議建立新的 Chat 對話。'), originSurface);
+    const { originSurface: _unrecorded, ...stored } = prepared;
+    assert.ok(card(stored, 'en').includes('Propose reusing this Chat conversation.'), originSurface);
 
     // The conditions that are not about the origin still close the read.
     const lane = structuredClone(h.state);

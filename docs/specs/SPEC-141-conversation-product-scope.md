@@ -275,6 +275,12 @@ inventory of every `originSurface` reader.
       when the lane was created on Chat and still does, and a lane created elsewhere now
       receives it too.
     - Code's and Work's own product instructions stay. Orchestrator knowledge is added to them.
+    - A conversation stored with no origin is included like any other. The Chat-only rule
+      had left it out, although it is Chat's everywhere else (S4).
+    - The knowledge goes to whoever coordinates. A conversation started without naming anyone
+      has the remembered provider and model as its one participant, which coordinates it, so
+      on Code and Work that agent now receives the Orchestrator role with each turn. On Chat
+      it already did.
     - A conversation that SPEC-118 creates is still created on Chat.
     - The companion's life review is not part of D8. It keeps reading the origin (S1), so a
       conversation created on Chat is still reviewed after a raise, and one created on Code or

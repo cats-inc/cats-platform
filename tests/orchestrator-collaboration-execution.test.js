@@ -25,7 +25,11 @@ import { buildChatProviderAgentObservation } from '../build/server/products/chat
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
 import { readCollaborationIntent, writeCollaborationIntent, admitCollaboration, collaborationDigest, collaborationFeedbackSummary } from '../build/server/products/work/state/collaborationRecords.js';
 import { recoverCollaborations, executeCollaborationRole, recordCollaborationUsage, stopCollaboration } from '../build/server/products/work/state/collaborationExecution.js';
-import { upsertCoreTask, upsertCoreRun } from '../build/server/core/model/index.js';
+import { createDefaultCoreState, upsertCoreTask, upsertCoreRun, upsertCoreWorkItem } from '../build/server/core/model/index.js';
+import { syncCoreStateWithChatState } from '../build/server/products/chat/state/core-projection/index.js';
+import { prepareDispatchTurnForUserMessage } from '../build/server/products/chat/state/runtime-dispatch/turn.js';
+import { buildChoiceResponseBody } from '../build/server/products/shared/messageChoices.js';
+import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 import { checkoutTaskExecution } from '../build/server/core/taskLifecycle.js';
 import { stopRun } from '../build/server/platform/supervision/runCancellation.js';
 import { channelDispatchCancellationRegistry } from '../build/server/products/chat/state/runtime-dispatch/cancellation.js';
@@ -46,16 +50,19 @@ function respond() { return { contractVersion: 1, kind: 'semantic_plan', decisio
   steps: [{ stepId: 'report', summary: 'Report actual results only.', action: 'respond' }] }; }
 
 function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null, development = false,
-  originSurface = 'chat', repoPath = join(tmpdir(), 'cats-k3-source') } = {}) {
+  originSurface = 'chat', repoPath = join(tmpdir(), 'cats-k3-source'), locale = 'zh-TW', noOrigin = false } = {}) {
   const now = new Date();
   let state = createDefaultChatState();
   // A Boss Cat coordinates the room; only an admin coordinator may collaborate beyond it.
   state = createCat(state, { name: 'Boss', provider: 'claude', instance, group: 'admin' }, now);
   const bossId = state.cats[0].id;
   state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface, repoPath,
-    roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }],
+    roomMode: 'chat_channel', responseLanguage: locale, cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }],
     participantCatIds: [bossId], participantOrder: [`cat:${bossId}`] }, now);
   const channelId = state.selectedChannelId;
+  // Stored data from before origins were recorded (SPEC-141 S4), as the loader leaves it. No
+  // current client writes it.
+  if (noOrigin) state.channels.find((channel) => channel.id === channelId).originSurface = null;
   state = createCat(state, { name: 'Reviewer', provider: 'claude', instance, roles: ['review'] }, now);
   const original = appendMessage(state, channelId, { body: goal, senderKind: 'user', senderName: 'Owner' }, now);
   state = original.state;
@@ -83,7 +90,7 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false, 
   if (old) delete prepared.executionRevision;
   const published = appendCollaborationReport({ state, channelId, sourceMessageId: original.message.id,
     report: { schemaVersion: 1, revision: snapshot.revision, status: 'prepared', preparation: prepared,
-      feedbackDelivered: true, receipts }, locale: 'zh-TW', now, canExecute: true });
+      feedbackDelivered: true, receipts }, locale, now, canExecute: true });
   state = published.state;
   const choiceResponse = { sourceMessageId: published.resultMessage.id, status: 'submitted',
     answers: [{ question: published.resultMessage.choices?.[0].question ?? 'old', selectedOptionIds: [development ? ACCEPT_CATS_DEVELOPMENT : ACCEPT_COLLABORATION] }],
@@ -91,7 +98,7 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false, 
   if (confirm) state = appendMessage(state, channelId, { body: '執行方案', senderKind: 'user', senderName: 'Owner' }, now,
     { choiceResponse }).state;
   return { state, channelId, choiceResponse, observation: observe(collaborationExecutionDescriptors()), now,
-    proposalMessageId: published.resultMessage.id };
+    proposalMessageId: published.resultMessage.id, bossId, card: published.resultMessage };
 }
 
 const developmentSkill = { id: 'cats-inc-development', version: '1.0.0', fingerprint: 'd'.repeat(64),
@@ -1056,6 +1063,29 @@ test('SPEC-141 FR-19: a confirmed collaboration is admitted from a conversation 
   }
 });
 
+test('SPEC-141 FR-19: a conversation stored with no origin is a source like one created on Chat', async () => {
+  // Until FR-19 the Chat-only rule left it out, although it is Chat's everywhere else.
+  const h = fixture({ intent: 'reuse_current', noOrigin: true }); const c = clients(h);
+  assert.equal(h.card.metadata.collaborationPreparation.preparation.originSurface, 'chat');
+  const s = await service(h, c);
+  await s.execute(conversation, {});
+  await s.execute(participants, {});
+  const reused = (await s.execute(inspectWork, {})).result;
+  assert.equal(reused.channelId, h.channelId);
+  assert.equal(reused.membershipVerified, true);
+  const source = (await s.store.read()).channels.find(channel => channel.id === h.channelId);
+  assert.equal(source.originSurface ?? null, null, 'the workflow records no origin for it');
+
+  // One it creates is created on Chat, as from any other source.
+  const fresh = fixture({ intent: 'create', noOrigin: true }); const fc = clients(fresh);
+  const fsvc = await service(fresh, fc);
+  await fsvc.execute(conversation, {});
+  const createdId = (await fsvc.execute(inspectWork, {})).result.channelId;
+  const created = (await fsvc.store.read()).channels.find(channel => channel.id === createdId);
+  assert.notEqual(createdId, fresh.channelId);
+  assert.equal(created.originSurface, 'chat');
+});
+
 test('SPEC-141 FR-19: a source without a folder is refused on every origin, and nothing is created', async () => {
   for (const originSurface of ['chat', 'code', 'work']) {
     const h = fixture({ intent: 'reuse_current', originSurface, repoPath: null }); const c = clients(h);
@@ -1063,5 +1093,113 @@ test('SPEC-141 FR-19: a source without a folder is refused on every origin, and 
     await assert.rejects(service(h, c, store), /repository_required/u, originSurface);
     assert.equal((await intents(store)).length, 0, originSurface);
     assert.equal(c.calls.create.length, 0, originSurface);
+  }
+});
+
+// The owner's answer to a collaboration card, as Desktop sends it: the card's own question and
+// the chosen label. In English that is "Q: Execute this scope and budget?\nA: Execute proposal",
+// and "execute" with "this" is also how the owner asks a Boss Cat to start Work Items.
+const WORK_PREPARE_EXECUTION = 'work.item.prepare_execution';
+function confirmationTurn(h, { withChoice = true, forged = false, anchor = null, openItem = true,
+  otherCard = false, select = null } = {}) {
+  let core = syncCoreStateWithChatState(h.state, createDefaultCoreState());
+  // An open Work Item in the conversation, or an active Work anchor on the message, is what
+  // lets Work's phase match.
+  if (openItem) core = upsertCoreWorkItem(core, { id: 'work-item-open', title: 'Unrelated open item', status: 'planned',
+    conversationId: buildChatConversationId(h.channelId) }, h.now).core;
+  let state = h.state;
+  let choiceResponse = forged
+    ? { ...h.choiceResponse, answers: [{ ...h.choiceResponse.answers[0], question: 'An invented question?' }] }
+    : h.choiceResponse;
+  if (select) choiceResponse = { ...choiceResponse, answers: [{ ...choiceResponse.answers[0], selectedOptionIds: [select] }] };
+  if (otherCard) {
+    // Another card of the Boss Cat's that asks the same question: not a collaboration proposal.
+    const other = appendMessage(state, h.channelId, { senderKind: 'agent', senderName: 'Boss', body: 'Shall I start it?' },
+      h.now, { choices: h.card.choices, metadata: { event: 'another_card', targetId: h.bossId }, incrementUnread: false });
+    state = other.state;
+    choiceResponse = { ...choiceResponse, sourceMessageId: other.message.id };
+  }
+  const body = buildChoiceResponseBody(choiceResponse, h.card.choices);
+  const appended = appendMessage(state, h.channelId, { body, senderKind: 'user', senderName: 'Owner' }, h.now, {
+    ...(withChoice ? { choiceResponse } : {}),
+    ...(anchor ? { metadata: { productIntentIntakeRef: { workItemId: anchor } } } : {}),
+  });
+  const prepared = prepareDispatchTurnForUserMessage(appended.state, h.channelId,
+    { body, ...(withChoice ? { choiceResponse } : { messageMetadata: { recipientParticipantIds: [h.bossId] } }) },
+    appended.message, h.now, core, { enableCollaborationReads: true, enableCollaborationExecution: true });
+  return { body, tools: (prepared.providerAgentObservation?.availableTools ?? []).map(({ manifest }) => manifest.name) };
+}
+
+test("the owner's click on a collaboration card is not taken by a Work phase", () => {
+  const executionTools = collaborationExecutionDescriptors().map(({ manifest }) => manifest.name).sort();
+  for (const originSurface of ['chat', 'work', 'code']) {
+    const h = fixture({ intent: 'reuse_current', confirm: false, originSurface, locale: 'en' });
+
+    // The click: the bounded workflow's tools, and nothing of Work's.
+    const click = confirmationTurn(h);
+    assert.match(click.body, /Execute this scope and budget\?[\s\S]*Execute proposal/u);
+    assert.deepEqual([...click.tools].sort(), executionTools, originSurface);
+
+    // The same words typed by the owner are a request to Work, as before.
+    const typed = confirmationTurn(h, { withChoice: false });
+    assert.deepEqual(typed.tools, [WORK_PREPARE_EXECUTION], originSurface);
+
+    // An answer to the card that does not match it admits nothing, and Work does not take it.
+    const forged = confirmationTurn(h, { forged: true });
+    assert.equal(forged.tools.includes(WORK_PREPARE_EXECUTION), false, originSurface);
+    assert.equal(forged.tools.some((name) => executionTools.includes(name)), false, originSurface);
+
+    // "Not now" repeats the card's question, so it carried the same words. It starts nothing.
+    const declined = confirmationTurn(h, { select: 'decline_collaboration' });
+    assert.match(declined.body, /Execute this scope and budget\?[\s\S]*Not now/u);
+    assert.equal(declined.tools.includes(WORK_PREPARE_EXECUTION), false, originSurface);
+    assert.equal(declined.tools.some((name) => executionTools.includes(name)), false, originSurface);
+
+    // The rule is the collaboration card's alone: the same answer to any other card is a
+    // request to Work, as before.
+    const elsewhere = confirmationTurn(h, { otherCard: true });
+    assert.deepEqual(elsewhere.tools, [WORK_PREPARE_EXECUTION], originSurface);
+  }
+});
+
+test('an active Work anchor on the confirmation does not hand it to Work either', () => {
+  // With an anchor on the message, "execute" and "this" match Work's phase with no open Work
+  // Item in sight.
+  const executionTools = collaborationExecutionDescriptors().map(({ manifest }) => manifest.name).sort();
+  const anchored = { anchor: 'work-item-anchored', openItem: false };
+  const h = fixture({ intent: 'reuse_current', confirm: false, originSurface: 'work', locale: 'en' });
+  assert.deepEqual(confirmationTurn(h, { ...anchored, withChoice: false }).tools, [WORK_PREPARE_EXECUTION],
+    'typed with the anchor: Work, as before');
+  assert.deepEqual([...confirmationTurn(h, anchored).tools].sort(), executionTools, 'the click');
+
+  // The zh-TW card has an action word and no scope word, so Work's phase never matched it. The
+  // click gets the workflow's tools there too.
+  const zh = fixture({ intent: 'reuse_current', confirm: false, originSurface: 'work', locale: 'zh-TW' });
+  assert.deepEqual([...confirmationTurn(zh, { anchor: 'work-item-anchored' }).tools].sort(), executionTools, 'zh-TW click');
+});
+
+test('a confirmation in a Work conversation with an open Work Item runs the workflow it approves', async t => {
+  // The production path over HTTP. Before the guard the confirmation was dispatched as an
+  // ordinary turn in the source folder and no collaboration was admitted.
+  for (const originSurface of ['work', 'chat']) {
+    const h = fixture({ intent: 'reuse_current', confirm: false, originSurface, locale: 'en' }); const c = clients(h);
+    await withApi(t, h, c, async ({ base, store }) => {
+      await store.updateCore(core => upsertCoreWorkItem(core, { id: 'work-item-open', title: 'Unrelated open item',
+        status: 'planned', conversationId: buildChatConversationId(h.channelId) }, h.now).core);
+      const response = await fetch(`${base}/api/channels/${h.channelId}/messages`, { method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body: buildChoiceResponseBody(h.choiceResponse, h.card.choices), choiceResponse: h.choiceResponse }) });
+      assert.equal(response.status, 200, await response.clone().text());
+      await waitUntil(async () => (await store.read()).channels.find(ch => ch.id === h.channelId).messages
+        .some(m => m.metadata.collaborationPreparation?.execution)).catch(async () => {
+          assert.fail(JSON.stringify({ originSurface, sessions: c.calls.create.map(call => call.role ?? call.cwd),
+            lastMessage: (await store.read()).channels.find(ch => ch.id === h.channelId).messages.at(-1)?.body }));
+        });
+      const report = (await store.read()).channels.find(ch => ch.id === h.channelId).messages.at(-1).metadata.collaborationPreparation;
+      assert.equal(report.execution.status, 'completed', JSON.stringify(report));
+      assert.equal((await intents(store)).length, 1, originSurface);
+      // Only the workflow's three sessions ran: no ordinary turn carried the confirmation.
+      assert.deepEqual(c.calls.create.map(call => call.role), ['coordinator', 'implementation', 'review'], originSurface);
+    });
   }
 });

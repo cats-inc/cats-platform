@@ -18,6 +18,9 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   createChannel, appendMessage, buildChannelView,
 } from '../build/server/products/chat/state/model/index.js';
+import { collaborationToolDescriptors } from '../build/server/products/chat/state/orchestratorCollaboration.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createConversationSessionDelegate } from '../build/server/products/chat/state/conversationSessionDelegate.js';
 
 const source = await readFile(resolve('config/orchestrator-knowledge.json'), 'utf8');
 const now = new Date('2026-09-24T00:00:00Z');
@@ -301,53 +304,197 @@ test('decision session receives actual goal and procedures using its own binding
   }
 });
 
-test('a coordinator answers with orchestrator knowledge wherever the conversation was created', async () => {
+// Local knowledge is read from an empty profile of the test's own, never from the owner's.
+async function emptyProfile(t) {
+  return join((await fixture(t)).root, 'empty-profile');
+}
+function dispatch(h, client, platformDir) {
+  return executeDispatch(h.state, h.channelId, h.request, client, now,
+    undefined, undefined, undefined, undefined, undefined, platformDir);
+}
+// A conversation stored with no origin (SPEC-141 S4), as the loader leaves it. No current
+// client writes one.
+function withoutOrigin(h) {
+  h.state.channels.find((channel) => channel.id === h.channelId).originSurface = null;
+  return h;
+}
+const ORIGINS = ['chat', 'code', 'work', null];
+const label = (originSurface) => originSurface ?? 'no origin';
+const harnessOn = (originSurface, options = {}) => originSurface === null
+  ? withoutOrigin(harness(options)) : harness({ ...options, originSurface });
+
+test('a coordinator answers with orchestrator knowledge wherever the conversation was created', async (t) => {
   // SPEC-141 FR-19 (ADR-149 D8). Until then the knowledge went only to a conversation created
-  // on Chat, and this test asserted that Code and Work received none.
+  // on Chat, and this test asserted that Code and Work received none. A conversation with no
+  // recorded origin received none either; it is Chat's everywhere else, and now here.
   // The server registers Code's enricher at startup; a Code conversation keeps what it adds.
   registerCodeAgentToolsInvocationEnricher();
-  for (const originSurface of ['chat', 'code', 'work']) {
-    const h = harness({ group: true, originSurface });
+  const platformDir = await emptyProfile(t);
+  const requester = createChatProviderAgentDecisionRequester({ platformDir });
+  for (const originSurface of ORIGINS) {
+    const h = harnessOn(originSurface, { group: true });
     const client = runtime();
-    assert.equal((await executeDispatch(h.state, h.channelId, h.request, client, now)).error, null);
+    assert.equal((await dispatch(h, client, platformDir)).error, null);
     const call = client.calls.send[0];
-    assert.equal(call.input.context.metadata.productKnowledge.delivery, 'inline', originSurface);
+    assert.equal(call.input.context.metadata.productKnowledge.delivery, 'inline', label(originSurface));
     const knowledge = deliveredContext(call);
-    assert.match(knowledge.entries[0].content, /Cats Orchestrator/u, originSurface);
+    assert.match(knowledge.entries[0].content, /Cats Orchestrator/u, label(originSurface));
     assert.equal(knowledge.scope.originSurface, originSurface, 'the scope copy keeps the real origin');
     // Code's own delivery is untouched: its label and marker go to a Code conversation only.
     assert.equal(call.input.context.labels?.includes('product:code') ?? false, originSurface === 'code');
     assert.equal(call.input.context.metadata.codeAgentTools !== undefined, originSurface === 'code');
 
     const decisionClient = runtime(JSON.stringify(decision()));
-    await createChatProviderAgentDecisionRequester()({ state: h.state, channelId: h.channelId,
+    await requester({ state: h.state, channelId: h.channelId,
       payload: { body: h.body }, observation: observation(h.channelId), runtimeClient: decisionClient, now });
     const prompt = JSON.parse(decisionClient.calls.send[0].content);
-    assert.match(prompt.productKnowledge.entries[0].content, /Cats Orchestrator/u, originSurface);
+    assert.match(prompt.productKnowledge.entries[0].content, /Cats Orchestrator/u, label(originSurface));
     assert.equal(decisionClient.calls.send[0].input.context.metadata.productKnowledge.delivery, 'inline');
   }
 });
 
-test('only the coordinator receives the knowledge, in a direct lane too', async () => {
+test('a decision request that carries a tool is the same on Code and Work as on Chat', async (t) => {
+  // Until SPEC-141 FR-19 the request left this branch outside Chat: it was not bound to the
+  // coordinator's own instance and model, and no procedure was selected for the offered tool.
+  const platformDir = await emptyProfile(t);
+  const requester = createChatProviderAgentDecisionRequester({ platformDir });
+  const tools = collaborationToolDescriptors(observation('unused').policy);
+  const seen = new Map();
+  for (const originSurface of ORIGINS) {
+    const h = harnessOn(originSurface, { group: true });
+    const client = runtime(JSON.stringify(decision()));
+    const result = await requester({ state: h.state, channelId: h.channelId, payload: { body: h.body },
+      observation: observation(h.channelId, tools), runtimeClient: client, now });
+    assert.equal(result?.kind, 'semantic_plan', `${label(originSurface)}: the coordinator's binding is current`);
+    assert.equal(client.calls.create[0].instance, binding.instance, label(originSurface));
+    assert.equal(client.calls.create[0].model, binding.model, label(originSurface));
+    const prompt = JSON.parse(client.calls.send[0].content);
+    assert.deepEqual(prompt.observation.availableTools, tools);
+    assert.ok(prompt.productKnowledge.entries.some((entry) => entry.id === 'orchestrator.discovery'),
+      `${label(originSurface)}: the offered tools select their procedure`);
+    assert.equal(prompt.productKnowledge.scope.target.instance, binding.instance);
+    seen.set(originSurface, { entries: prompt.productKnowledge.entries,
+      operations: prompt.productKnowledge.operations, create: { ...client.calls.create[0], context: undefined } });
+
+    // A binding that changed since the observation still stops the request, as on Chat.
+    const stale = structuredClone(observation(h.channelId, tools));
+    stale.actor.target.model = 'stale-model';
+    const staleClient = runtime(JSON.stringify(decision()));
+    assert.equal(await requester({ state: h.state, channelId: h.channelId, payload: { body: h.body },
+      observation: stale, runtimeClient: staleClient, now }), null, label(originSurface));
+    assert.equal(staleClient.calls.create.length, 0);
+  }
+  for (const originSurface of ORIGINS.slice(1)) {
+    assert.deepEqual(seen.get(originSurface), seen.get('chat'), label(originSurface));
+  }
+});
+
+test('only the coordinator receives the knowledge, in a direct lane too', async (t) => {
   // The origin was never the only condition: another participant gets none, and a lane's Cat,
   // which coordinates its lane, gets it as before.
-  for (const originSurface of ['chat', 'code', 'work']) {
-    const lane = harness({ originSurface });
+  const platformDir = await emptyProfile(t);
+  const requester = createChatProviderAgentDecisionRequester({ platformDir });
+  for (const originSurface of ORIGINS) {
+    const lane = harnessOn(originSurface);
     const laneChannel = lane.state.channels.find((channel) => channel.id === lane.channelId);
     laneChannel.channelKind = 'direct_message';
     laneChannel.roomRouting.mode = 'direct_message';
     const laneClient = runtime();
-    assert.equal((await executeDispatch(lane.state, lane.channelId, lane.request, laneClient, now)).error, null);
-    assert.equal(laneClient.calls.send[0].input.context.metadata.productKnowledge.delivery, 'inline', originSurface);
+    assert.equal((await dispatch(lane, laneClient, platformDir)).error, null);
+    assert.equal(laneClient.calls.send[0].input.context.metadata.productKnowledge.delivery, 'inline', label(originSurface));
+    // A lane's decision request too. No current client creates a lane outside Chat (SPEC-141
+    // S6), and with the provider-agent flag off only a companion lane reaches the requester.
+    const laneDecision = runtime(JSON.stringify(decision()));
+    assert.equal((await requester({ state: lane.state, channelId: lane.channelId, payload: { body: lane.body },
+      observation: observation(lane.channelId), runtimeClient: laneDecision, now })).kind, 'semantic_plan');
+    assert.match(JSON.parse(laneDecision.calls.send[0].content).productKnowledge.entries[0].content,
+      /Cats Orchestrator/u, label(originSurface));
 
-    const other = harness({ group: true, originSurface });
+    const other = harnessOn(originSurface, { group: true });
     const otherChannel = other.state.channels.find((channel) => channel.id === other.channelId);
     otherChannel.coordinatorParticipantId = otherChannel.participantAssignments
       .find((assignment) => assignment.participantId !== COORDINATOR_ID).participantId;
     const otherClient = runtime();
-    assert.equal((await executeDispatch(other.state, other.channelId, other.request, otherClient, now)).error, null);
-    assert.equal(otherClient.calls.send[0].input.context.metadata.productKnowledge, undefined, originSurface);
+    assert.equal((await dispatch(other, otherClient, platformDir)).error, null);
+    assert.equal(otherClient.calls.send[0].input.context.metadata.productKnowledge, undefined, label(originSurface));
     assert.doesNotMatch(otherClient.calls.send[0].input.instructions ?? '', /Cats Orchestrator|visible Boss Cat/u);
+    // Its decision request carries none either, and is not bound to the coordinator's model.
+    const otherDecision = runtime(JSON.stringify(decision()));
+    assert.equal((await requester({ state: other.state, channelId: other.channelId, payload: { body: other.body },
+      observation: observation(other.channelId), runtimeClient: otherDecision, now })).kind, 'semantic_plan');
+    assert.equal(JSON.parse(otherDecision.calls.send[0].content).productKnowledge, undefined, label(originSurface));
+    assert.equal(otherDecision.calls.create[0].instance, undefined, label(originSurface));
+  }
+});
+
+// The first participant's turn in a conversation the product created, as `harness` builds one
+// for its fixture.
+function firstParticipantTurn(state, channelId, body) {
+  const channel = state.channels.find((entry) => entry.id === channelId);
+  const first = channel.participantAssignments[0];
+  first.execution.lease = { ...first.execution.lease, sessionId: 'first-session', laneId: 'first-lane',
+    status: 'ready', startedAt: now.toISOString(), lastUsedAt: now.toISOString() };
+  const appended = appendMessage(state, channelId, { senderKind: 'user', senderName: 'Owner', body }, now);
+  const target = { participantKind: 'cat', participantId: first.participantId, participantName: first.name,
+    laneId: 'first-lane', sessionId: 'first-session' };
+  const request = { target, targets: [target], sourceMessage: appended.message, sourceParticipant: null,
+    unresolved: [], mentionNames: [], trigger: 'room_default', depth: 0, turnId: 'turn-first',
+    dispatchId: 'dispatch-first', targetStateId: 'target-first', parentCheckpointId: null,
+    branchStrategy: null, handoffReason: null };
+  return { state: appended.state, channelId, request, body, first, channel };
+}
+const PLAIN_MESSAGE = 'What does this function return?';
+const CODING_MESSAGE = 'Implement the login retry fix in src/auth.ts and add a test for the error path.';
+
+test('the one agent of a conversation started without naming anyone coordinates it and receives the role', async (t) => {
+  // What the product creates when the owner just starts typing: the remembered provider and
+  // model as the conversation's one participant, which coordinates it. On Chat it received the
+  // Orchestrator role already. Since SPEC-141 FR-19 it does on Code and Work too, where this
+  // agent is the one doing the coding task, and the role comes with every turn.
+  registerCodeAgentToolsInvocationEnricher();
+  const platformDir = await emptyProfile(t);
+  for (const originSurface of ['chat', 'code', 'work']) {
+    for (const [body, expected] of [
+      [PLAIN_MESSAGE, ['orchestrator.role', 'orchestrator.results']],
+      // Words such as implement, review, fail and error select two more procedures.
+      [CODING_MESSAGE, ['orchestrator.role', 'orchestrator.results', 'orchestrator.collaboration', 'orchestrator.recovery']],
+    ]) {
+      const created = createChannel(createDefaultChatState(),
+        { title: 'New conversation', titleSource: 'draft', topic: '', originSurface }, now);
+      const h = firstParticipantTurn(created, created.selectedChannelId, body);
+      assert.equal(h.channel.participantAssignments.length, 1);
+      assert.notEqual(h.first.sourceKind, 'cat', 'the remembered model, not a Cat');
+      assert.equal(h.channel.coordinatorParticipantId, h.first.participantId);
+      const client = runtime();
+      assert.equal((await dispatch(h, client, platformDir)).error, null);
+      const knowledge = deliveredContext(client.calls.send[0]);
+      assert.deepEqual(knowledge.entries.map((entry) => entry.id), expected, `${originSurface}: ${body}`);
+      assert.match(knowledge.entries[0].content, /You are the Cats Orchestrator \(visible Boss Cat\)/u);
+      // Code's own instructions and marker still go with it; the knowledge is added to them.
+      assert.equal(client.calls.send[0].input.context.metadata.codeAgentTools !== undefined, originSurface === 'code');
+    }
+  }
+});
+
+test("the agent of a session opened by Code's own operation receives the role too", async (t) => {
+  const platformDir = await emptyProfile(t);
+  const store = new MemoryChatStore();
+  await createConversationSessionDelegate(store).admit({ cwd: join(tmpdir(), 'cats-knowledge-code-session'),
+    target: { provider: 'codex', instance: 'cli/local', model: 'model' },
+    policy: { workspaceKind: 'source', workspaceAccess: 'read_only', permissionMode: 'default' } },
+  () => false, (core) => core);
+  const opened = await store.read();
+  const channel = opened.channels.find((entry) => entry.id === opened.selectedChannelId);
+  assert.equal(channel.originSurface, 'code');
+  for (const [body, expected] of [
+    [PLAIN_MESSAGE, ['orchestrator.role', 'orchestrator.results']],
+    [CODING_MESSAGE, ['orchestrator.role', 'orchestrator.results', 'orchestrator.collaboration', 'orchestrator.recovery']],
+  ]) {
+    const h = firstParticipantTurn(structuredClone(opened), channel.id, body);
+    assert.equal(h.channel.coordinatorParticipantId, h.first.participantId);
+    const client = runtime();
+    assert.equal((await dispatch(h, client, platformDir)).error, null);
+    assert.deepEqual(deliveredContext(client.calls.send[0]).entries.map((entry) => entry.id), expected, body);
   }
 });
 

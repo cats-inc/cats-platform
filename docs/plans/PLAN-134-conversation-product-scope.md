@@ -184,23 +184,77 @@ Work conversations too (D8; FR-19).
 - [x] Check that Code's and Work's own product instructions are still delivered, with
       orchestrator knowledge added to them. Code's enricher still adds its label and marker
       to a Code conversation only.
-- [x] Tests for FR-19: every origin, each remaining condition, and a created conversation
-      still stamped `chat`.
+- [x] Tests for FR-19: Chat, Code, Work and no recorded origin, at the visible turn, the
+      decision request, the tool descriptors, the snapshot and the execution source; the
+      conditions that stay; and a created conversation still stamped `chat`.
   - Two existing expectations flipped, as D8 intends: a Code or Work coordinator now receives
-    the knowledge, and a Boss Cat coordinator there is offered the read tools. The other 511
-    tests around these gates passed unchanged.
-- [ ] An independent security review before merge. This phase ends a limit SPEC-118 set on
+    the knowledge, and a Boss Cat coordinator there is offered the read tools. The suites
+    around these gates passed their 513 tests on unmodified `main` first, and the other 511
+    passed unchanged.
+  - The conversations the product really creates are covered: one started without naming
+    anyone, on each product, and a session opened by Code's own operation.
+  - Eighteen deliberate breaks of the built code each fail at least one test: an origin
+    condition put back, a kept condition dropped, the card's wording, and the card rule
+    below switched off or made too wide or too narrow.
+  - Not tested: the lane and archived terms of the two execution checks. A conversation that
+    became a lane or was archived after its proposal already fails the revision check that
+    runs before them, so consistent state does not reach those terms.
+- [x] An independent security review before merge. This phase ends a limit SPEC-118 set on
       purpose.
+  - Result: no critical or high finding. No path creates a conversation, adds a participant,
+    or queues or starts a run without the owner's confirmation of a persisted proposal. The
+    three collaboration sessions are the same for every origin and receive none of Code's
+    tools.
+  - Fixed in the same pull request:
+    - The owner's click on a collaboration card could be taken by one of Work's tool phases.
+      The English answer reads "Execute this scope and budget?" and "Execute proposal", and
+      those words match Work's execution-preparation cues when the conversation has an open
+      Work Item. The collaboration tools were then withheld, and the click ran as an ordinary
+      turn in the source folder instead of the bounded workflow it approved. Chat behaved the
+      same before this phase; cards in Work conversations make the match likely. An answer
+      addressed to a collaboration card now reaches no Work phase, whatever it selects.
+    - The card called a reused Code or Work conversation "this Chat conversation", and three
+      descriptions sent to the model still said Chat.
+  - Recorded and not fixed here: SPEC-118, "Limits recorded with SPEC-141 FR-19". The one
+    that needs a change of its own is the one-shot decision session, which is created outside
+    the conversation's posture and now receives the owner's message on Code and Work.
 - [x] Amend SPEC-118, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` in the same
       pull request, since they state the limit.
 
 **Deliverables:** the role tools no longer depend on where a conversation was created.
 
 **Result at default settings.** The decision flag is off by default, so the collaboration
-tools stay off everywhere. What changes without any setting is the knowledge: the coordinator
-of every Code and Work conversation now receives the orchestrator knowledge with each turn,
-added to its own instructions. That includes a conversation whose only participant is a
-provider and model, since its first participant coordinates it.
+tools stay off everywhere. What changes without any setting is the knowledge.
+
+- The coordinator of every Code and Work conversation now receives the orchestrator
+  knowledge with each turn, added to its own instructions. So does the coordinator of a
+  conversation stored with no origin, which the Chat-only rule had left out.
+- That includes a conversation started without naming anyone. Its one participant is the
+  remembered provider and model, and the first participant coordinates. A session opened by
+  Code's own operation is the same shape. On Chat such a conversation received the knowledge
+  already.
+- What that agent receives, measured with the packaged English text:
+  - With every turn, the role entry, which opens "You are the Cats Orchestrator (visible
+    Boss Cat)", and the results procedure: about 3,300 characters of turn instructions for a
+    plain question. The correctness review's run on the base commit found none.
+  - A message with a word such as implement, review, fail, error or retry also selects the
+    collaboration and recovery procedures: about 5,500 characters. The collaboration
+    procedure is about proposing teammates, which this agent has no tool for.
+  - By the correctness review's reading of Runtime, its Claude and Codex providers put a
+    send's instructions inside the turn's user message, so they stay in the session history.
+- A direct lane's Cat coordinates its lane, and a lane created on Chat received the knowledge
+  already. A lane not created on Chat now does, and its decision request is bound to the
+  Cat's own instance and model; for a companion's lane that request runs with the flag off.
+  No current client creates a lane outside Chat (S6), so in practice this is a lane with no
+  recorded origin.
+- Local knowledge the owner adopted (`knowledge/contributions.json` under the platform
+  directory) replaces entries of this knowledge, so it now reaches Code and Work
+  coordinators too.
+
+**Open with the owner.** Whether the one agent of a Code or Work conversation should be told
+that it is the Cats Orchestrator. D8 asked for the knowledge on Code and Work, and the code
+gives it to whoever coordinates. Giving the role entry only to a Boss Cat coordinator is a
+small change if the owner wants it.
 
 ### Phase 4: Work includes Code
 
@@ -277,10 +331,12 @@ previews and work areas appear under `/work`.
       makes a lane, the raise refuses one, and `restoreRecoverableDirectLane` sets the kind
       only on a conversation that carries the recoverable-lane mark. A valid stored scope is
       kept as stored (FR-3), so such a path would leave a lane above `chat`, against S6.
-- [ ] Make the Boss Cat join card's binding cover the scope before a raise exists. The card
-      binds `collaborationExecutionRevision`, which digests the origin and not the scope. A
-      raise between the card and the owner's click would change what joining grants, Code's
-      tools among it, without making the card stale.
+- [ ] Make the Boss Cat join card's binding and SPEC-118's proposal card's cover the scope
+      before a raise exists. Both bind `collaborationExecutionRevision`, which digests the
+      origin and not the scope. A raise between the card and the owner's click would change
+      what joining grants, Code's tools among it, without making the card stale.
+  - Phase 3's security review ran it with the raise function: a proposal whose card names a
+    Chat conversation is still admitted after a raise to `code`, and both Cats are added.
 - [ ] Add the execution policy to the raise revision. The permission chip is drawn from the
       permission mode and `runtimeExecutionPolicy`, and the digest has only the mode.
   - Digest the policy's values in a fixed order: the stored object's key order is not
@@ -331,6 +387,9 @@ previews and work areas appear under `/work`.
 - [ ] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
       bump here.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
+- [ ] Provider acceptance: a Code session with one agent still does its coding task. Since
+      Phase 3 that agent is told it is the Cats Orchestrator with every turn, and a coding
+      request brings the collaboration and recovery procedures. No model was run against it.
 - [ ] Update ADR-149's status.
 
 ## Not in This Plan

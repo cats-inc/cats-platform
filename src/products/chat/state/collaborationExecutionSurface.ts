@@ -45,6 +45,20 @@ export interface CollaborationOwnerChoice {
   proposal: CollaborationProposal;
   developmentProfile?: 'cats-inc-development';
 }
+/**
+ * Whether a choice answer is addressed to a persisted collaboration proposal card, whatever it
+ * selects. Such a turn is the owner's answer to that card and nothing else: its words, which
+ * are the card's own question and labels, must not select another product's tool phase.
+ */
+export function answersCollaborationProposalCard(
+  state: ChatState, channelId: string, response?: ChatMessageChoiceResponse | null,
+): boolean {
+  if (!response) return false;
+  const message = state.channels.find((entry) => entry.id === channelId)?.messages
+    .find((entry) => entry.id === response.sourceMessageId);
+  return message?.senderKind === 'agent'
+    && message.metadata.event === 'orchestrator_collaboration_preparation';
+}
 export function resolveCollaborationOwnerChoice(
   state: ChatState, channelId: string, response?: ChatMessageChoiceResponse | null,
 ): CollaborationOwnerChoice | null {

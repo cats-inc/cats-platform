@@ -27,7 +27,7 @@ export const COLLABORATION_TOOL_NAMES = [
 const TOOL_HINTS: Record<string, string[]> = {
   [DISCOVER_COLLABORATION_CATS]: [
     'Input: { query?: string (max 128), limit?: integer (1..16, default 8) }. No other fields.',
-    'Searches active Chat Cats by declared name/role. Roles are not verified capabilities. No sessions start.',
+    "Searches the owner's active Cats by declared name/role. Roles are not verified capabilities. No sessions start.",
   ],
   [INSPECT_COLLABORATION_CONTEXT]: [
     'Input: {}. Reads only the current server-bound conversation. No conversation ID override.',
@@ -38,7 +38,7 @@ const TOOL_HINTS: Record<string, string[]> = {
     'IDs must be distinct discovered Cats. expectedOutput: 1..1000 characters. missingInformation: at most 3 questions of 200 characters each; [] if intent is known.',
     'If fewer than two suitable Cats exist, omit implementerId/reviewerId to report unavailable. Missing user intent belongs in missingInformation, never invented details.',
     'Budget: positive integers, duration <= 3600000 ms and tokens <= 100000. Suggested only, never admitted execution.',
-    'Returns only a proposal: Chat origin, current goal/conversation context, review after actual implementation artifact/revision. No resource is created or started.',
+    "Returns only a proposal: the current conversation's origin, current goal/conversation context, review after actual implementation artifact/revision. No resource is created or started.",
   ],
 };
 
@@ -46,7 +46,7 @@ export function collaborationToolManifests(): SupervisedToolManifest[] {
   return COLLABORATION_TOOL_NAMES.map((name) => ({
     schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION, name, manifestVersion: '1.0',
     description: name === DISCOVER_COLLABORATION_CATS
-      ? 'Discover bounded eligible Cats for collaboration in the local owner Chat scope.'
+      ? "Discover bounded eligible Cats for collaboration in the local owner's scope."
       : name === INSPECT_COLLABORATION_CONTEXT
         ? 'Inspect the current authorized collaboration conversation without reading other conversations.'
         : 'Validate a collaboration proposal without changing conversations, membership or work.',
