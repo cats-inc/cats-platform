@@ -215,9 +215,17 @@ Work conversations too (D8; FR-19).
       addressed to a collaboration card now reaches no Work phase, whatever it selects.
     - The card called a reused Code or Work conversation "this Chat conversation", and three
       descriptions sent to the model still said Chat.
-  - Recorded and not fixed here: SPEC-118, "Limits recorded with SPEC-141 FR-19". The one
-    that needs a change of its own is the one-shot decision session, which is created outside
-    the conversation's posture and now receives the owner's message on Code and Work.
+  - Recorded and not fixed here: SPEC-118, "Limits recorded with SPEC-141 FR-19". Two need
+    changes of their own:
+    - the one-shot decision session, which is created outside the conversation's posture and
+      now receives the owner's message on Code and Work;
+    - an accepted click that is not offered the execution tools still runs as an ordinary
+      turn in the source folder. A `weak_worker` coordinator and a card found stale as it was
+      published reach that with no setting changed. Chat behaved the same before.
+  - A focused re-check of the fix confirmed it closes the Work-phase path on Chat, Code and
+    Work, and found the two items above plus a narrow retry-from-Core path that drops the
+    choice answer. None blocks this change. All start from a collaboration card, which
+    appears only with the decision flag on.
 - [x] Amend SPEC-118, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` in the same
       pull request, since they state the limit.
 

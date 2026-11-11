@@ -448,9 +448,10 @@ conversation created on Chat unless it says what is new.
   no workspace kind, access or skill list, and the Platform client then sends
   the permission mode `skip`. By the reviewer's reading of Runtime's main
   branch that gives a read-write sandbox with approvals skipped; the Runtime
-  pinned for Desktop was not checked, and no live model was used. Only the
-  collaboration loops ask for a read-only sandbox, default permission and no
-  skills, and only they reject native tool activity.
+  pinned for Desktop was not checked, and no live model was used. Among a
+  coordinator's decision requests, only the collaboration loops ask for a
+  read-only sandbox, default permission and no skills, and only they reject
+  native tool activity. A Boss Cat's own decision session does both.
   - New: the owner's message, up to 4,000 characters, now enters that session
     for a Code or Work coordinator. Before, its prompt held counts and
     reference ids.
@@ -477,9 +478,30 @@ conversation created on Chat unless it says what is new.
   adopted local contribution replaces an entry's text, and that text now lands
   in Code and Work conversations too. The store is a plain file under the
   platform directory with no integrity check.
-- **The read tools give the coordinator's provider the owner's Cat directory**
-  (name, roles, provider, instance, model, availability, lease) and store it in
-  the proposal message. New on Code and Work.
+- **The read tools give the coordinator's provider the owner's Cats that take
+  part in Chat**, other than the coordinator (name, roles, provider, instance,
+  model, availability, lease), and store them in the proposal message. New on
+  Code and Work. A Cat whose products exclude Chat is never found, on any
+  product.
+- **An accepted click can still run as an ordinary turn.** When the click is
+  not offered the execution tools, the turn falls through to ordinary dispatch:
+  the Boss Cat's session in the source folder, with the card's text as its
+  prompt. The re-check after the fix ran four cases on Chat and Work:
+  - the decision flag turned off after the card, or the Boss Cat demoted: both
+    need the owner to change a setting;
+  - a coordinator whose model has a `weak_worker` capability rule: the card
+    still offers Execute, and the supervision policy then refuses the write
+    scope, with nothing changed between card and click;
+  - a card found stale as it was published: its text and report say stopped,
+    but its choices stay and Desktop still draws the buttons. A narrow race.
+  - Chat behaved the same before FR-19; cards now also appear on Code and Work.
+  - The fix, as a change of its own: end such a turn with a notice instead of
+    dispatching it, drop the choices from a stale card, and show no Execute
+    button when admission cannot pass.
+- **A click retried from the Core record loses its choice answer.** When the
+  transcript has lost the message and Core still has it, the rebuilt message
+  has the body and the recipient but no `choiceResponse`, so Work's phase can
+  take it again. Traced, not run to the end.
 - **A conversation created from a Code or Work source** is a Chat conversation on
   the source folder, with a worktree, read-write access and the tool whitelist,
   coordinated by the implementer. Its title and topic are the goal, which

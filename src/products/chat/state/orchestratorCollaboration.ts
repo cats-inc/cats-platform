@@ -27,7 +27,7 @@ export const COLLABORATION_TOOL_NAMES = [
 const TOOL_HINTS: Record<string, string[]> = {
   [DISCOVER_COLLABORATION_CATS]: [
     'Input: { query?: string (max 128), limit?: integer (1..16, default 8) }. No other fields.',
-    "Searches the owner's active Cats by declared name/role. Roles are not verified capabilities. No sessions start.",
+    "Searches the owner's active Cats that take part in Chat, other than you, by declared name/role. Roles are not verified capabilities. No sessions start.",
   ],
   [INSPECT_COLLABORATION_CONTEXT]: [
     'Input: {}. Reads only the current server-bound conversation. No conversation ID override.',
@@ -46,7 +46,7 @@ export function collaborationToolManifests(): SupervisedToolManifest[] {
   return COLLABORATION_TOOL_NAMES.map((name) => ({
     schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION, name, manifestVersion: '1.0',
     description: name === DISCOVER_COLLABORATION_CATS
-      ? "Discover bounded eligible Cats for collaboration in the local owner's scope."
+      ? "Discover bounded eligible Cats for collaboration among the local owner's Cats that take part in Chat."
       : name === INSPECT_COLLABORATION_CONTEXT
         ? 'Inspect the current authorized collaboration conversation without reading other conversations.'
         : 'Validate a collaboration proposal without changing conversations, membership or work.',
