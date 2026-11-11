@@ -13,8 +13,10 @@ import type {
  * - Its Tasks: those whose conversation it is, which includes the Task projected from it.
  * - Its Runs: those whose conversation it is, and those of its Tasks that name no conversation.
  * - A record whose conversation is another one is not its own, even when it hangs under one of
- *   its Tasks: a SPEC-118 role Task sits under the source conversation's Task but carries the
- *   collaboration conversation's id.
+ *   its Tasks. A SPEC-118 role Task, for example, is admitted with the source conversation's id
+ *   and moves to the collaboration conversation when its stage starts; from then on only the
+ *   collaboration conversation sees it.
+ * - A record's conversation is taken as its writer stored it.
  */
 
 export function isOwnTask(task: CoreTaskRecord, conversationId: string): boolean {
@@ -44,28 +46,31 @@ export function findOwnRun(
   return ownRuns(core, conversationId).find((run) => run.id === runId) ?? null;
 }
 
-/** The Run's own Outcome and Checkpoints: they name the Run, and no other conversation. */
+/** An own Run's Outcomes and Checkpoints: they name the Run, and no other conversation. */
 function ofRun<T extends { runId: string | null; conversationId: string | null }>(
   records: readonly T[],
   run: CoreRunRecord,
+  conversationId: string,
 ): T[] {
   return records.filter((record) => record.runId === run.id
-    && (record.conversationId === null || record.conversationId === run.conversationId));
+    && (record.conversationId === null || record.conversationId === conversationId));
 }
 
 export function runOutcome(
   core: Pick<CatsCoreState, 'outcomes'>,
   run: CoreRunRecord,
+  conversationId: string,
 ): CoreOrchestrationOutcomeRecord | null {
-  return ofRun(core.outcomes, run)
+  return ofRun(core.outcomes, run, conversationId)
     .sort((left, right) => right.recordedAt.localeCompare(left.recordedAt))[0] ?? null;
 }
 
 export function latestRunCheckpoint(
   core: Pick<CatsCoreState, 'checkpoints'>,
   run: CoreRunRecord,
+  conversationId: string,
 ): CoreCheckpointRecord | null {
-  return ofRun(core.checkpoints, run)
+  return ofRun(core.checkpoints, run, conversationId)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
 }
 

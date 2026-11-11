@@ -126,12 +126,19 @@ conversation id only:
 - an Outcome or Checkpoint of such a Run that names no other conversation.
 
 A record that names another conversation is never returned, even under one of its Tasks. A
-SPEC-118 role Task, for example, belongs to the collaboration conversation.
+SPEC-118 role Task, for example, is admitted with the source conversation's id and moves to the
+collaboration conversation when its stage starts; from then on only that conversation sees it.
+A record's conversation is taken as its writer stored it, so a writer that lets its caller name
+a conversation (the Core API, a lifecycle tool's input) puts the record in that conversation's
+view.
 
-Every title, summary and label is one line, without control or bidirectional-override
-characters, cut to a bounded length (160 for titles and labels, 1,000 for summaries) and
-fenced in `«»`, which it cannot close. The tool descriptions and the turn policy say those
-are data. No transcript is returned. A bad argument is `invalid_arguments`.
+Every title, summary and label is one line, without control, format (bidirectional,
+zero-width, soft hyphen, Unicode tag) or line-separator characters, cut to a bounded length
+(160 for titles and labels, 1,000 for summaries) without splitting a character from its
+accent, and fenced in `«»`, which it cannot close. Ids and timestamps are cleaned and capped
+the same way, without a fence, because Core accepts any string for them. The tool
+descriptions and the turn policy say those are data; the fence is a prompt-level measure. No
+transcript is returned. A bad argument is `invalid_arguments`.
 
 ## Agent Knowledge Drafts
 

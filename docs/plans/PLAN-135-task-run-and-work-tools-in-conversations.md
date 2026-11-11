@@ -133,8 +133,9 @@ conversations get no server until Phase 2 gives them a tool.
 - [x] Turn Runs left out of the list unless asked for.
 - [x] Bounds and fencing for every text field.
   - 50 Tasks; 20 Runs by default and 50 at most; titles and labels 160 characters and
-    summaries 1,000. Each is one line, without control or bidirectional-override characters,
-    and fenced in `«»`.
+    summaries 1,000, cut by user-perceived character. Each is one line, without control,
+    format or line-separator characters, and fenced in `«»`. Ids and timestamps are cleaned and
+    capped too, without a fence.
 - [x] Tests, including a SPEC-118 role Task that belongs to another conversation.
   - `tests/conversation-record-tools.test.js`: the own-records rule, each tool's fields and
     bounds, a role Task and Run, another conversation's Outcome on the same Run, refused
