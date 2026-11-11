@@ -693,6 +693,10 @@ absolute Windows paths, and filesystem calls can create stray directories like
 - When adding cross-platform path regression tests, run them from an isolated
   temporary `process.cwd()` and assert that no `C:` or drive-letter directory is
   created.
+- Run tests through `npm test` or `npm run test:file -- <files>`, which keep
+  `CATS_RUNTIME_DIR` and `CATS_PLATFORM_DIR` in a temporary folder. A plain
+  `node --test` run writes into the developer's own `~/.cats`; add
+  `--import ./scripts/testing/isolate-cats-home.mjs` when running it directly.
 
 ### What to Test
 
