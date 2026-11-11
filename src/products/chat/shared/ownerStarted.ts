@@ -21,11 +21,18 @@ export function resolveOwnerStartedSurface(
   return auth.credentialKind === 'mobile_bearer' ? 'mobile' : null;
 }
 
-/** Drops any caller-supplied stamp; only the server adds it back. */
+/** Server-owned message metadata (SPEC-139): the stamp and the Boss Cat tools' receipts. */
+export const BOSS_CAT_TURN_METADATA_KEY = 'bossCatTurn';
+
+/** Drops any caller-supplied stamp or receipts; only the server adds them. */
 export function withoutOwnerStarted<T extends Record<string, unknown>>(
   metadata: T | null | undefined,
-): Omit<T, typeof OWNER_STARTED_METADATA_KEY> {
-  const { [OWNER_STARTED_METADATA_KEY]: _dropped, ...rest } = metadata ?? ({} as T);
+): Omit<T, typeof OWNER_STARTED_METADATA_KEY | typeof BOSS_CAT_TURN_METADATA_KEY> {
+  const {
+    [OWNER_STARTED_METADATA_KEY]: _stamp,
+    [BOSS_CAT_TURN_METADATA_KEY]: _receipts,
+    ...rest
+  } = metadata ?? ({} as T);
   return rest;
 }
 

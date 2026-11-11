@@ -5,6 +5,12 @@ import { isCollaborationTool } from '../orchestratorCollaboration.js';
 import { isCollaborationExecutionTool } from '../collaborationExecutionSurface.js';
 import { appendCollaborationReport } from '../orchestratorCollaborationReport.js';
 import { OWNER_STARTED_METADATA_KEY, withoutOwnerStarted } from '../../shared/ownerStarted.js';
+import {
+  attachBossCatTurnRecord,
+  dropSettledBossCatBoards,
+  readBossCatTurnRecord,
+  resolveBossCatTurnGate,
+} from '../bossCatSurface.js';
 
 import type {
   ChannelDispatchResult,
@@ -14,6 +20,7 @@ import type {
   ChatState,
   MessageOrigin,
   OwnerStartedSurface,
+  BossCatTurnRecord,
   DirectSlashModePostureChangeMetadata,
   ProductIntentCommandMetadata,
   ProductIntentCommandSource,
@@ -30,6 +37,7 @@ import {
   upsertCoreWorkItem,
 } from '../../../../core/model/index.js';
 import type {
+  ProviderAgentBoundedObservation,
   ProviderAgentDecision,
   ProviderAgentToolRequestDecision,
 } from '../../../../platform/orchestration/index.js';
@@ -462,9 +470,14 @@ export type ProviderAgentDecisionRequester = ((input: {
   runtimeClient: RuntimeClient;
   now: Date;
   onCollaborationResult?: (report: CollaborationReport) => void;
+  /** SPEC-139: run the Boss Cat tools for this owner message in an isolated session. */
+  bossCat?: { bossCatId: string; sourceMessageId: string };
+  onBossCatResult?: (record: BossCatTurnRecord) => void;
   isCancelled?: () => boolean;
 }) => Promise<ProviderAgentDecision | null>) & {
   supportsCollaboration?: boolean; supportsCollaborationExecution?: boolean;
+  /** Set only while the full provider-agent decision path is on (SPEC-139 FR-1). */
+  supportsBossCat?: boolean;
   readonly preparationBudget?: Readonly<CollaborationPreparationBudget>;
 };
 
@@ -6970,6 +6983,7 @@ export async function beginChannelMessageDispatch(
       transport: options.transport,
       enableCollaborationReads: options.enableCollaborationReads,
       enableCollaborationExecution: options.enableCollaborationExecution,
+      enableBossCatTools: options.providerAgentDecisionRequester?.supportsBossCat === true,
       preparationBudget: options.providerAgentDecisionRequester?.preparationBudget,
       transportBindingId: options.transportBindingId,
     },
@@ -7169,6 +7183,42 @@ export async function beginChannelMessageDispatch(
   };
 }
 
+/**
+ * SPEC-139: the Boss Cat tools run first, in their isolated session, and their receipts land on
+ * the owner's message. The ordinary lane reply then runs as usual and reads them. A retry finds
+ * the receipts already there and calls no tool again.
+ */
+async function runBossCatToolsBeforeReply(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  runtimeClient: RuntimeClient;
+  now: Date;
+  observation: ProviderAgentBoundedObservation | null;
+  options: RouteChannelMessageOptions;
+}): Promise<ChatState> {
+  const requester = input.options.providerAgentDecisionRequester;
+  if (!input.observation || !requester?.supportsBossCat) return input.state;
+  const source = requireChannel(input.state, input.channelId).messages
+    .find((message) => message.id === input.userMessage.id) ?? null;
+  const gate = resolveBossCatTurnGate(input.state, input.channelId, source);
+  if (!gate || readBossCatTurnRecord(source)) return input.state;
+  let record: BossCatTurnRecord | null = null;
+  await requester({
+    state: input.state, channelId: input.channelId,
+    payload: { body: input.userMessage.body }, observation: input.observation,
+    runtimeClient: input.runtimeClient, now: input.now,
+    bossCat: { bossCatId: gate.bossCatId, sourceMessageId: input.userMessage.id },
+    onBossCatResult: (value) => { record = value; },
+    isCancelled: () => Boolean(input.options.cancellationRegistry?.read(input.channelId)),
+  });
+  if (!record) return input.state;
+  const nextState = attachBossCatTurnRecord(input.state, input.channelId, input.userMessage.id, record);
+  const persisted = await persistInFlightDispatchState(input.options.chatStore, nextState);
+  input.options.onStateWritten?.(input.channelId);
+  return persisted;
+}
+
 export async function beginChannelMessageRetryDispatch(
   state: ChatState,
   channelId: string,
@@ -7226,6 +7276,7 @@ export async function beginChannelMessageRetryDispatch(
       naturalProductIntentMode: options.naturalProductIntentMode,
       enableCollaborationReads: options.enableCollaborationReads,
       enableCollaborationExecution: options.enableCollaborationExecution,
+      enableBossCatTools: options.providerAgentDecisionRequester?.supportsBossCat === true,
       preparationBudget: options.providerAgentDecisionRequester?.preparationBudget,
       transport: options.transport,
       transportBindingId: options.transportBindingId,
@@ -7480,6 +7531,11 @@ export async function continueBegunChannelMessageDispatch(
     workflow,
   } = begun.preparedTurn;
   let latestCheckpoint = initialCheckpoint;
+  nextState = await runBossCatToolsBeforeReply({
+    state: nextState, channelId, userMessage, runtimeClient, now,
+    observation: begun.preparedTurn.bossCatObservation ?? null,
+    options,
+  });
   if (begun.preparedTurn.providerAgentDecisionDeferred && options.providerAgentDecisionRequester
     && begun.preparedTurn.providerAgentObservation) {
     let report: CollaborationReport | undefined;
@@ -7573,6 +7629,7 @@ export async function continueBegunChannelMessageDispatch(
     userMessageId: userMessage.id,
     describeGuardReason,
   });
+  nextState = dropSettledBossCatBoards(nextState, channelId, userMessage.id);
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 

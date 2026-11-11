@@ -55,6 +55,7 @@ import {
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
+import { formatBossCatTurnInstructions, readBossCatTurnRecord } from './bossCatSurface.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
@@ -812,6 +813,14 @@ export function buildPromptForTarget(
       core,
     },
   );
+  // SPEC-139: the Boss Cat tools' receipts for this owner message, for the Boss Cat itself only.
+  const bossCatRecord = readBossCatTurnRecord(
+    channel.messages.find((message) => message.id === request.sourceMessage.id) ?? request.sourceMessage,
+  );
+  const bossCatInstructions = bossCatRecord && participant.sourceKind === 'cat'
+    && (participant.sourceRefId ?? participant.participantId) === bossCatRecord.bossCatId
+    ? formatBossCatTurnInstructions(bossCatRecord)
+    : null;
   const continuityMode = participantContinuity
     ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)
     : targetedHandoffPackage?.instructions
@@ -827,10 +836,10 @@ export function buildPromptForTarget(
       companionContext,
       { coordinator: channel.coordinatorParticipantId === participant.participantId },
     ),
-    instructions: joinRuntimeInstructions(instructions, slashModeInstructions),
+    instructions: joinRuntimeInstructions(instructions, slashModeInstructions, bossCatInstructions),
     continuityMode,
     continuityDeliveryMode: continuityMode == null
       ? null
-      : instructions || slashModeInstructions ? 'turn_instructions' : 'none',
+      : instructions || slashModeInstructions || bossCatInstructions ? 'turn_instructions' : 'none',
   };
 }

@@ -1,4 +1,5 @@
 import type {
+  BossCatUsageEntry,
   ChatCat,
   ChatChannelState,
   ChatState,
@@ -145,7 +146,20 @@ export function normalizeChatState(rawState: unknown): ChatState {
       stateRecord.advancedDraftControls,
     ),
     folderBrowsePreferences: normalizeFolderBrowsePreferences(stateRecord.folderBrowsePreferences),
+    ...(Array.isArray(stateRecord.bossCatUsage)
+      ? { bossCatUsage: normalizeBossCatUsage(stateRecord.bossCatUsage) }
+      : {}),
   };
+}
+
+/** SPEC-139 usage counters: only well-formed entries; older than an hour no longer count. */
+function normalizeBossCatUsage(raw: unknown[]): BossCatUsageEntry[] {
+  return raw.flatMap((entry): BossCatUsageEntry[] => {
+    const record = typeof entry === 'object' && entry !== null ? entry as Record<string, unknown> : null;
+    const kind = record?.kind;
+    const at = typeof record?.at === 'string' && Number.isFinite(Date.parse(record.at)) ? record.at : null;
+    return (kind === 'board' || kind === 'group' || kind === 'join_request') && at ? [{ kind, at }] : [];
+  }).slice(-200);
 }
 
 export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapshot {

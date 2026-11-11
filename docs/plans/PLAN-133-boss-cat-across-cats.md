@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 3 implemented |
+| Status | In progress: slices 1 to 3 and 4a implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -71,7 +71,8 @@ are tested as live behaviour.
       - approvals are Core tasks with `approval.status: 'pending'` on the Cat's conversations,
         by the task's own conversation or an approval binding;
       - a failed or interrupted turn is one of the last 7 days whose target for that Cat
-        failed, was blocked, or was cancelled;
+        failed, was blocked, or was cancelled, with no later completed turn for that Cat in
+        that conversation (as Cats Bot SPEC-012 FR-2 defines attention);
       - group participants are Cat names only; temporary participants' names are free text.
 - [x] FR-4 title rule: `manual` is the creation default and what older data was normalized
       to, so it proves nothing. The owner's renames (`renameChannel`, `renameParallelChatGroup`)
@@ -85,18 +86,65 @@ are tested as live behaviour.
       errors, topics and paths never show, title rule, hidden Cats, reload, approvals, and a
       real failed turn through an isolated test server).
 
-### Slice 4: Tool surface, board and groups
+### Slice 4a: Tool surface and the board
 
-- [ ] `bossCatSurface.ts`: manifests, descriptors and handlers for `chat.boss.status_board`
-      and `chat.boss.create_group`.
-- [ ] Offered only in the Boss Cat's own direct lane, for an owner-started turn, to its admin
-      coordinator, with the decision flag on. Every handler rechecks.
-- [ ] The decision session gets its own explicit create input (sandbox, `read_only`, isolated,
-      no skills) and sees only the current message and the board. A marker test reads what a
-      stubbed Runtime client receives.
-- [ ] Limits (30 boards, 5 groups per hour per owner, persisted) and FR-16 records (ids only).
-- [ ] Created groups: Chat, no repository or cwd, `read_only`, `default`; opening message posted
-      without dispatch; invited Cats load no companion memory there.
+- [x] `bossCatSurface.ts`: the `chat.boss.status_board` manifest and descriptor, the FR-1 gate
+      (`resolveBossCatTurnGate`), the hourly limits and the decision loop.
+- [x] Offered only in the Boss Cat's own direct lane, for an owner-started turn
+      (`readOwnerStarted`), to its admin coordinator, while the full decision path is on
+      (`supportsBossCat`). Never in a group, for a choice answer or a slash command. The handler
+      rechecks the gate on fresh state.
+- [x] Flow: the tools run first, in their own observation that carries Boss tools only. Their
+      receipts land on the owner's message (`bossCatTurn`, server-owned like the stamp). The
+      ordinary lane reply then runs as usual and gets them as per-turn instructions. The board is
+      fenced as JSON and is data. A retry finds the receipts and calls no tool again. Without a
+      tool call, or if the loop fails before one, the reply runs alone.
+- [x] The decision session has its own create input: sandbox, `read_only`, `default`,
+      isolated, no skills, no cwd, no product knowledge. It sees the owner's message only (and,
+      in later calls, the receipts). It is closed when the loop ends.
+- [x] The loop carries K2's guards:
+      - the session id is captured at creation, so a failed call still cancels and closes it;
+      - a hard deadline (the observation's 30 s) and Stop polling, since the lane's turn is
+        already active;
+      - native tool activity is refused;
+      - a stopped loop logs a diagnostic with ids only and falls through to the reply.
+- [x] Limits are persisted in `ChatState.bossCatUsage`: 30 boards an hour per owner, across
+      every Boss Cat.
+- [x] FR-16: the tool boundary writes a durable evidence record, with ids and status, to
+      `<platform>/state/evidence/<conversation>.jsonl`. Data reset clears that directory.
+      (`chatStatePath` is a file, so it cannot be the evidence directory. Work and Code
+      default to it today; that is a separate problem.)
+- [x] A stored board is dropped from its receipt once the reply for that message settles. A
+      failed reply keeps it for the retry. Backticks in names and titles become quotes, so they
+      cannot close the board's fence.
+- [x] Boards are bounded: 40 Cats and the 30 most recently active groups, with counts of what
+      was left out.
+- [x] Tests: `tests/chat-boss-cat-tools.test.js`. They cover the gate matrix and, through an
+      isolated server with the flag on, these cases:
+      - what the stubbed Runtime receives for the decision session: its create input, and no
+        lane, group or other-lane markers;
+      - the lane reply's instructions;
+      - the 31st board;
+      - no tools without an authenticated owner, with the flag off, or when the Boss Cat
+        declines;
+      - a retry replaying receipts;
+      - the evidence record, with a real file at `chatStatePath`;
+      - a malformed decision, which closes its session while the reply still arrives;
+      - a decision that never answers, which stops at its deadline;
+      - a Desktop retry of a message that carries no stamp.
+
+### Slice 4b: Group conversations
+
+- [ ] `chat.boss.create_group` with ids from a board read in the same run, its title and
+      opening message bounds, and 5 groups an hour.
+- [ ] Created groups: Chat, no repository or cwd, `read_only`, `default`; the opening message
+      posted without dispatch; the invited Cats load no companion memory there; a notice in the
+      Boss Cat's lane.
+- [ ] Write each receipt in the same atomic store update as its effect. The dispatch merge keeps
+      an edit to an existing message only when no other writer touched it.
+- [ ] A retry of a message rebuilt from Core keeps the stamp but not `bossCatTurn`, so it would
+      run the tools again. Carry a marker in the Core turn metadata, or refuse tools on a rebuilt
+      message.
 
 ### Slice 5: Joining
 

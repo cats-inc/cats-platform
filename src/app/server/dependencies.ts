@@ -77,6 +77,7 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
+import { resolveBossCatEvidenceDataDir } from '../../products/chat/state/bossCatSurface.js';
 import { createCompanionContentDecisionRequester } from '../../products/chat/state/companionContentDecisionScope.js';
 import { createLockedDispatchChatStore } from '../../products/chat/state/runtime-dispatch/merge.js';
 import {
@@ -361,6 +362,10 @@ export function resolveServerDependencies(
       apiKey: dependencies.shared.config.runtimeApiKey }),
     publishCollaboration: (channelId, action) => publishChannelMutation(chatEventHub, channelId, action),
     runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation),
+    readLifeProfiles: async () => new Map((await companionStore.readSnapshot()).boxes
+      .map((box) => [box.catId, box.life] as const)),
+    // SPEC-139 FR-16: `<platform>/state/evidence/`, which data reset clears.
+    evidenceDataDir: resolveBossCatEvidenceDataDir(dependencies.shared.config.chatStatePath),
   });
   // With the flag off, decisions still run for companion posts only (PLAN-077);
   // the flag widens them to every provider-agent tool.
