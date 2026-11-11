@@ -2,6 +2,70 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-11 — Desktop 0.15.1 standard preview: conversation recovery and Boss Cat coordination
+
+Selected distribution: Desktop **0.15.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This compatible 0.15 update keeps existing
+public contracts, configuration and persisted formats.
+
+- **Continue an archived native conversation through Cats history.** Codex's
+  archived thread/resume rejection now reports provider_session_unavailable,
+  allowing Chat's existing bounded replacement and transcript handoff. The
+  original native thread remains archived. (cats-runtime#218)
+- **Use the correct conversation context and owner.** Each prompt derives its
+  memory checkpoint from its own conversation; owner-started messages use the
+  authenticated principal. Telegram answers and sends target each binding's
+  owner. (cats-platform#416, cats-platform#417, cats-platform#414)
+- **Bounded Boss Cat coordination.** The Boss Cat can consult a status board
+  without peer message text in an isolated decision session. Assist heartbeat
+  gains a bounded peer section under the existing admission and disclosure
+  rules. These are the implemented SPEC-139 slices, not the broader product-scope
+  or layered-memory proposals. (cats-platform#419, cats-platform#421,
+  cats-platform#424)
+- **macOS dictation.** Recognition callbacks no longer block the run loop, and
+  a missing microphone produces a clear refusal. (cats-platform#423)
+- **Source selection:** cats-runtime@3232270e81831d64d35ccd678cc6d54f2c88b2e1; main@3232270e81831d64d35ccd678cc6d54f2c88b2e1.
+- **Exact modules.** Runtime package version **0.6.2** uses the full source SHA
+  above, with no changes left out. Platform main at selection is
+  `018097ca51a982eccb0f0cd9de89eac058c3a453`; the workflow records the completed
+  bump commit as the frozen Desktop source. Shared conversation UI **0.1.0** has
+  unchanged producer content at that baseline: content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`,
+  tarball SHA-256
+  `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  The nine shared-tool file pins select cats-one main
+  `f8b0d8a6e566b44d788ffc77912665ef46b738d3`.
+- **Bundled App.** Usage **0.5.4** remains the latest Usage artifact at Apps
+  main `015448936e3685091b09f7d9966104cdd952e68c`:
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Its existing host/SDK
+  compatibility remains enforced. No Plugin is bundled. Platform npm, Runtime
+  npm, Apps, Plugins and cats-one are separate publication targets.
+- **Compatibility and recovery.** No mandatory data conversion or migration is
+  introduced. Existing optional fields retain their normalizers and atomic
+  writes. Stop processes using the data roots before backing up `~/.cats`,
+  configured overrides and workspace attachment directories. On failure preserve
+  those roots and reinstall 0.15.1 or return to 0.15.0; restore backups only while
+  their writers are stopped. Returning loses these recovery, coordination and
+  dictation fixes. Native Codex archives are retained.
+- **Signing and updates.** Freeze the bump at `release/v0.15.1`; run exact-source
+  CI there, then dispatch desktop-release.yml from that same source with
+  `tag=v0.15.1`, the Runtime SHA above and `unsigned=false`. Standard expected
+  trust is macOS **signed + notarized**, Windows **unsigned: no certificate**,
+  Linux **n/a**. Same-team signed macOS, Windows NSIS and Linux DEB retain their
+  update paths; unsigned macOS installs require manual replacement. Native
+  signing checks and per-platform receipts establish actual trust.
+- **Validation boundary.** The recovery slice passed 96 Runtime and 18 Platform
+  rotation tests with independent review. This bump passed 31 focused version,
+  frozen Runtime selection and tool-provenance checks. Release gates enforce full CI on the
+  frozen source, exact module pins, complete sources, packaged sidecar startup,
+  signing, updater metadata, checksums and provenance. This does not claim
+  installed upgrade/rollback acceptance or live native interaction on every OS.
+
+Publication results: the `v0.15.1` GitHub Standard Preview, its complete source
+assets, platform receipts and Actions run.
+
 ## 2026-11-11 — Desktop 0.15.0 standard preview: Cats Directory and quieter native history
 
 Selected distribution: Desktop **0.15.0 standard-profile preview**, App SDK
