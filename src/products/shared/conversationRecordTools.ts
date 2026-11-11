@@ -25,14 +25,21 @@ const TITLE_LIMIT = 160;
 const SUMMARY_LIMIT = 1000;
 const LABEL_LIMIT = 160;
 
-const UNSAFE_TEXT = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+/** Controls and line separators break a line; format characters are invisible and simply go. */
+const BREAKING_TEXT = /[\p{Cc}\p{Zl}\p{Zp}]/gu;
+const INVISIBLE_TEXT = /\p{Cf}/gu;
 
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const ID_LIMIT = 200;
 
 /** One line without control, format (bidi, zero-width, tag) or line-separator characters. */
 function clean(value: string | null | undefined): string {
-  return (value ?? '').replace(UNSAFE_TEXT, ' ').replace(/\s+/gu, ' ').trim();
+  return (value ?? '').replace(INVISIBLE_TEXT, '').replace(BREAKING_TEXT, ' ').replace(/\s+/gu, ' ').trim();
+}
+
+/** A record whose id does not survive cleaning is left out, so every listed id can be read back. */
+function hasCleanId(record: { id: string }): boolean {
+  return cleanRecordValue(record.id) === record.id;
 }
 
 /** At most `limit` user-perceived characters, so a cut never splits an accent or an emoji. */
@@ -142,7 +149,7 @@ export function createConversationRecordToolsProvider(options: {
     const conversationId = grant.binding.conversationId;
     if (name === GET_TASKS_TOOL.name) {
       const core = await options.coreStore.readCore();
-      const tasks = ownTasks(core, conversationId)
+      const tasks = ownTasks(core, conversationId).filter(hasCleanId)
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
       return mcpTextResult({
         tasks: tasks.slice(0, TASK_LIMIT).map(taskView),
@@ -156,7 +163,7 @@ export function createConversationRecordToolsProvider(options: {
       const limit = readLimit(args.limit);
       if (limit === null) return invalid(`limit must be an integer from 1 to ${RUN_LIMIT_MAX}.`);
       const core = await options.coreStore.readCore();
-      const all = ownRuns(core, conversationId);
+      const all = ownRuns(core, conversationId).filter(hasCleanId);
       const listed = (args.includeTurnRuns === true ? all : all.filter((run) => !isTurnRun(run))).sort(newestFirst);
       return mcpTextResult({
         runs: listed.slice(0, limit).map(runView),

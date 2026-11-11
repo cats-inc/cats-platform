@@ -146,7 +146,9 @@ test('text is cut, cleaned and fenced so a marker in a title cannot pass as an i
   // Ids and timestamps are cleaned and capped, without a fence.
   state.runs[1] = run('run-own\u202e\u0007', OWN, 'task-own-captured', { startedAt: '2026-11-12T08:30:00.000Z' });
   const ids = (await call('list_runs', {}, state)).runs.map((entry) => entry.id);
-  assert.ok(ids.includes('run-own'), JSON.stringify(ids));
+  assert.ok(!ids.some((id) => id.startsWith('run-own')), 'a Run whose id does not survive cleaning is left out');
+  // Invisible format characters go without leaving a space.
+  assert.equal(fenceRecordText('co\u00adoperate', 20), '«cooperate»');
   assert.ok(Array.from(first.title).length <= 162);
   assert.equal(fenceRecordText('  ', 10), null);
   assert.equal(fenceRecordText(null, 10), null);
