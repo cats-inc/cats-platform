@@ -493,20 +493,33 @@ previews and work areas appear under `/work`.
 
 ### Phase 7: Documents and acceptance
 
-- [ ] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
+- [x] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
       SPEC-101 too, if a canvas surface kind was added.
-- [ ] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
-- [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10 to say "scope" where they say a conversation's
+  - As built (2026-11-12): dated amendments, ADR-126 and SPEC-123 once for both plans; no
+    surface kind was added, so ADR-098 and SPEC-101 are unchanged. SPEC-118 and
+    `docs/agent-control-surfaces.md` (amended in Phase 3) got residue fixes only.
+- [x] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
+  - As built: SPEC-141 records S1 as a default put to the owner and no objection; FR-7 now
+    says created on Chat or with no recorded origin, as `review.ts` reads it.
+- [x] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10 to say "scope" where they say a conversation's
       surface.
+  - As built: all four read the scope, and FR-10's binding lists it; the hint and the card
+    still name Code's tools only, and the notes say so.
   - PLAN-133's join slice landed before this plan's Phase 2. Phase 2 moved the board's and
     the join request's product label, and the statement about Code's tools, to the scope.
   - Phase 4 updates the hint and the card's text for Work, and Phase 5 makes the card's
     binding cover the scope.
-- [ ] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
+- [x] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
       that describe records the code does not create.
-- [ ] `docs/tool-calls.md`: who receives the `cats` tools.
-- [ ] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
+  - As built: the row says implemented, not yet released; New Chat, New Code and New Work state
+    the projected Task and WorkItem and no Project. Team Code and Peer Code are unchanged.
+- [x] `docs/tool-calls.md`: who receives the `cats` tools.
+  - As built: the server goes to every conversation and lists tools by scope; `find_projects`
+    names its owner-turn refusal.
+- [x] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
       bump here.
+  - Checked 2026-11-12: not in `docs/release-notes.md` yet (no unreleased section);
+    `docs/deployment.md` records it for 0.16.0, naming only the product scope.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
 - [ ] Provider acceptance: a Code session with one agent still does its coding task. Since
       Phase 3 that agent is told it is the Cats Orchestrator with every turn, and a coding

@@ -7,6 +7,7 @@
 | **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 to FR-7 (with R1 and R2), FR-8's policy value, FR-9 to FR-12 (joining under 「允許」 or the owner's card under 「每次問我」, and leaving, with the continuity bound), FR-13/14 (the Boss Cat's own initiative), FR-15's board side, FR-16 and FR-17 are implemented, with the Settings page, the per-Cat switch and the card on Desktop; the card's mobile rendering is not |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; independent security review on 2026-11-11 |
+| **Amended** | 2026-11-12 by [SPEC-141](SPEC-141-conversation-product-scope.md): FR-3, FR-6, FR-8 and FR-10 read a conversation's product scope where they said its surface |
 | **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review leaves out other Cats' words and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |
 | **Keeps** | SPEC-118 FR-05: no tool returns another conversation's contents. A direct lane holds only its own Cat (SPEC-125, `assignCatToChannel`). These are limits on the server's tools, not a security boundary: every Cat's provider CLI runs under the owner's OS account and can edit app state, these settings included |
 | **Counterpart** | Cats Bot SPEC-012 Phase 1. Desktop differs by design: it has group conversations the owner speaks in, so it needs no contact notes and no status questions |
@@ -96,7 +97,7 @@ board, nothing else.
        - turns that failed or were interrupted in the last 7 days, per conversation;
        - how many owner choices and approvals wait.
    - **Each group conversation**, with FR-4 and FR-15 applied:
-     - id, title, surface and participant names;
+     - id, title, product scope and participant names;
      - whether the Boss Cat is a member;
      - the owner's last message time and the last message time;
      - whether a turn is running, failed, or waits for an owner choice.
@@ -105,6 +106,9 @@ board, nothing else.
      own-initiative state is read from it (SPEC-137). These two are the only things beyond the
      message times of Goals and Privacy that leave a direct lane; nothing else in it reaches the
      board.
+   - Amended 2026-11-12 (SPEC-141 FR-14): a conversation's surface, here and wherever this spec
+     shows one (FR-4, FR-13, FR-15, Privacy), is its product scope, the product it lives on now,
+     not the one it was created on. The board's field keeps the name `surface`.
 4. FR-4: The board's only free text is Cat names and conversation titles the owner set
    (`titleSource: 'owner'`, which only the owner's rename sets).
    - `manual` is not enough: it is the creation default (K3 conversations take the owner's
@@ -139,6 +143,10 @@ board, nothing else.
 6. FR-6: Each invited Cat answers from that conversation's own session and history, never from
    its direct lane. Code and Work conversations are still created only by their own flows (K3
    `ensure_conversation`, Work tasks).
+   - Amended 2026-11-12 (SPEC-141): a conversation also becomes a Code or Work conversation
+     when the owner raises its product scope. No Boss Cat tool raises one. A Boss Cat that
+     joined it works under the raised scope from its next turn, like every participant
+     (ADR-149 P2).
 7. FR-7: At most 5 groups an hour per owner, across all Boss Cats. Each creation is recorded
    with ids only (FR-16).
 
@@ -158,6 +166,9 @@ board, nothing else.
      workspace, at its access and permission mode, and the Code tools for previews and
      artifacts. Until SPEC-141's Phase 4 the Code tools came with a Code conversation only;
      Work includes Code (ADR-149 D5).
+     - Amended 2026-11-12 (SPEC-141): "a Code or Work conversation" means one whose product
+       scope is `code` or `work`, wherever it was created. The hint does not name the Task and
+       Run reads that every conversation's agents get, or Work's tools at `work` (SPEC-142).
      - Earlier wording said the Code tools include a shell. They do not: a shell comes from
        the conversation's own access and permission mode, which the card shows, and the
        preview tools that run commands need it.
@@ -171,10 +182,11 @@ board, nothing else.
     direct lane.
     - **Rendering.** The card is rendered from live state, only in the Desktop and mobile UI,
       and never enters any model context or transport mirror. It shows:
-      - the conversation's title, surface and participants;
+      - the conversation's title, product scope and participants;
       - what joining grants: the conversation's workspace (repository path, read-only or
-        read-write access, permission mode), and for Code and Work the Code tools for
-        previews and artifacts;
+        read-write access, permission mode), and for a product scope of `code` or `work` the
+        Code tools for previews and artifacts. The card does not name the Task and Run reads
+        or Work's tools (SPEC-142);
       - what the Boss Cat brings in: its provider, its MCP and skill profile, and its companion
         memory;
       - how much history it will see: the last 8 messages before it joins, then everything
@@ -182,6 +194,9 @@ board, nothing else.
       - where the request came from (Desktop or mobile).
     - **Binding.** The digest covers:
       - the target conversation's revision (as `collaborationExecutionRevision`);
+      - the target's product scope, when it differs from its origin (added 2026-11-12,
+        SPEC-141 FR-7). A raise between the card and the click makes the card stale. A card
+        posted before scopes existed is at its origin's level and stays valid;
       - the Boss Cat's id and execution target;
       - the source conversation;
       - the policy value.

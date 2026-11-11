@@ -215,16 +215,19 @@ inventory of every `originSurface` reader.
 
 #### What follows the scope
 
-8. FR-8: The `cats` session MCP server and Code's preview policy go to every conversation whose
-   scope is `code` or `work` (D5).
+8. FR-8: Code's tools on the `cats` session MCP server, and Code's preview policy, go to every
+   conversation whose scope is `code` or `work` (D5).
    - Conversations created on Work therefore receive Code's tools from the release that ships
      this.
    - Live previews keep their Settings > Code switch and the session's shell permission.
    - The checks that verify a Code session or serve Code work areas only for
      `origin === 'code'` accept the scope the same way.
-   - A direct lane's scope is `chat`, so it receives none of this.
-   - SPEC-142 later attaches the `cats` server at every level and lists Code's tools on it only
-     for `code` and `work`. What this requirement fixes is who gets Code's tools.
+   - A direct lane's scope is `chat`, so it receives none of Code's tools.
+   - Amended 2026-11-12 (SPEC-142 FR-1, A3): it said the `cats` server itself went to `code`
+     and `work` only. The server now goes to every conversation, direct lanes included, and
+     lists tools by scope: the reads of the conversation's own Tasks and Runs at every level,
+     Code's tools at `code` and `work`, and Work's tools at `work`. Who gets Code's tools is
+     unchanged.
 9. FR-9: A conversation's canvas and live previews open beside it on the product where it
    lives. The tools stop assuming Code's route for every conversation.
    - Canvas and preview state recorded earlier keeps working after a raise and after this
@@ -329,16 +332,23 @@ inventory of every `originSurface` reader.
 25. FR-25: The raise restarts no session.
     - A turn that is running finishes with the tools it started with.
     - Each participant's next turn carries the new tool set, and Runtime recycles the worker
-      through resume. Once SPEC-142 attaches the server at `chat`, the server set no longer
-      changes on a raise, so the session's next send carries a new grant to the same effect
-      (SPEC-142 FR-3). The raise itself still does only what FR-24 lists.
+      through resume. The raise itself still does only what FR-24 lists.
+    - Amended 2026-11-12 (SPEC-142 FR-3): the server is already attached at `chat`, so a raise
+      reaches a live session through a new grant, not a new server.
+      - The session's next send carries a grant at the new level. The changed token makes
+        Runtime recycle the worker, and the agent lists its tools again.
+      - The old grant stays valid until Runtime reports the new set delivered, and is then
+        revoked, so a worker still running with it keeps its tools.
+      - When the wider level lists the same tools, the grant takes the new level in place and
+        nothing recycles. Every current raise adds tools, so each issues a new grant.
+      - The new grant keeps the session's folder, shell posture and participant.
     - The grant for a session that gains the server is bound to the folder that session runs
       in, not to the conversation's folder. This also applies to every Work conversation's
       first turn after D5 ships.
     - If Runtime cannot recycle the worker, the turn is handled as a lost session is today. The
       scope stays raised.
-    - Code's preview policy joins the instructions once Runtime reports the server as delivered
-      (ADR-126 point 5).
+    - The turn policy of the grant's level, Code's preview policy included from `code` up,
+      joins the instructions once Runtime reports the server as delivered (ADR-126 point 5).
 26. FR-26: A participant added after a raise works under the conversation's current scope.
 
 #### Desktop
@@ -350,7 +360,9 @@ inventory of every `originSurface` reader.
     conversation the chip can never be dismissed (P6).
 29. FR-29: Choosing a level opens a confirmation built from FR-21's answer. It shows:
     - the new level and what it adds, as in the Summary;
-    - for Work, that no agent tool is added yet;
+    - for Work, that its agents get Work's tools: they read the conversation's Work Items and
+      propose changes the owner confirms (SPEC-142). Amended 2026-11-12: it said that no agent
+      tool was added yet;
     - every participant who gains the level, and that later participants will too;
     - the folder or sandbox and the CLI permission, marked as unchanged;
     - that the conversation moves to the new product's Recents and uses that product's view
@@ -445,6 +457,9 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
 
 ## Test Plan
 
+Amended 2026-11-12 (SPEC-142): every conversation now has the `cats` server, so the D5 and
+raising items check the tools a grant lists, not whether the server is attached.
+
 - **The field.**
   - A new conversation's scope equals its origin, a new direct lane's is `chat`, and a create
     request that names a scope does not set it.
@@ -465,7 +480,7 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
   - A conversation created on Work receives Code's tools. Its canvas, preview controls,
     preview button, work areas panel and chips appear on Work's route.
   - A conversation created on Chat still receives none of Code's tools, and neither does a
-    direct lane of any origin.
+    direct lane of any origin. Both get the `cats` server with the Task and Run reads only.
   - A supervised Work run still receives none.
   - The grant of a worktree or sandbox conversation is bound to its session's folder.
 - **Raising.**
@@ -478,8 +493,11 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
   - An admitted SPEC-118 collaboration, queued or running, is unaffected by a raise. A
     proposal the owner has not confirmed is refused as stale, and so is a Boss Cat join card
     answered after a raise.
-  - A session created without the server gains it on its next send. A running turn keeps its
-    tools. A failed recycle leaves the scope raised.
+  - After a raise, the session's next send carries a new grant and lists the new level's
+    tools, Work's included after a raise to `work`; the old grant is revoked once Runtime
+    reports the new set delivered. A session that has no grant, such as one after a Platform
+    restart, gains one on its next send. A running turn keeps its tools. A failed recycle
+    leaves the scope raised.
   - After Code to Work, an artifact recorded earlier still opens and a running preview can be
     read, stopped and restarted.
   - No agent tool, transport command, schedule, heartbeat or create request can raise a scope.
@@ -498,11 +516,12 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
 - **Desktop.**
   - The chip shows the scope in all three products. Its menu lists wider levels only, and it is
     absent on direct lanes and parallel members.
-  - The confirmation shows every item in FR-29.
+  - The confirmation shows every item in FR-29, including Work's tools for a raise to Work.
   - After a raise the conversation opens at its new route, leaves the old Recents and appears in
     the new one. An old link redirects.
   - The copy is checked in zh-TW and en.
-- **Providers.** The mid-conversation tool delivery is checked with Claude Code and with Codex.
+- **Providers.** The mid-conversation tool delivery, through a new grant, is checked with
+  Claude Code and with Codex.
 
 ## Open Questions
 

@@ -5,7 +5,11 @@
 
 ## Status
 
-Accepted
+Accepted. Amended 2026-11-12 by
+[SPEC-142](../specs/SPEC-142-task-run-and-work-tools-in-conversations.md): Work's
+tools for a Work conversation have a second channel, the host's `cats` session
+MCP server, and on this ADR's path a new Project with a folder waits for the
+owner's card (A1). See the amendment under Decision.
 
 ## Context
 
@@ -89,6 +93,31 @@ Tool names should use Cats-owned names such as:
 - `work.external.link_issue`
 
 The exact schemas and first rollout are defined in SPEC-109 and PLAN-099.
+
+**Amendment (2026-11-12): a second channel in conversations (SPEC-142).** The
+agents of a conversation whose product scope is `work` reach Work's tools
+through the host's `cats` session MCP server
+([ADR-149](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md)
+D11, D12). This is the MCP projection the Decision above allowed for. The tools
+there are `get_work_items`, `find_projects` and six proposing tools, listed in
+the [Tool Call Registry](../tool-calls.md#work-conversation-tools).
+
+- Every write on that channel is a proposal. The owner confirms it on a card in
+  the conversation, and the server then performs it through Work's delegates:
+  capture, update, assign to a Project and Project create, plus two new Work
+  writes, capture into a Project and a Project's folder. A conversation's own
+  Project is a write to the conversation, not to Work.
+- Those tools are not limited by a Cat's capability profile, for reads or for
+  proposals. The gates are the conversation's level, an admin coordinator for
+  finding Projects and for proposals beyond the conversation, and the owner's
+  own turn for every proposal and for `find_projects`.
+- The decision path this ADR describes keeps its roles and flags, with one
+  change (SPEC-142 A1): `work.project.create` with a folder (`repoPath`) no
+  longer creates the Project. On the owner's own turn it posts a
+  `work.project.create` card that shows the folder and its warning. On any other
+  turn, or without the proposal service, nothing is created. Either way the
+  decision gets no result message. Without a folder the Project is created as
+  before.
 
 ## Consequences
 

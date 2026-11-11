@@ -9,7 +9,7 @@
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | Plan | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) |
-| Last updated | 2026-11-11 |
+| Last updated | 2026-11-12 |
 
 ## Summary
 
@@ -273,9 +273,9 @@ been created on Code or Work, or be stored with no recorded origin. It still
 needs a folder and must not be a direct lane or archived. A conversation this
 workflow creates is still created on Chat, with its own worktree, read-write
 access and tool whitelist. Reusing the current conversation makes the two
-workers participants of it, so on a Code conversation they receive what its
-participants receive, Code's session tools included. The card names the product
-of the conversation it would reuse.
+workers participants of it, so they receive what its participants receive: the
+`cats` server's tools for its product scope, Code's included on a Code or Work
+conversation. The card names the product of the conversation it would reuse.
 
 A proposal also records the source conversation's product scope (SPEC-141). A
 raise between the card and the owner's confirmation changes what the reused
@@ -485,11 +485,12 @@ conversation created on Chat unless it says what is new.
     was run.
 - **The card does not show what joining grants.** After a reuse the two Cats
   stay participants of the source conversation. Their next ordinary turn runs
-  in its folder at its access and permission mode, with Code's session tools on
-  a Code conversation, and the coordinator can address them with no further
-  confirmation. Adding a participant by hand gives the same. SPEC-139's join
-  card shows the folder, access, permission mode and Code's tools; this card
-  shows the two names, the intent, the expected output and the budget.
+  in its folder at its access and permission mode, with the `cats` server's
+  tools for its product scope (Code's on a Code or Work conversation), and the
+  coordinator can address them with no further confirmation. Adding a
+  participant by hand gives the same. SPEC-139's join card shows the folder,
+  access, permission mode and Code's tools; this card shows the two names, the
+  intent, the expected output and the budget.
 - **Text written by the coordinator can become the goal of a proposal.** A choice
   answer goes back to the Cat that asked, with the Cat's question and label as
   its body, and that body is the goal the read tools work from. New reach: on
@@ -533,9 +534,10 @@ conversation created on Chat unless it says what is new.
   the owner confirms. By the review's reading of Runtime, which it did not run,
   that commit runs with hooks enabled, and the reviewer's CLI starts in the
   implementer's worktree.
-- **The proposal's revision covers the origin and not the product scope.** There
-  is no gap while nothing can raise a scope. PLAN-134 Phase 5 makes the card's
-  binding cover the scope before the raise exists.
+- **The proposal's revision covered the origin and not the product scope.
+  Closed by PLAN-134 Phase 5, in the change that added the raise.** A proposal
+  now records the scope it was prepared at, and a confirmation after a raise is
+  refused as `stale_context` (see the K3 contract above).
 
 ### Collaboration responsibility map
 

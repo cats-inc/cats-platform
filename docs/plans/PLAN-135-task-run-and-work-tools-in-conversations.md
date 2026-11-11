@@ -313,12 +313,17 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
 
 ### Phase 6: Documents and acceptance
 
-- [ ] Amend SPEC-141 FR-8, FR-25, FR-29 and its Test Plan, ADR-126 and SPEC-123: the `cats`
+- [x] Amend SPEC-141 FR-8, FR-25, FR-29 and its Test Plan, ADR-126 and SPEC-123: the `cats`
       server goes to every level, a raise reaches a session through a new grant, and the raise
       confirmation lists the Work tools.
-- [ ] Amend ADR-105 and SPEC-109: their tools have a second channel, and proposal-only tools
+  - As built (2026-11-12): dated amendments to all of them; every current raise issues a new
+    grant, since each level adds tools. ADR-126 and SPEC-123 were amended once for both plans.
+- [x] Amend ADR-105 and SPEC-109: their tools have a second channel, and proposal-only tools
       are not limited by capability profile there.
-- [ ] Amend SPEC-126 and the terminology: a conversation's Project, and a Project's blockers.
+  - As built: both record the `cats` channel, no capability profile for its reads or
+    proposals, and A1's card for a new Project with a folder.
+- [x] Amend SPEC-126 and the terminology: a conversation's Project, and a Project's blockers.
+  - As built: SPEC-126 FR-12 and the terminology record FR-22 to FR-27, with Turn Run defined.
 - [ ] Provider acceptance: Claude Code and Codex each list the tools at all three levels and
       complete a read and a proposal, under the default policy and an interactive one.
 - [ ] Update ADR-149's status.

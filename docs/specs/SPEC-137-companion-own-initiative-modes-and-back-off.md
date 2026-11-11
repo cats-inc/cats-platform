@@ -9,6 +9,7 @@
 | **Reviewer** | Owner |
 | **Updates** | SPEC-124 FR-1 to FR-3 (the life profile), FR-18 and FR-19 (the heartbeat schedule), FR-21 (what a heartbeat reads) and FR-24 (the good night) |
 | **Matches** | Cats Bot (cats-bot) SPEC-011 FR-1, FR-7 to FR-10 and FR-13 to FR-15 |
+| **Amended** | 2026-11-12 by [SPEC-141](SPEC-141-conversation-product-scope.md) S1: FR-7 says "created on Chat" where it said "Chat conversation" |
 
 ## Summary
 
@@ -64,15 +65,20 @@ answer. Cats Desktop and Cats Bot behave and read alike.
    a channel bound to a group chat may come from someone else and does not count; neither does
    another Cat's message.
 7. FR-7: An `assist` heartbeat carries a review the server builds without the model: every
-   active Chat conversation the Cat is assigned to (its direct lane included; Work and Code
-   channels and other Cats' conversations excluded) whose owner last wrote within 14 days,
-   newest first, each with its last 6 owner, Cat and notice lines (the Cat's unprompted ones
-   marked), each line at most 240 characters and the whole at most 6,000. When the budget runs
-   short a conversation keeps its heading and the owner's last line, and the rest are counted
-   as left out. The prompt asks for one short message naming the unfinished item, one concrete
-   next step and an offer to continue, in the direct lane, and for `[quiet]` when nothing is
+   active conversation created on Chat, or stored with no recorded origin, that the Cat is
+   assigned to (its direct lane included; conversations created on Work or Code and other
+   Cats' conversations excluded) whose owner last wrote within 14 days, newest first, each
+   with its last 6 owner, Cat and notice lines (the Cat's unprompted ones marked), each line
+   at most 240 characters and the whole at most 6,000. When the budget runs short a
+   conversation keeps its heading and the owner's last line, and the rest are counted as left
+   out. The prompt asks for one short message naming the unfinished item, one concrete next
+   step and an offer to continue, in the direct lane, and for `[quiet]` when nothing is
    unfinished or the Cat would only repeat itself. It does not start the work, and it offers no
    album photo.
+   - Amended 2026-11-12 (SPEC-141 S1): it said "Chat conversation". The review reads where a
+     conversation was created, not its product scope, so a conversation raised from Chat to
+     Code or Work is still reviewed, and one created on Code or Work is not. FR-6's "Chat
+     conversation" uses the same rule.
 8. FR-8: An `assist` heartbeat with nothing to review, or whose fingerprint (the newest
    non-heartbeat message of each conversation in it) equals the one its last quiet review saw
    in this process, runs no turn (`skipped`) and draws the next regular delay.
