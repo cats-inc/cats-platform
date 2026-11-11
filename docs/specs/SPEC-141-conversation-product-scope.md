@@ -173,13 +173,15 @@ inventory of every `originSurface` reader.
 2. FR-2: A new conversation's scope is its origin, except that a direct lane's scope is `chat`
    whatever its origin (S6). The create request cannot name a scope: the server sets it, for a
    single conversation and for each parallel member.
-3. FR-3: A stored conversation without a scope gets one when loaded, and the value is written
-   on the next save. No other stored field changes.
+3. FR-3: A stored conversation whose scope is missing or invalid gets one when loaded, and the
+   value is written on the next save. No other stored field changes.
    - A direct lane loads as `chat`.
-   - Any other conversation loads at its origin's level. A stored scope that is invalid, or
-     lower than the origin, loads at the origin's level too.
+   - Any other conversation loads at its origin's level.
    - A conversation or a parallel group with no recorded origin is treated as `chat`. It then
      appears in Chat's Recents, where today it is hidden from every list (S4).
+   - A valid stored scope is kept as stored, even when it is lower than the origin. Loading
+     never raises a scope: a former lane with a Code origin stays at `chat` until the owner
+     raises it.
 4. FR-4: One state function raises the scope. No other code path writes the field after
    creation, and the function refuses an equal or lower level.
 5. FR-5: A direct lane or a parallel member cannot be raised (P3). A parallel group keeps its
@@ -370,8 +372,9 @@ These are this SPEC's choices, not owner decisions. The owner may change any of 
 - **The field.**
   - A new conversation's scope equals its origin, a new direct lane's is `chat`, and a create
     request that names a scope does not set it.
-  - Stored conversations without a scope load as FR-3 says, including an invalid or too-low
-    stored value and a no-origin group. Saving writes the value and changes nothing else.
+  - Stored conversations load as FR-3 says, including a missing or invalid stored value, a
+    no-origin group, and a valid scope below the origin, which is kept. Saving writes the value
+    and changes nothing else.
   - The raise function refuses an equal or lower level, a direct lane and a parallel member. A
     former lane and a former member can be raised. No other mutator changes the field.
 - **Readers, before D5.** With every scope equal to its origin, Recents, routes, redirects,

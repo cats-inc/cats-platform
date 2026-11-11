@@ -109,7 +109,8 @@ User-facing copy names the product, as the surface chip already does, and needs 
 
 - The scopes are ordered, `chat < code < work`, and each includes everything below it.
 - New Chat starts at `chat`, New Code at `code` and New Work at `work`. Existing conversations
-  take the level of their `originSurface`.
+  take the level of their `originSurface`. SPEC-141 proposes two exceptions: a conversation
+  with no recorded origin takes `chat` (S4), and so does every direct lane (S6).
 - So existing Work conversations gain Code's tools once this is implemented: the `cats` server,
   artifacts, the canvas and live previews. Live previews still need the Settings > Code switch,
   which is off by default (ADR-126).
@@ -235,9 +236,9 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   controls, the preview button, the work areas panel and the chips.
 - Each of the roughly 50 files that mention `originSurface` must be sorted into "follows
   product scope" (tool and instruction delivery, and Recents and routes under D7) or "stays
-  with the origin" (where the conversation started). That includes the `code_thread` fallback
-  in `resolveTaskProductBinding` and the owner actions' source path
-  ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
+  with the origin" (where the conversation started). That includes the owner actions' source
+  path ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
+  PLAN-134 holds the sorted list. Readers of the Core conversation kind do not change.
 - A raise moves the conversation out of the Recents the owner last saw it in (D7). The SPEC
   must make the move visible, so the conversation is not lost.
 - It changes a frozen shared contract, the channel state in

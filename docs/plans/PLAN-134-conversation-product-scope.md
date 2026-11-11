@@ -37,8 +37,9 @@ No version bump or publication is part of this plan.
       mirrors and the mobile summary type. The create input types do not get the field.
 - [ ] Creation stamps it: the validated origin, or `chat` for a direct lane, for a single
       conversation and for each parallel member.
-- [ ] Loading derives it as FR-3 says, including an invalid or too-low stored value, a direct
-      lane and a no-origin conversation or group.
+- [ ] Loading derives it as FR-3 says when the stored value is missing or invalid, for a direct
+      lane and for a no-origin conversation or group. A valid stored value is kept, so loading
+      never raises a scope.
 - [ ] Add the one raise function to the Chat model. It refuses an equal or lower level, a
       direct lane and a parallel member.
 - [ ] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
@@ -106,6 +107,8 @@ previews and work areas appear under `/work`.
       first conversation route that checks a role.
 - [ ] The system line, with event metadata that names the old and the new level, and the update
       events.
+- [ ] Confirm how a turn whose session was lost is handled today. FR-25 relies on it for a
+      failed recycle, and this plan has not read that code.
 - [ ] Tests that a session created without the `cats` server gains it on its next send, that a
       running turn keeps its tools, and that a failed recycle leaves the scope raised.
 - [ ] Tests that a prepared and a running SPEC-118 collaboration are unaffected.
@@ -137,7 +140,11 @@ previews and work areas appear under `/work`.
 - [ ] If S1 stands, reword SPEC-118 and SPEC-137 FR-7 from "Chat conversation" to "created on
       Chat".
 - [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10, and make its join card's binding cover the
-      scope. Do this after #414 lands, because it edits the same file.
+      scope. PLAN-133 is building SPEC-139 now, in another session.
+  - Its join slice binds the card to `collaborationExecutionRevision`, which FR-7 keeps free of
+    the scope, and names Code's tools for Code only.
+  - Whichever lands second, PLAN-133's join slice or this plan's Phase 3, updates the hint, the
+    card's text and the binding. This plan does not edit SPEC-139 or PLAN-133 before then.
 - [ ] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
       that describe records the code does not create.
 - [ ] `docs/tool-calls.md`: who receives the `cats` tools.
@@ -308,6 +315,7 @@ Runtime client that carries the Code tools wrapper.
 | A frozen shared contract changes | Medium | Integration review in Phase 1 |
 | A no-origin conversation becomes visible in Chat's Recents | Low | Stated as S4 for the owner; covered by a test |
 | A direct lane created outside Chat loses Code's tools | Low | Stated as S6 for the owner; covered by a test |
+| PLAN-133 builds SPEC-139's join card while this plan changes what joining a Work conversation grants | Medium | Whichever lands second updates the join hint, the card's text and its binding (Phase 6) |
 
 ---
 
