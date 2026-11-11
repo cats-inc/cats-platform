@@ -277,6 +277,13 @@ workers participants of it, so on a Code conversation they receive what its
 participants receive, Code's session tools included. The card names the product
 of the conversation it would reuse.
 
+A proposal also records the source conversation's product scope (SPEC-141). A
+raise between the card and the owner's confirmation changes what the reused
+conversation's workers receive, so the confirmation is refused as
+`stale_context`. A proposal stored before the scope was recorded reads as its
+origin's level. An admitted collaboration, queued or running, does not check the
+scope and carries on after a raise.
+
 The owner's answer to a proposal card is that answer and nothing else. Its body
 is the card's own question and the chosen label, and in English those words
 ("Execute this scope and budget?", "Execute proposal") match Work's

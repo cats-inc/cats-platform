@@ -1233,3 +1233,41 @@ test('a confirmation in a Work conversation with an open Work Item runs the work
     });
   }
 });
+
+test('SPEC-141 Phase 5: a raise after the proposal makes the owner\'s confirmation stale', async () => {
+  // The card named the product the conversation lived on, and a raise changes what the reused
+  // conversation's workers receive. The proposal records the scope it was prepared at.
+  const h = fixture({ intent: 'reuse_current' }); const c = clients(h);
+  const card = h.state.channels.find(channel => channel.id === h.channelId).messages
+    .find(message => message.id === h.proposalMessageId);
+  assert.equal(card.metadata.collaborationPreparation.preparation.productScope, 'chat');
+  const raised = structuredClone(h.state);
+  raised.channels.find(channel => channel.id === h.channelId).productScope = 'code';
+  const store = new MemoryChatStore(raised);
+  await assert.rejects(service(h, c, store), /stale_context/u);
+  assert.equal((await intents(store)).length, 0);
+  assert.equal(c.calls.create.length, 0);
+
+  // A proposal stored before the scope was recorded reads as its origin's level.
+  const old = fixture({ intent: 'reuse_current' }); const oc = clients(old);
+  delete old.state.channels.find(channel => channel.id === old.channelId).messages
+    .find(message => message.id === old.proposalMessageId).metadata.collaborationPreparation.preparation.productScope;
+  const admitted = await service(old, oc);
+  assert.equal((await intents(admitted.store)).length, 1, 'still admitted at its origin\'s level');
+});
+
+test('SPEC-141 Phase 5: a running collaboration is unaffected by a raise', async () => {
+  const h = fixture({ intent: 'reuse_current' }); const c = clients(h);
+  const s = await service(h, c);
+  assert.equal((await intents(s.store)).length, 1);
+  // The owner raises the source conversation while the workflow runs.
+  const state = await s.store.read();
+  state.channels.find(channel => channel.id === h.channelId).productScope = 'work';
+  await s.store.write(state);
+  // The running intent's own checks do not read the scope, so it carries on.
+  await s.execute(conversation, {});
+  await s.execute(participants, {});
+  const inspected = (await s.execute(inspectWork, {})).result;
+  assert.equal(inspected.membershipVerified, true);
+  assert.equal(inspected.channelId, h.channelId);
+});

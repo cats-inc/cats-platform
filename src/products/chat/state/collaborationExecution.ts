@@ -10,6 +10,8 @@ import { syncCoreStateWithChatState } from './core-projection/index.js';
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { isCatPartOfChatProduct } from '../shared/directMessageSelectors.js';
+import { resolveChannelProductScope } from '../shared/channelTopology.js';
+import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { preflightDevelopmentSkill } from '../../../platform/development/developmentSkill.js';
 import { collaborationExecutionRevision, resolveCollaborationOwnerChoice,
@@ -145,6 +147,11 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
     const proposal = choice.proposal;
     const source = requireChannel(chat, options.channelId);
     if (proposal.executionRevision !== collaborationExecutionRevision(chat, options.channelId)) throw new Error('stale_context');
+    // SPEC-141: a raise changes what the reused conversation's workers receive, and the card named
+    // the product the owner saw. A proposal stored before it recorded the scope was at its
+    // origin's level. Only the confirmation is checked; a running collaboration is unaffected.
+    const preparedScope = proposal.productScope ?? normalizePlatformSurface(proposal.originSurface, 'chat');
+    if (resolveChannelProductScope(source) !== preparedScope) throw new Error('stale_context');
     // The source needs a folder and must not be a direct lane or archived, wherever it was
     // created (SPEC-141 FR-19).
     if (!source.repoPath?.trim() || source.channelKind === 'direct_message'

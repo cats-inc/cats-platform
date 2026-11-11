@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
+import { CATS_CORE_STATE_VERSION } from '../build/server/core/types.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import { notifyStreamTargetChanged } from '../build/server/products/chat/api/resources/streamTargetSignal.js';
@@ -4367,7 +4368,7 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
-    assert.equal(statePayload.version, 6);
+    assert.equal(statePayload.version, CATS_CORE_STATE_VERSION);
     assert.equal(statePayload.ownerProfile.actorId, 'actor-owner');
     assert.ok(Array.isArray(statePayload.actors));
     assert.ok(Array.isArray(statePayload.conversations));

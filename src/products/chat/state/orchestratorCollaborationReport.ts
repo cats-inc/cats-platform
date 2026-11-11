@@ -60,10 +60,11 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
   }
   const clean = (value: string) => value.replace(/[\r\n]/gu, ' ');
   const preparation = report.preparation;
-  // The card names the product of the conversation it would reuse (SPEC-141 FR-19). A
-  // proposal stored before that field carried anything else says Chat, which it was.
+  // The card names the product the conversation it would reuse lives on: its scope when the
+  // proposal recorded one (SPEC-141), else its origin (FR-19). A proposal stored before either
+  // field carried anything else says Chat, which it was.
   const reusedProduct = preparation?.status === 'prepared'
-    ? ({ chat: 'Chat', code: 'Code', work: 'Work' } as const)[preparation.originSurface] ?? 'Chat'
+    ? ({ chat: 'Chat', code: 'Code', work: 'Work' } as const)[preparation.productScope ?? preparation.originSurface] ?? 'Chat'
     : 'Chat';
   let body: string;
   if (report.status === 'prepared' && preparation?.status === 'prepared') {

@@ -4,6 +4,7 @@ import type { ChatState } from '../../api/contracts.js';
 import {
   compareProductScopes,
   isProductScope,
+  PRODUCT_SCOPES,
   type ProductScope,
 } from '../../../../shared/productScope.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
@@ -54,31 +55,49 @@ export function raiseChannelProductScope(
 ): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  if (!isProductScope(target)) {
-    throw new ProductScopeRaiseError('invalid_scope', 'The product scope must be chat, code or work.');
+  const refusal = productScopeRaiseRefusal(nextState, channelId, target);
+  if (refusal) {
+    throw new ProductScopeRaiseError(refusal, PRODUCT_SCOPE_RAISE_REFUSAL_MESSAGES[refusal](
+      resolveChannelProductScope(channel)));
   }
-  if (channel.status === 'archived') {
-    throw new ProductScopeRaiseError('archived', 'An archived conversation cannot be raised.');
-  }
-  if (isDirectLaneChannel(channel)) {
-    throw new ProductScopeRaiseError('direct_lane', 'A direct lane stays at chat.');
-  }
-  if (isParallelMember(nextState, channelId)) {
-    throw new ProductScopeRaiseError(
-      'parallel_member',
-      'A conversation in a parallel group cannot be raised.',
-    );
-  }
-  const current = resolveChannelProductScope(channel);
-  if (compareProductScopes(target, current) <= 0) {
-    throw new ProductScopeRaiseError(
-      'not_wider',
-      `The conversation is already at ${current}; a product scope can only be raised.`,
-    );
-  }
-  channel.productScope = target;
+  channel.productScope = target as ProductScope;
   channel.updatedAt = isoAt(now);
   return nextState;
+}
+
+const PRODUCT_SCOPE_RAISE_REFUSAL_MESSAGES: Record<ProductScopeRaiseRefusal, (current: ProductScope) => string> = {
+  invalid_scope: () => 'The product scope must be chat, code or work.',
+  archived: () => 'An archived conversation cannot be raised.',
+  direct_lane: () => 'A direct lane stays at chat.',
+  parallel_member: () => 'A conversation in a parallel group cannot be raised.',
+  not_wider: (current) => `The conversation is already at ${current}; a product scope can only be raised.`,
+};
+
+/**
+ * SPEC-141 D2: a scope is never lowered. A writer that read the whole chat state before a raise
+ * and writes its copy back, such as a continuation replay or a setup route, would otherwise put
+ * the conversation back at its old level, and loading keeps a valid stored value as it is
+ * (FR-3). The store keeps the wider stored value instead. No caller lowers a scope on purpose.
+ *
+ * Returns the incoming state with those scopes kept, and the conversations it kept them for.
+ */
+export function keepRaisedProductScopes(
+  stored: ChatState,
+  incoming: ChatState,
+): { state: ChatState; keptChannelIds: string[] } {
+  const storedById = new Map(stored.channels.map((channel) => [channel.id, channel]));
+  const keptChannelIds: string[] = [];
+  let next = incoming;
+  incoming.channels.forEach((channel, index) => {
+    const previous = storedById.get(channel.id);
+    if (!previous || !isProductScope(previous.productScope)) return;
+    const storedScope = resolveChannelProductScope(previous);
+    if (compareProductScopes(storedScope, resolveChannelProductScope(channel)) <= 0) return;
+    if (next === incoming) next = { ...incoming, channels: [...incoming.channels] };
+    next.channels[index] = { ...channel, productScope: previous.productScope };
+    keptChannelIds.push(channel.id);
+  });
+  return { state: next, keptChannelIds };
 }
 
 /**
@@ -105,5 +124,41 @@ export function productScopeRaiseRevision(state: ChatState, channelId: string): 
     workspaceKind: channel.runtimeWorkspaceKind ?? null,
     workspaceAccess: channel.runtimeWorkspaceAccess ?? null,
     permissionMode: channel.runtimePermissionMode ?? null,
+    // The permission chip is drawn from the mode and the execution policy. The policy's values
+    // are listed in a fixed order: the stored object's key order is not normalized.
+    executionPolicy: executionPolicyRevisionValues(channel.runtimeExecutionPolicy),
   })).digest('hex');
+}
+
+function executionPolicyRevisionValues(
+  policy: ChatState['channels'][number]['runtimeExecutionPolicy'],
+): unknown[] | null {
+  if (!policy) return null;
+  return policy.mode === 'provider'
+    ? ['provider', policy.version, policy.constraints.maxAccess, policy.constraints.network]
+    : ['explicit', policy.version, policy.access, policy.network, policy.approval];
+}
+
+/**
+ * SPEC-141 FR-23: why a raise to `target` would be refused now, or null when it would go
+ * through. The read route reports it, and the raise rechecks it inside the store's lock.
+ */
+export function productScopeRaiseRefusal(
+  state: ChatState,
+  channelId: string,
+  target: unknown,
+): ProductScopeRaiseRefusal | null {
+  const channel = requireChannel(state, channelId);
+  if (!isProductScope(target)) return 'invalid_scope';
+  if (channel.status === 'archived') return 'archived';
+  if (isDirectLaneChannel(channel)) return 'direct_lane';
+  if (isParallelMember(state, channelId)) return 'parallel_member';
+  if (compareProductScopes(target, resolveChannelProductScope(channel)) <= 0) return 'not_wider';
+  return null;
+}
+
+/** The levels a conversation could be raised to, narrowest first. */
+export function widerProductScopes(state: ChatState, channelId: string): ProductScope[] {
+  const current = resolveChannelProductScope(requireChannel(state, channelId));
+  return PRODUCT_SCOPES.filter((scope) => compareProductScopes(scope, current) > 0);
 }

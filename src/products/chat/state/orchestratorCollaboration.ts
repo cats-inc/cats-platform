@@ -10,7 +10,8 @@ import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { isCatPartOfChatProduct } from '../shared/directMessageSelectors.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { isDirectLaneChannel, resolveChannelProductScope } from '../shared/channelTopology.js';
+import type { ProductScope } from '../../../shared/productScope.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
 import { collaborationExecutionRevision } from './collaborationExecutionSurface.js';
@@ -94,6 +95,12 @@ export interface CollaborationProposal {
   goalTruncated: boolean;
   /** The product the source conversation was created on (SPEC-141 FR-19). */
   originSurface: PlatformSurfaceId;
+  /**
+   * The source conversation's product scope when the proposal was prepared (SPEC-141). The
+   * owner's confirmation is refused when it has changed since. Absent on proposals stored before
+   * it was recorded, which read as their origin's level.
+   */
+  productScope?: ProductScope;
   conversation: { intent: 'reuse_current' | 'create'; sourceConversationId: string };
   implementer: CollaborationCandidate;
   reviewer: CollaborationCandidate;
@@ -143,6 +150,8 @@ export interface CollaborationSnapshot {
     channelId: string; conversationId: string;
     /** The product the conversation was created on; `chat` when none was recorded. */
     originSurface: PlatformSurfaceId;
+    /** The conversation's product scope (SPEC-141). */
+    productScope: ProductScope;
     topology: 'chat_channel'; status: string; workspaceConfigured: boolean;
     participantIds: string[]; participantsTruncated: boolean;
     routingStatus: string | null; workState: 'not_inspected';
@@ -180,6 +189,7 @@ export function collaborationSnapshot(
   const context: CollaborationSnapshot['context'] = {
     channelId, conversationId: resolveChannelCanonicalIdentity(state, channelId).conversationId,
     originSurface: normalizePlatformSurface(channel.originSurface, 'chat'),
+    productScope: resolveChannelProductScope(channel),
     topology: 'chat_channel', status: channel.status,
     workspaceConfigured: Boolean(channel.repoPath || channel.chatCwd),
     participantIds: assignments.slice(0, 32).map((entry) => entry.participantId),
@@ -307,6 +317,7 @@ export function executeCollaborationRead(input: {
   return { status: 'applied', result: {
     status: 'prepared', revision: snapshot.revision, goal: input.goal.slice(0, 2000),
     goalTruncated: input.goal.length > 2000, originSurface: snapshot.context.originSurface,
+    productScope: snapshot.context.productScope,
     conversation: { intent: value.conversationIntent as 'reuse_current' | 'create',
       sourceConversationId: snapshot.context.conversationId },
     implementer: selected[0]!, reviewer: selected[1]!,

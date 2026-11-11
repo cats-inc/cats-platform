@@ -394,8 +394,11 @@ test('SPEC-141 FR-19: the snapshot and the proposal carry the product the conver
     const fresh = { ...prepared, conversation: { ...prepared.conversation, intent: 'create' } };
     assert.ok(card(fresh, 'en').includes('Propose a new Chat conversation.'), originSurface);
     assert.ok(card(fresh, 'zh-TW').includes('建議建立新的 Chat 對話。'), originSurface);
-    const { originSurface: _unrecorded, ...stored } = prepared;
+    const { originSurface: _unrecorded, productScope: _unrecordedScope, ...stored } = prepared;
     assert.ok(card(stored, 'en').includes('Propose reusing this Chat conversation.'), originSurface);
+    // The card names the scope the proposal recorded, which a raise can put above the origin.
+    assert.equal(prepared.productScope, originSurface);
+    assert.ok(card({ ...prepared, productScope: 'work' }, 'en').includes('Propose reusing this Work conversation.'));
 
     // The conditions that are not about the origin still close the read.
     const lane = structuredClone(h.state);
