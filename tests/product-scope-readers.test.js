@@ -412,15 +412,17 @@ test('the history listing copies the scope beside the origin', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// FR-8: tools, still for code only
+// FR-8: tools for code and work
 // ---------------------------------------------------------------------------------------------
 
-test("Code's tools go to a conversation whose scope is code", () => {
+test("Code's tools go to a conversation whose scope is code or work", () => {
+  // PLAN-134 Phase 4 (ADR-149 D5): Work includes Code. Until then this test asserted that only
+  // a `code` scope received them.
   const { state, ids, expected } = fixture();
   const enricher = createCodeAgentToolsInvocationEnricher();
   for (const key of [...ROOMS, ...LANES]) {
     const contribution = enricher.enrich(channelOf(state, ids[key]), { context: {} }, { phase: 'session_create' });
-    assert.equal(contribution !== null, expected[key] === 'code', key);
+    assert.equal(contribution !== null, expected[key] === 'code' || expected[key] === 'work', key);
     if (contribution) {
       assert.ok(contribution.context.labels.includes('product:code'), key);
     }
@@ -463,6 +465,15 @@ test("a Boss Cat's join request names the scope's product and whether joining br
   assert.equal(raised.details.conversation.surface, 'code');
   assert.equal(raised.details.grants.codeTools, true);
   assert.match(JSON.stringify(raised.notice.metadata), /"surface":"code"/u);
+
+  // Work includes Code (ADR-149 D5, PLAN-134 Phase 4): joining a Work conversation brings them.
+  const toWork = request(raiseChannelProductScope(state, targetId, 'work', LATER));
+  assert.equal(toWork.details.conversation.surface, 'work');
+  assert.equal(toWork.details.grants.codeTools, true);
+  const onWork = structuredClone(state);
+  channelOf(onWork, targetId).originSurface = 'work';
+  delete channelOf(onWork, targetId).productScope;
+  assert.equal(request(onWork).details.grants.codeTools, true, 'created on Work');
 
   // A Code origin and a chat scope, as a lane created on Code keeps after it stops being one:
   // joining brings no Code tools.

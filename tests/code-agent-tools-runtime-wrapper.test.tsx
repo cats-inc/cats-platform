@@ -184,3 +184,83 @@ test('after a Platform restart a Code send issues a fresh grant without the poli
   await wrapped.sendMessage('rt-restarted', 'next', { context: MARKER_CONTEXT });
   assert.ok(calls.send[1]!.instructions?.includes(CODE_AGENT_PREVIEW_POLICY));
 });
+
+test('SPEC-141 FR-8: Work conversations get the marker too, and a direct lane never does', () => {
+  const enricher = createCodeAgentToolsInvocationEnricher();
+  const phase = { phase: 'session_create' as const };
+  // Work includes Code (ADR-149 D5): by the stored scope, or by the origin when none is stored.
+  for (const channel of [
+    { originSurface: 'work', id: 'work-origin', chatCwd: '/workspace' },
+    { originSurface: 'chat', productScope: 'work', id: 'raised-to-work', chatCwd: '/workspace' },
+    { originSurface: 'chat', productScope: 'code', id: 'raised-to-code', chatCwd: '/workspace' },
+  ]) {
+    const enriched = enricher.enrich(channel, {}, phase);
+    assert.equal(readCodeAgentToolsInvocationMarker(enriched?.context)?.channelId, channel.id, channel.id);
+    assert.ok(enriched?.context?.labels?.includes('product:code'), channel.id);
+  }
+  // A direct lane reads as chat whatever it stores. Image tools use the name `cats` in a
+  // companion's lane, so Code's server must never be offered there.
+  for (const lane of [
+    { originSurface: 'work', channelKind: 'direct_message', id: 'lane-1' },
+    { originSurface: 'code', productScope: 'work', roomRouting: { mode: 'direct_message' }, id: 'lane-2' },
+  ]) {
+    assert.equal(enricher.enrich(lane, {}, phase), null, lane.id);
+  }
+  assert.equal(enricher.enrich({ originSurface: 'work', productScope: 'chat', id: 'kept-at-chat' }, {}, phase), null);
+});
+
+test("Code's servers join the call's other servers on create, send and resume", async () => {
+  const { wrapper } = setup();
+  const { client, calls } = fakeClient({ createReport: DELIVERED });
+  const wrapped = wrapper.wrapClient(client);
+  const desktop = { name: 'cats-desktop', transport: 'http' as const, url: 'http://127.0.0.1:1/desktop',
+    auth: { kind: 'bearer_env' as const, token: 'desktop-token' } };
+  const stale = { name: 'cats', transport: 'http' as const, url: 'http://127.0.0.1:1/stale',
+    auth: { kind: 'bearer_env' as const, token: 'stale-token' } };
+  const names = (servers?: Array<{ name: string }>) => (servers ?? []).map((server) => server.name);
+
+  await wrapped.createSession({ provider: 'claude', context: MARKER_CONTEXT, mcpServers: [desktop] } as RuntimeSessionCreateInput);
+  assert.deepEqual(names(calls.create[0]!.mcpServers), ['cats-desktop', 'cats']);
+  await wrapped.sendMessage('rt-1', 'hello', { context: MARKER_CONTEXT, mcpServers: [desktop, stale] });
+  assert.deepEqual(names(calls.send[0]!.mcpServers), ['cats-desktop', 'cats'], 'its own name replaces a stale entry');
+  assert.equal(calls.send[0]!.mcpServers![1]!.url, ENDPOINT);
+  await wrapped.resumeSession!('rt-1', { mcpServers: [desktop] });
+  assert.deepEqual(names(calls.resume[0]!.mcpServers), ['cats-desktop', 'cats']);
+
+  // An explicit empty list from an outer wrapper, which drops its own server, leaves only Code's.
+  await wrapped.sendMessage('rt-1', 'again', { context: MARKER_CONTEXT, mcpServers: [] });
+  assert.deepEqual(names(calls.send[1]!.mcpServers), ['cats']);
+  await wrapped.sendMessage('rt-1', 'and again', { context: MARKER_CONTEXT });
+  assert.deepEqual(names(calls.send[2]!.mcpServers), ['cats']);
+});
+
+test('SPEC-141 FR-25: a session that gains the server is bound to the folder it works in', async () => {
+  const observed = (session: Record<string, unknown> | Error) => {
+    const { client, calls } = fakeClient();
+    (client as unknown as { observeSession: (id: string) => Promise<unknown> }).observeSession = async (id: string) => {
+      if (session instanceof Error) throw session;
+      return { session: { id, ...session } };
+    };
+    return { client, calls };
+  };
+  const tokenOf = (input?: RuntimeSendMessageInput) => {
+    const server = input?.mcpServers?.find((entry) => entry.name === 'cats');
+    return server?.auth.kind === 'bearer_env' ? server.auth.token : '';
+  };
+  // A Work conversation's session that started before Work included Code: its first send after
+  // the change attaches the server, bound to the session's worktree, not the conversation's folder.
+  for (const [session, expected] of [
+    [{ cwd: '/repo', workspace: { kind: 'worktree', runtimeCwd: '/runtime/worktrees/rt-old', sourceCwd: '/repo' } }, '/runtime/worktrees/rt-old'],
+    [{ cwd: '/runtime/sandbox/rt-old' }, '/runtime/sandbox/rt-old'],
+    [{}, null],
+    [new Error('runtime unavailable'), null],
+  ] as const) {
+    const { grants, wrapper } = setup();
+    const { client, calls } = observed(session as Record<string, unknown> | Error);
+    await wrapper.wrapClient(client).sendMessage('rt-old', 'hello', { context: MARKER_CONTEXT });
+    const grant = grants.resolve(tokenOf(calls.send[0]));
+    assert.equal(grant?.runtimeSessionId, 'rt-old');
+    assert.equal(grant?.binding.workspacePath, expected, JSON.stringify(session instanceof Error ? 'error' : session));
+    assert.equal(grant?.binding.channelId, 'channel-1');
+  }
+});

@@ -137,7 +137,7 @@ export function createCodeConversationPreviews(options: CodeConversationPreviews
     async restartArtifact(artifactId) {
       const supervisor = options.supervisor;
       if (!supervisor) {
-        return rejected('previews_unavailable', 'Cats Code previews are not available on this host.');
+        return rejected('previews_unavailable', 'Cats previews are not available on this host.');
       }
       const found = await findArtifact(artifactId);
       if (!found) return rejected('preview_not_found', 'That artifact is not a supervised preview.');

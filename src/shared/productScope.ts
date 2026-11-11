@@ -18,6 +18,14 @@ export function compareProductScopes(left: ProductScope, right: ProductScope): n
 }
 
 /**
+ * Whether a conversation at `scope` has everything `level` gives (ADR-149 D5): Work includes
+ * Code, and both include Chat. A value that is not a scope includes nothing.
+ */
+export function productScopeIncludes(scope: unknown, level: ProductScope): boolean {
+  return isProductScope(scope) && compareProductScopes(scope, level) >= 0;
+}
+
+/**
  * The scope a conversation gets when none is stored (FR-2, FR-3): a direct lane is `chat`
  * whatever its origin; any other conversation takes its origin's level, or `chat` when no
  * origin was recorded.

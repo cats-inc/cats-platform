@@ -1,5 +1,6 @@
 import type { RuntimeClient, RuntimeObservedSessionPayload, RuntimeSessionStreamEvent } from '../../../runtime/client.js';
 import { readRuntimeWorkspaceActivity, type RuntimeWorkspaceActivitySnapshot } from '../../../runtime/workspaceActivity.js';
+import { productScopeIncludes } from '../../../shared/productScope.js';
 import type { ConversationExecutionInspector, ConversationExecutionInspection,
   ConversationExecutionAttempt, ConversationExecutionParticipant, ConversationExecutionBinding } from '../../../shared/conversationExecutionInspection.js';
 import type { CodeConversationWorkAreas, CodeParticipantWorkAreas, CodeWorkAreaCheckout } from '../shared/workAreas.js';
@@ -55,7 +56,8 @@ export function createCodeWorkAreasService(options: {
 
   async function contextFor(id: string) {
     const context = await options.inspector.read(id);
-    if (!context || !context.owned || context.scope !== 'code' || context.conversationId !== id) {
+    // Code serves the work areas of a conversation on Code or Work (ADR-149 D5).
+    if (!context || !context.owned || !productScopeIncludes(context.scope, 'code') || context.conversationId !== id) {
       for (const cacheKey of cache.keys()) if (JSON.parse(cacheKey)[0] === id) cache.delete(cacheKey);
       return null;
     }

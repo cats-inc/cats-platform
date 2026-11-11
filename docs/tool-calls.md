@@ -563,19 +563,32 @@ rather than to a later hook that happened to receive the merged context.
 Assistant metadata contributions are stored under each enricher id rather than
 flattened into Chat metadata.
 
-When a conversation's product scope is `code` (it starts as the
-conversation's `originSurface`, and a direct message is always `chat`; see
+When a conversation's product scope is `code` or `work` (Work includes Code,
+ADR-149 D5; the scope starts as the conversation's `originSurface`, and a direct
+message is always `chat`; see
 [SPEC-141](specs/SPEC-141-conversation-product-scope.md)), the
 Code agent-tools enricher adds a secret-free marker at
-`context.metadata.codeAgentTools` (`channelId`, `workspacePath`) on session
-create and message send.
+`context.metadata.codeAgentTools` (`channelId`, `workspacePath`) and the
+`product:code` label on session create and message send. The label names
+Code's tools, not the product the conversation lives on. Only a conversation's
+own turns and session starts pass through the enricher; Work's supervised runs,
+schedules and the golden path use their own sessions and get no `cats` server.
 
 The Code runtime-client wrapper sits inside the supervision boundary. It turns
 that marker into the `cats` MCP server:
 
 - It issues a session grant before create, because the CLI connects while it
-  spawns, and binds the grant to the returned runtime session id.
-- It sends `mcpServers` on create, send and resume.
+  spawns, and binds the grant to the returned runtime session id and the folder
+  Runtime resolved for it.
+- A session that has no grant yet gets one on its next send: after a Platform
+  restart, or a session that started before its conversation had Code's tools,
+  such as a Work conversation's session from before Work included Code. That
+  grant is bound to the folder the session works in, which Platform reads from
+  Runtime (`workspace.runtimeCwd`, else `cwd`), and to no folder when Runtime
+  cannot say, so the tools that need one refuse (SPEC-141 FR-25).
+- It sends `mcpServers` on create, send and resume, keeping the servers the call
+  already carries, such as `cats-desktop`, and replacing only entries named like
+  its own.
 - It adds the SPEC-123 preview policy to a turn's instructions only while
   Runtime reports the server as `delivered` for that session.
 - It revokes the grant on close and delete.

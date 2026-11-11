@@ -155,7 +155,8 @@ board, nothing else.
    「不允許」, 「每次問我」 and 「允許」. The default is 「每次問我」.
    - It covers Chat, Code and Work conversations alike.
    - Its hint says that joining a Code or Work conversation grants that conversation's
-     workspace, and for Code a shell.
+     workspace and the Code tools, which include a shell. Until SPEC-141's Phase 4 the Code
+     tools came with a Code conversation only; Work includes Code (ADR-149 D5).
    - It is evaluated when the join runs, not when it is requested.
 9. FR-9: A Boss Cat gets `chat.boss.join_conversation`, under FR-1, with a conversation id
    present in that session's board.
@@ -168,8 +169,8 @@ board, nothing else.
       and never enters any model context or transport mirror. It shows:
       - the conversation's title, surface and participants;
       - what joining grants: the conversation's workspace (repository path, read-only or
-        read-write access, permission mode), and for Code the Code tools, which include a
-        shell;
+        read-write access, permission mode), and for Code and Work the Code tools, which
+        include a shell;
       - what the Boss Cat brings in: its provider, its MCP and skill profile, and its companion
         memory;
       - how much history it will see: the last 8 messages before it joins, then everything

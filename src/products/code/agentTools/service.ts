@@ -81,7 +81,7 @@ const DECLARE_TOOL: McpToolDefinition = {
 
 const CLEAR_TOOL: McpToolDefinition = {
   name: ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.name,
-  description: 'Close the preview canvas beside this Cats Code conversation.',
+  description: 'Close the preview canvas beside this conversation.',
   inputSchema: ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.inputSchema as unknown as Record<string, unknown>,
 };
 

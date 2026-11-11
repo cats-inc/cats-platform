@@ -11,6 +11,7 @@ import { createSupervisedToolRegistry } from '../../../platform/supervision/tool
 import { createToolBoundary, createInMemoryToolEvidenceSink } from '../../../platform/supervision/toolBoundary.js';
 import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from '../../../platform/supervision/contracts.js';
 import type { ConversationSessionDelegate } from '../../../shared/conversationSessionDelegate.js';
+import { productScopeIncludes } from '../../../shared/productScope.js';
 import { validateRuntimeSessionPolicyInput } from '../../../shared/runtimeSessionPolicy.js';
 import { CODE_SESSION_OPERATION, type CodeSessionDraft, type CodeSessionInspection,
   type CodeSessionOpenRequest, type CodeSessionOutcome } from '../shared/codeSessionOperation.js';
@@ -117,7 +118,8 @@ export function createCodeSessionOperationService(options: {
         const current = readIntent(core, intent.requestId);
         return !signal.aborted && core.ownerProfile.actorId === intent.ownerActorId
           && current?.digest === intent.digest && current.channelId === intent.channelId && current.sessionId === intent.sessionId
-          && Boolean(channel && channel.scope === 'code' && !channel.archived
+          // A Code session stays one when its conversation lives on Work (ADR-149 D5).
+          && Boolean(channel && productScopeIncludes(channel.scope, 'code') && !channel.archived
             && channel.cwd === intent.cwd && channel.workspaceKind === draft.policy.workspaceKind
             && channel.workspaceAccess === draft.policy.workspaceAccess
             && isDeepStrictEqual(channel.executionPolicy, draft.policy.executionPolicy)

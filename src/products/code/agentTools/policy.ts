@@ -5,7 +5,7 @@
  * behind ToolSearch, so the full tool ids are named.
  */
 export const CODE_AGENT_PREVIEW_POLICY = [
-  'Cats Code shows previews in a canvas beside this conversation, through the `cats` MCP server',
+  'Cats shows previews in a canvas beside this conversation, through the `cats` MCP server',
   '(in Claude Code: mcp__cats__show_in_canvas, mcp__cats__start_dev_preview, mcp__cats__get_preview_status,',
   'mcp__cats__stop_preview, mcp__cats__clear_canvas, mcp__cats__declare_artifact).',
   'When your work produces something a person looks at (a web page or web app, an HTML file,',

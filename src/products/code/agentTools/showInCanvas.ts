@@ -37,7 +37,7 @@ import { confirmCanvasPresentation } from './canvasConfirmation.js';
 export const SHOW_IN_CANVAS_TOOL: McpToolDefinition = {
   name: 'show_in_canvas',
   description: [
-    'Open something a person should look at in the preview canvas beside this Cats Code conversation.',
+    'Open something a person should look at in the preview canvas beside this conversation.',
     'Pass exactly one of: path (a workspace HTML page, a directory with index.html, an image, a PDF,',
     'a Markdown document or a text file),',
     'url (an https page, shown without scripts) or artifactId.',
@@ -119,7 +119,7 @@ async function showWorkspacePath(
   context: ShowInCanvasContext,
 ): Promise<McpToolCallResult> {
   if (!context.supervisor) {
-    return failure({ code: 'previews_unavailable', message: 'Cats Code previews are not available on this host.' });
+    return failure({ code: 'previews_unavailable', message: 'Cats previews are not available on this host.' });
   }
   const workspace = context.binding.workspacePath;
   if (!workspace) {

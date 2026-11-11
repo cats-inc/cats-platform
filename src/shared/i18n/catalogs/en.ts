@@ -598,7 +598,7 @@ export const enCatalog: MessageCatalog = {
   'settings.shell.subsectionBossCat': 'Boss Cats',
   'settings.bossCat.joinTitle': 'Boss Cats joining other conversations',
   'settings.bossCat.joinDescription': 'One setting for every Boss Cat. It covers Chat, Code and Work conversations alike, and applies when a join runs.',
-  'settings.bossCat.joinHint': 'Joining a Code or Work conversation grants that conversation\'s workspace, and a Code conversation also grants a shell. Ask me every time shows you what a join grants before you allow it.',
+  'settings.bossCat.joinHint': 'Joining a Code or Work conversation grants that conversation\'s workspace and the Code tools, which include a shell. Ask me every time shows you what a join grants before you allow it.',
   'settings.bossCat.joinNever': 'Not allowed',
   'settings.bossCat.joinAsk': 'Ask me every time',
   'settings.bossCat.joinAllow': 'Allowed',

@@ -595,7 +595,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.shell.subsectionBossCat': '主控貓',
   'settings.bossCat.joinTitle': '主控貓加入其他對話',
   'settings.bossCat.joinDescription': '這一個設定適用於每一隻主控貓，Chat、Code、Work 對話都一樣，並在加入的當下才判斷。',
-  'settings.bossCat.joinHint': '加入 Code 或 Work 對話，會取得那個對話的工作區；加入 Code 對話還會取得 shell。選「每次問我」時，允許前你會先看到加入會帶來什麼。',
+  'settings.bossCat.joinHint': '加入 Code 或 Work 對話，會取得那個對話的工作區與 Code 工具（包括 shell）。選「每次問我」時，允許前你會先看到加入會帶來什麼。',
   'settings.bossCat.joinNever': '不允許',
   'settings.bossCat.joinAsk': '每次問我',
   'settings.bossCat.joinAllow': '允許',
