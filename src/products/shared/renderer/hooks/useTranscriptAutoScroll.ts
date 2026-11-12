@@ -43,12 +43,14 @@ export function useTranscriptAutoScroll(options: {
   scrollKey: string;
   scrollOnChannelChange?: boolean;
   scopeKey?: string;
+  layoutKey?: number;
 }): {
   transcriptListRef: RefCallback<HTMLDivElement>;
   composerCardRef: RefCallback<HTMLElement>;
   bottomSentinelRef: RefCallback<HTMLDivElement>;
   isNearBottom: boolean;
   scrollToBottom: () => void;
+  preserveScrollPosition: (kind?: 'prepend' | 'refresh') => void;
 } {
   const { channelId, scrollKey, scrollOnChannelChange = true, scopeKey = '' } = options;
   const [transcriptListElement, setTranscriptListElement] = useState<HTMLDivElement | null>(null);
@@ -62,6 +64,20 @@ export function useTranscriptAutoScroll(options: {
   const composerFlowOffsetRef = useRef<number>(0);
   const bottomSentinelHeightRef = useRef<number | null>(null);
   const pendingScrollFrameRef = useRef<number | null>(null);
+  const pendingAnchorRef = useRef<{ channelId: string; top: number; height: number; kind: 'prepend' | 'refresh';
+    visible: Array<{ id: string; offset: number }> } | null>(null);
+  const skipFollowRef = useRef(false);
+  const preserveScrollPosition = useCallback((kind: 'prepend' | 'refresh' = 'prepend') => {
+    const element = scrollContainerRef.current;
+    if (!element) return;
+    const bounds = element.getBoundingClientRect();
+    const visible = [...(transcriptListElement?.querySelectorAll<HTMLElement>('[data-response-id]') ?? [])]
+      .filter(item => { const rect = item.getBoundingClientRect(); return rect.bottom > bounds.top && rect.top < bounds.bottom; })
+      .map(item => ({ id: item.getAttribute('data-response-id')!, offset: item.getBoundingClientRect().top - bounds.top }));
+    pendingAnchorRef.current = { channelId, top: element.scrollTop, height: element.scrollHeight, kind, visible };
+    shouldAutoScrollRef.current = false; setIsNearBottom(false); skipFollowRef.current = true;
+    if (pendingScrollFrameRef.current !== null) { cancelAnimationFrame(pendingScrollFrameRef.current); pendingScrollFrameRef.current = null; }
+  }, [channelId, transcriptListElement]);
 
   const syncScrollState = useCallback(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -210,6 +226,21 @@ export function useTranscriptAutoScroll(options: {
     };
   }, [channelId, scopeKey, scrollOnChannelChange, scheduleScrollToBottom, syncScrollState, transcriptListElement]);
 
+  useLayoutEffect(() => {
+    const anchor = pendingAnchorRef.current; const element = scrollContainerRef.current;
+    if (!anchor || !element) return;
+    pendingAnchorRef.current = null;
+    if (anchor.channelId !== channelId) return;
+    const items = [...(transcriptListElement?.querySelectorAll<HTMLElement>('[data-response-id]') ?? [])];
+    const surviving = anchor.visible.map(saved => ({ saved, item: items.find(item => item.getAttribute('data-response-id') === saved.id) }))
+      .find(value => value.item);
+    if (surviving?.item) element.scrollTop += surviving.item.getBoundingClientRect().top
+      - element.getBoundingClientRect().top - surviving.saved.offset;
+    else element.scrollTop = anchor.kind === 'prepend' ? anchor.top + element.scrollHeight - anchor.height : anchor.top;
+    syncScrollState();
+    rememberConversationScroll(scopeKey, channelId, { top: element.scrollTop, nearBottom: shouldAutoScrollRef.current });
+  }, [channelId, scopeKey, scrollKey, options.layoutKey, syncScrollState, transcriptListElement]);
+
   useEffect(() => {
     syncComposerDocking();
     syncTranscriptBottomInset();
@@ -235,6 +266,7 @@ export function useTranscriptAutoScroll(options: {
   }, [bottomSentinelElement, composerCardElement, syncComposerDocking, syncTranscriptBottomInset, transcriptListElement]);
 
   useEffect(() => {
+    if (skipFollowRef.current) { skipFollowRef.current = false; return; }
     if (!transcriptListElement || !shouldAutoScrollRef.current) {
       return;
     }
@@ -292,5 +324,6 @@ export function useTranscriptAutoScroll(options: {
     bottomSentinelRef: setBottomSentinelElement,
     isNearBottom,
     scrollToBottom,
+    preserveScrollPosition,
   };
 }

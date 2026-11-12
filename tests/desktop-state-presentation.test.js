@@ -168,3 +168,88 @@ test('a pre-history Core-only response anchors to oldest persisted position with
   assert.equal(rendered.filter(id => id === 'presentation:test').length, 1);
   assert.deepEqual(new Set(rendered), new Set(['position-0', 'position-1', 'position-2', 'presentation:test']));
 });
+
+async function longPresentation(t) {
+  const source = snapshot(); const channel = source.chat.channels[0]; const base = channel.messages[0];
+  channel.messages = Array.from({ length: 100 }, (_, index) => ({ ...structuredClone(base), id: `row-${index}`,
+    createdAt: new Date(Date.parse(base.createdAt) + index * 1000).toISOString() }));
+  const { create } = await fixture(t, source); const store = create(); await store.initialize(); await store.prepareTranscriptReads();
+  await addPresentation(store, channel.id, 'row-0');
+  const revision = async () => (await store.readMessagePage(channel.id)).historyRevision;
+  return { store, id: channel.id, base, revision };
+}
+
+test('retained-history revisions track old body edits and both old/new Core presentation placements', async t => {
+  const { store, id, revision } = await longPresentation(t); let before = await revision();
+  await store.updateChannel(id, channel => { channel.messages[0].body = 'Edited oldest'; return { channel }; });
+  assert.notEqual(await revision(), before); before = await revision();
+  await store.updateCore(core => {
+    const segment = core.segments.find(segment => segment.id === 'presentation:test');
+    segment.metadata.presentation.phase = 'streaming'; segment.status = 'streaming'; return core;
+  });
+  assert.notEqual(await revision(), before, 'An old sealed placement moving to live tail invalidates retained history');
+});
+
+test('lane termination alone invalidates an old Core-only presentation moved off the live tail', async t => {
+  const { store, id, revision } = await longPresentation(t);
+  await store.updateCore(core => {
+    const segment = core.segments.find(segment => segment.id === 'presentation:test');
+    segment.metadata.presentation.phase = 'streaming'; segment.status = 'streaming';
+    core.lanes.push({ id: 'test-lane', turnId: 'test-turn', conversationId: buildChatConversationId(id), participantId: null, agentId: null,
+      orderIndex: 0, status: 'running', createdAt: segment.createdAt, startedAt: segment.createdAt, completedAt: null, updatedAt: segment.createdAt, metadata: {} });
+    return core;
+  });
+  const before = await revision();
+  await store.updateCore(core => { core.lanes.find(lane => lane.id === 'test-lane').status = 'completed'; return core; });
+  assert.notEqual(await revision(), before);
+});
+
+for (const event of ['assistant_finalization_rejected', 'assistant_turn_segment']) test(`a tail ${event} invalidates an older synthetic placement`, async t => {
+  const { store, id, base, revision } = await longPresentation(t); const before = await revision();
+  await store.updateChannel(id, channel => {
+    channel.messages.push({ ...structuredClone(base), id: 'new-tail', senderKind: event === 'assistant_turn_segment' ? 'agent' : 'system',
+      body: 'Tail event', createdAt: '2026-01-01T00:03:00.000Z', metadata: { event, turnId: 'test-turn', targetStateId: 'test-target', targetId: 'cat', terminal: true } });
+    return { channel };
+  });
+  assert.notEqual(await revision(), before);
+  const all = presentedChannelWindow(await store.readMessageWindow(id, 200));
+  assert.ok(all.messages.every(message => message.id !== 'presentation:test'));
+});
+
+for (const append of [false, true]) test(`${append ? 'a backdated tail append' : 'a timestamp-only tail edit'} invalidates an older presentation anchor`, async t => {
+  const { store, id, base, revision } = await longPresentation(t); const before = await revision();
+  await store.updateChannel(id, channel => {
+    const updated = { ...structuredClone(append ? base : channel.messages.at(-1)),
+      id: append ? 'backdated-tail' : channel.messages.at(-1).id, createdAt: '2026-01-01T00:00:00.500Z' };
+    if (append) channel.messages.push(updated); else channel.messages[channel.messages.length - 1] = updated;
+    return { channel };
+  });
+  assert.notEqual(await revision(), before);
+});
+
+test('a new maximum time at the tail invalidates a sealed response previously anchored to old non-monotonic history', async t => {
+  const source = snapshot(); const channel = source.chat.channels[0]; const base = channel.messages[0];
+  channel.messages = Array.from({ length: 100 }, (_, index) => ({ ...structuredClone(base), id: `row-${index}`,
+    createdAt: index === 0 ? '2026-02-01T00:00:00.000Z' : '2026-01-01T00:00:00.000Z' }));
+  const { create } = await fixture(t, source); const store = create(); await store.initialize(); await store.prepareTranscriptReads();
+  await addPresentation(store, channel.id, 'missing-source', 'sealed', '2026-03-01T00:00:00.000Z');
+  const before = await store.readMessageWindow(channel.id, 50);
+  assert.ok(!presentedChannelWindow(before).messages.some(message => message.id === 'presentation:test'));
+  await store.updateChannel(channel.id, next => {
+    next.messages.push({ ...structuredClone(base), id: 'new-maximum', createdAt: '2026-02-02T00:00:00.000Z' });
+    return { channel: next };
+  });
+  const after = await store.readMessageWindow(channel.id, 50);
+  assert.notEqual(after.page.historyRevision, before.page.historyRevision);
+  assert.ok(presentedChannelWindow(after).messages.some(message => message.id === 'presentation:test'));
+});
+
+test('ordinary monotonic tail streaming keeps retained-history revisions stable', async t => {
+  const { store, id, base, revision } = await longPresentation(t); const before = await revision();
+  await store.updateChannel(id, channel => {
+    channel.messages.push({ ...structuredClone(base), id: 'tail', createdAt: '2026-04-01T00:00:00.000Z' });
+    return { channel };
+  });
+  await store.updateChannel(id, channel => { channel.messages.at(-1).body = 'Streaming body'; return { channel }; });
+  assert.equal(await revision(), before);
+});

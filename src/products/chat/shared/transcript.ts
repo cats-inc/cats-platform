@@ -12,6 +12,9 @@ export interface MessagePage {
   nextCursor: string | null;
   /** Compare for equality only; tail appends/body edits preserve this generation. */
   orderRevision: string;
+  /** Changes to already older content require refreshing retained windows. */
+  historyRevision?: string;
+  windowCount?: number;
   /** Display-only Core projection for this window; raw messages stay limit-bounded. */
   displayMessages?: ChatMessage[];
 }

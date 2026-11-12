@@ -156,8 +156,13 @@ store tracks its own order generation; production never falls back to JSON/mater
 queries. App-shell/channel/entity-subscription read models now use indexed latest windows.
 The raw page's `messages` stay within `limit`; optional `displayMessages` carries the
 display-only Core projection for that window. `orderRevision` is an equality token for
-invalidating retained history after order changes. Mounted Desktop controls remain pending;
-query/read-model endpoints alone do not satisfy renderer or end-to-end performance requirements.
+invalidating retained history after order changes. `historyRevision` invalidates retained
+display pages after edits or Core placement changes outside the newest window;
+`windowCount` records the raw window size independently of display-only rows. The mounted
+Desktop now retains scoped pages across navigation, loads older windows, merges live and
+optimistic updates, and exposes scoped/global plain-text search. Scroll restoration uses
+visible message anchors. Focused renderer checks pass; isolated Desktop/manual acceptance
+and the remaining consumer/performance audit are still required for full FR-8/FR-9 acceptance.
 
 The implementation keeps schema 2's separate compact channel catalog for shared root,
 participant and memory projections. A scoped writer must not parse unrelated workflow JSON.

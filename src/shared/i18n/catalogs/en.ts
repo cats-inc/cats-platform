@@ -4610,6 +4610,20 @@ export const enCatalog: MessageCatalog = {
   'companion.posts.postNotifyUncertain': "Delivery could not be confirmed. Check your conversation before sending again.",
   'companion.posts.postNotifyFailed': "Notification was not sent. Check the destination and try again.",
   'companion.posts.postSharedVisibility': "Shared by link",
+  'transcript.loadOlder': 'Load earlier messages',
+  'transcript.showLatest': 'Show latest messages',
+  'transcript.loading': 'Loading…',
+  'transcript.historyChanged': 'Message order changed. Showing the latest messages.',
+  'transcript.queryFailed': 'Unable to load messages. Please try again.',
+  'transcript.search': 'Search messages',
+  'transcript.searchClose': 'Close search',
+  'transcript.searchScope': 'Search scope',
+  'transcript.searchCurrent': 'This conversation',
+  'transcript.searchAll': 'All conversations',
+  'transcript.searchEmpty': 'No matching messages.',
+  'transcript.searchConversation': 'Conversation',
+  'transcript.searchOpen': 'Open conversation',
+  'transcript.searchReadMore': 'Read full message',
 };
 
 export default enCatalog;

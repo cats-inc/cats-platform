@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   type Ref,
   type RefCallback,
+  type ReactNode,
 } from 'react';
 
 import type {
@@ -105,6 +106,7 @@ export interface ConversationTranscriptPanelProps {
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
+  historyControls?: ReactNode;
 }
 
 export function ConversationTranscriptPanel({
@@ -142,6 +144,7 @@ export function ConversationTranscriptPanel({
   resolveConcurrentClusterPresentationMode,
   buildConcurrentClusterActions,
   buildTranscriptMessageActions,
+  historyControls,
 }: ConversationTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -243,6 +246,7 @@ export function ConversationTranscriptPanel({
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
+        {historyControls}
         {renderItems.map((item) => {
           if (item.kind === 'concurrent_cluster') {
             const clusterContext: ConcurrentClusterContext = {

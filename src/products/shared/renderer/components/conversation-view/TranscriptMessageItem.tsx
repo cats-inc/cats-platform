@@ -234,7 +234,7 @@ export function TranscriptMessageItem({
     return (
     <ConversationMessage
       key={part?.id ?? message.id}
-      id={part?.id}
+      id={part?.id ?? `message:${message.id}`}
       senderKind={message.senderKind}
       stackClassName={stackClassName}
       bubbleClassName={messageTone(message.senderKind)}

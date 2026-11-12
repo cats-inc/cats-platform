@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore, type SetStateAction } from 'react';
 import { onProviderClientInvalidation } from '../../../app/renderer/providerClientInvalidation.js';
+import { clearTranscriptHistory, pruneTranscriptHistory } from './transcriptHistoryCache.js';
 
 interface ComposerMemory { text: string; files: File[] }
 export interface ConversationScrollMemory { top: number; nearBottom: boolean }
@@ -19,11 +20,13 @@ export function clearConversationViewMemory(): void {
   generation += 1;
   drafts.clear();
   scrolls.clear();
+  clearTranscriptHistory();
   notify();
 }
 onProviderClientInvalidation(clearConversationViewMemory);
 
 export function pruneConversationViewMemory(scope: string, channelIds: ReadonlySet<string>): void {
+  pruneTranscriptHistory(scope, channelIds);
   for (const entries of [drafts, scrolls]) {
     for (const key of entries.keys()) {
       const [entryScope, identity] = JSON.parse(key) as [string, string];
@@ -42,6 +45,10 @@ export function writeConversationComposer(scope: string, identity: string, value
 
 export function readConversationScroll(scope: string, channelId: string) {
   return scrolls.get(keyFor(scope, `channel:${channelId}`));
+}
+
+export function forgetConversationScroll(scope: string, channelId: string): void {
+  scrolls.delete(keyFor(scope, `channel:${channelId}`));
 }
 
 export function rememberConversationScroll(

@@ -4513,6 +4513,20 @@ export const zhTWCatalog: MessageCatalog = {
   'companion.posts.postNotifyUncertain': "無法確認是否送達，請先查看對話。",
   'companion.posts.postNotifyFailed': "通知未送出，請檢查目的地後再試。",
   'companion.posts.postSharedVisibility': "已開啟連結分享",
+  'transcript.loadOlder': '載入更早訊息',
+  'transcript.showLatest': '顯示最新訊息',
+  'transcript.loading': '載入中…',
+  'transcript.historyChanged': '訊息順序已變更，目前顯示最新訊息。',
+  'transcript.queryFailed': '無法載入訊息，請再試一次。',
+  'transcript.search': '搜尋訊息',
+  'transcript.searchClose': '關閉搜尋',
+  'transcript.searchScope': '搜尋範圍',
+  'transcript.searchCurrent': '這個對話',
+  'transcript.searchAll': '所有對話',
+  'transcript.searchEmpty': '沒有符合的訊息。',
+  'transcript.searchConversation': '對話',
+  'transcript.searchOpen': '開啟對話',
+  'transcript.searchReadMore': '閱讀完整訊息',
 };
 
 export default zhTWCatalog;

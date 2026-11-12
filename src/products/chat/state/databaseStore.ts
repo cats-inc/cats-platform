@@ -25,6 +25,7 @@ import { StateDatabaseError } from '../../../platform/persistence/state-db/state
 import { closeStateMaintenanceWorkers } from '../../../platform/persistence/state-db/stateMaintenance.js';
 import { prepareTranscriptState } from './transcriptRepairs.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
+import { DEFAULT_MESSAGE_PAGE_SIZE } from '../shared/transcript.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
@@ -354,7 +355,35 @@ export class DatabaseChatStore implements ChatStore {
   private async commit(session: OpenProfile, previous: StorageEnvelope, envelope: StorageEnvelope,
     nextCore: CatsCoreState, changeRows: () => void): Promise<void> {
     session.database.transaction(() => {
+      // Core-only output can change an older displayed window without editing a
+      // stored message. Invalidate only channels whose changed placement is old.
+      const before = new Map(envelopeCore(previous).segments.filter(segment => segment.metadata?.event === 'conversation_presentation')
+        .map(segment => [segment.id, segment]));
+      const after = new Map(nextCore.segments.filter(segment => segment.metadata?.event === 'conversation_presentation')
+        .map(segment => [segment.id, segment]));
+      const previousCore = envelopeCore(previous);
+      const oldLanes = new Map(previousCore.lanes.map(lane => [lane.id, lane.status]));
+      const newLanes = new Map(nextCore.lanes.map(lane => [lane.id, lane.status]));
+      const affected = [...new Set([...before.keys(), ...after.keys()])].filter(id =>
+        !isDeepStrictEqual(before.get(id), after.get(id))
+        || oldLanes.get(before.get(id)?.laneId ?? '') !== newLanes.get(after.get(id)?.laneId ?? ''));
+      const invalidate = (core: CatsCoreState, records: typeof before) => {
+        const invalidated = new Set<string>();
+        for (const id of affected) {
+          const segment = records.get(id); const channelId = segment?.metadata.channelId;
+          if (!segment || typeof channelId !== 'string' || invalidated.has(channelId) || session.conversations.position(channelId) === null) continue;
+          const page = session.conversations.page(channelId);
+          const proof = session.conversations.presentationPlacements({ ...core, segments: [segment] }, channelId, page, true, true)[0];
+          const anchor = proof?.responseMessageId ?? proof?.anchorMessageId;
+          const position = anchor ? session.conversations.messagePosition(channelId, anchor) : null;
+          if (position !== null && position < page.total - DEFAULT_MESSAGE_PAGE_SIZE) {
+            session.database.setMeta(`channel_history:${channelId}`, randomUUID()); invalidated.add(channelId);
+          }
+        }
+      };
+      invalidate(previousCore, before);
       changeRows();
+      invalidate(nextCore, after);
       session.metadata.stage(envelope, bytesDigest(serializeEnvelope(previous)));
     }, { durable: true });
     await this.options.checkpoint?.('database_committed');

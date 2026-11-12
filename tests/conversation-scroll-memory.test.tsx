@@ -2,9 +2,64 @@ import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
+import { useState } from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useTranscriptAutoScroll } from '../src/products/shared/renderer/hooks/useTranscriptAutoScroll.ts';
 import { clearConversationViewMemory, rememberConversationScroll } from '../src/products/shared/renderer/conversationViewMemory.ts';
+import { useTranscriptHistoryReset } from '../src/products/shared/renderer/hooks/useTranscriptHistoryReset.ts';
+
+test('prepend and refresh preserve a visible message anchor for changes above and below the viewport', t => {
+  const oldRequest = globalThis.requestAnimationFrame; const oldCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
+  t.after(() => { cleanup(); clearConversationViewMemory(); resetTestDom(); globalThis.requestAnimationFrame = oldRequest; globalThis.cancelAnimationFrame = oldCancel; });
+  let above = 0; let below = 0;
+  function Transcript() {
+    const [version, setVersion] = useState(0);
+    const refs = useTranscriptAutoScroll({ channelId: 'anchor', scopeKey: 'anchor', scrollKey: 'same-last-message', layoutKey: version });
+    return <div className="canvas" ref={element => {
+      if (!element) return;
+      Object.defineProperties(element, { scrollHeight: { get: () => 2000 + above + below, configurable: true }, clientHeight: { value: 500, configurable: true } });
+      element.getBoundingClientRect = () => ({ top: 0, bottom: 500 } as DOMRect);
+      element.scrollTo = options => { element.scrollTop = (options as ScrollToOptions).top ?? 0; };
+    }}><button onClick={() => { refs.preserveScrollPosition('prepend'); above += 200; setVersion(v => v + 1); }}>Prepend</button>
+      <button onClick={() => { refs.preserveScrollPosition('refresh'); below += 1000; setVersion(v => v + 1); }}>Below</button>
+      <button onClick={() => { refs.preserveScrollPosition('refresh'); above += 400; setVersion(v => v + 1); }}>Above</button>
+      <div ref={refs.transcriptListRef}><article data-response-id="visible" ref={element => {
+        if (!element) return;
+        element.getBoundingClientRect = () => {
+          const canvas = element.closest<HTMLElement>('.canvas')!;
+          return { top: 350 + above - canvas.scrollTop, bottom: 450 + above - canvas.scrollTop } as DOMRect;
+        };
+      }}>Visible message</article></div><div ref={refs.bottomSentinelRef} /></div>;
+  }
+  const view = render(<Transcript />); const canvas = view.container.querySelector<HTMLElement>('.canvas')!;
+  canvas.scrollTop = 300; fireEvent.scroll(canvas);
+  fireEvent.click(view.getByText('Below')); assert.equal(canvas.scrollTop, 300, 'Changes below must not move the viewport');
+  fireEvent.click(view.getByText('Above')); assert.equal(canvas.scrollTop, 700, 'Changes above preserve the visible message');
+  fireEvent.click(view.getByText('Prepend')); assert.equal(canvas.scrollTop, 900);
+});
+
+test('history reset counters are scoped to the mounted history identity across route changes', t => {
+  const oldRequest = globalThis.requestAnimationFrame; const oldCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
+  t.after(() => { cleanup(); clearConversationViewMemory(); resetTestDom(); globalThis.requestAnimationFrame = oldRequest; globalThis.cancelAnimationFrame = oldCancel; });
+  const a = {}; const b = {};
+  function Transcript({ id, history, reset }: { id: string; history: object; reset: number }) {
+    const refs = useTranscriptAutoScroll({ channelId: id, scopeKey: 'reset-route', scrollKey: id });
+    useTranscriptHistoryReset(history, reset, refs.scrollToBottom);
+    return <div className="canvas" ref={element => {
+      if (!element) return;
+      Object.defineProperties(element, { scrollHeight: { value: 3000, configurable: true }, clientHeight: { value: 500, configurable: true } });
+      element.scrollTo = options => { element.scrollTop = (options as ScrollToOptions).top ?? 0; };
+    }}><div ref={refs.transcriptListRef}>Messages</div><div ref={refs.bottomSentinelRef} /></div>;
+  }
+  rememberConversationScroll('reset-route', 'b', { top: 222, nearBottom: false });
+  const view = render(<Transcript id="a" history={a} reset={1} />);
+  view.rerender(<Transcript id="b" history={b} reset={0} />);
+  assert.equal(view.container.querySelector<HTMLElement>('.canvas')!.scrollTop, 222);
+  view.rerender(<Transcript id="b" history={b} reset={1} />);
+  assert.equal(view.container.querySelector<HTMLElement>('.canvas')!.scrollTop, 3000);
+});
 
 test('restores conversation scroll and cancels the previous conversation animation frame', (t) => {
   const frames = new Map<number, FrameRequestCallback>();

@@ -1,0 +1,14 @@
+.transcriptHistoryControls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 12px 0; font-size: 13px; }
+.transcriptHistoryControls button, .transcriptSearchDialog button, .transcriptSearchButton { border: 1px solid var(--border, #ddd); border-radius: 6px; background: var(--surface, white); color: inherit; padding: 6px 10px; cursor: pointer; }
+.transcriptHistoryControls button:disabled, .transcriptSearchDialog button:disabled { opacity: .6; cursor: default; }
+.transcriptSearchDialog { width: min(680px, calc(100vw - 32px)); max-height: 80vh; border: 1px solid var(--border, #ddd); border-radius: 12px; background: var(--surface, white); color: var(--text, #222); padding: 20px; }
+.transcriptSearchDialog::backdrop { background: #0005; }
+.transcriptSearchDialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.transcriptSearchDialog h2 { margin: 0 0 12px; font-size: 18px; }
+.transcriptSearchDialog form { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; }
+.transcriptSearchDialog label { flex: 1; display: grid; gap: 4px; min-width: 160px; }
+.transcriptSearchDialog input, .transcriptSearchDialog select { padding: 7px; border: 1px solid var(--border, #ddd); border-radius: 6px; background: inherit; color: inherit; }
+.transcriptSearchResults { padding: 0; list-style: none; }
+.transcriptSearchResults li { padding: 14px 0; border-top: 1px solid var(--border, #ddd); }
+.transcriptSearchResults p, .transcriptSearchResults pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.transcriptSearchResults time { font-size: 12px; opacity: .7; }

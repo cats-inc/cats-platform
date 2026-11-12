@@ -57,9 +57,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 
 - [ ] Connect indexed paging to message API and renderer while retaining live behavior.
   The indexed message API/client and bounded app-shell/channel/entity-subscription read
-  models are implemented; mounted transcript paging and scroll acceptance remain pending.
+  models and mounted transcript paging/retained history are implemented. Focused scroll,
+  cancellation, reconnect and optimistic rollback checks pass; manual acceptance remains pending.
 - [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
-  The authenticated/redacted query endpoint and client are implemented; Desktop controls remain pending.
+  The authenticated/redacted query endpoint, client and scoped/global Desktop dialog are
+  implemented. Focused controls/cancellation checks pass; manual acceptance remains pending.
 - [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
   Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
@@ -125,6 +127,10 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Bounded initial read models now cover app-shell, channel GET and entity subscriptions without reading old/sibling transcripts. An explicit restartable application preparation pass maintains session/startup repairs before readiness and on subsequent writes, separate from import equality. Required embedder preparation failures reject readiness. Compact unresolved-choice facts preserve Catlas suggestions. Schema 3 adds guarded JSON-expression placement/rejection/time indexes; schema-1 and schema-2 paired-backup upgrades preserve logical state. |
 | 2026-11-12 | Final stable-output presentation checkpoint passed **154/154 Node and 154/154 Electron**, zero skipped, including cross-page source/segmented/rejection cases, displaced live output, sealed Core-only empty history and non-monotonic timestamps. Actual query plans show indexed searches with no message scan/temp sort for placement probes. **104/104** affected server/runtime/Core/REST/Catlas/lifecycle regressions and **53/53** bundled presentation/navigation/subscription/client tests passed. Server, host, actual web, test bundling and fixture typecheck passed. These are focused local checks, not a full application suite, three-OS CI or mounted Desktop acceptance. |
 | 2026-11-12 | Independent read-model review resolved required-readiness swallowing and cross-page enrichment findings (terminal/rejection proof, live tail placement, empty sealed output and persisted-position fallback for non-monotonic times). No blocking P1/P2 remains in that slice. One bundled Electron probe exceeded its existing 15-second child deadline during parallel validation (**30/31** overall); the specific actual Node/Electron bundled-worker test passed **1/1** in isolation in 1.6 seconds without code/timeout changes. Keep that timing event visible; an isolated rerun does not establish its root cause. |
+| 2026-11-12 | Mounted paging/search checkpoint: **16/16** controller/DOM/scroll cases and **44/44** affected presentation/navigation/subscription/client/message-action cases passed with normal process exit. The first combined renderer run completed its assertions but hung on React 18 bundled-ESM async `act` MessageChannels; tests now use the repository's existing synchronous `act`/`waitFor` pattern. This was a harness correction, not a product-resource fix. Server build, typed test bundling and fixture typecheck passed; the first typecheck exposed missing mock parameter annotations, corrected before the passing result. |
+| 2026-11-12 | History invalidation checks passed **14/14 Node and 14/14 Electron**, including old body edits, old/new Core anchors, lane-only termination, tail rejection/terminal topology, timestamp-only edits, backdated appends and a new maximum time whose former maximum lay in old non-monotonic history. Ordinary monotonic append/body streaming keeps its token. The prior checkpoint's **24/24** Node presentation/scoped cases preceded the final two timestamp/fast-path cases; counts overlap and are not additive. Independent backend and renderer slice reviews have no remaining blocking P1/P2; they did not run tests or approve the entire port. |
+| 2026-11-12 | Actual isolated Windows Desktop candidate built Runtime, Platform server, host and web renderer and manually verified latest-50 entry, older-page prepend with a stable visible anchor, retained reading position through direct/group navigation, CJK search for an unloaded old message, all-conversation search and opening a group result. Also inspected default/group/parallel draft chips (including the secondary Claude branch), direct avatar, ongoing group stack, bubble copy controls and sidebar overflow placement. No provider/model execution was requested. Full live/provider, active parallel-history and cross-product navigation acceptance remains pending. |
+| 2026-11-12 | Candidate receipt: private root `cats-inc/.desktop-candidates/state-db-renderer-20261112-c`, launch `93378897dd97dd966bde94c5a815c48259f455e985407b44fc4b4d575183a2d6`, instance `39fbda38534885982d38f571e4f02175`; Platform HEAD `ea4b53857` plus this dirty slice, source digest `e7de129c147b0df61ffec2abbcc5225f81b61567bbca16e70ab9c9f58169ecde`; Runtime `77d3e861aff5a8871e138e3be5ed28ce96c2ab09`. Four synthetic channels/500 messages and first Admin existed only in that private profile. Normal stop returned `drained`, both owned services stopped, exit 0; a subsequent OS query found none of its three PIDs. Installed Desktop/profile were untouched and no CDP port was opened. Earlier roots `a`/`b` failed before launch (per-process Git ownership admission, then missing main's UI dependency); worktree-only dependency links plus the exact extracted vendor package fixed setup. |
 
 *Created and last updated: 2026-11-12*
 
@@ -136,7 +142,7 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: mounted Desktop paging/search, retained-history/live merging and scroll continuity;
+Next work: finish isolated live/active-parallel/cross-product paging/search acceptance;
 remaining scoped REST consumers, and the still-unexplained Electron multi-process startup
 failure (retain the new safe diagnostic evidence); explicit compressed
 archives; daily paired snapshot publication/retention and offline CLI commands; then post-port
@@ -144,9 +150,10 @@ measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
 
-- Latest window read models are implemented, but the mounted transcript still needs to
-  consume `messagePage`/`orderRevision`, load older pages and merge `displayMessages` (falling
-  back to raw `messages` for fixture responses). Do not write presentation-only header/window
+- The mounted transcript now consumes `messagePage`/`orderRevision`, loads older pages and
+  merges `displayMessages` (falling back to raw `messages` for fixture responses). Retained
+  pages refresh on `historyRevision`, including old edits and moved/rejected Core output;
+  monotonic tail streaming keeps the ordinary fast path. Do not write presentation-only header/window
   state through a global snapshot mutator. Audit Work/Code shell/navigation callers and remaining
   scoped REST actions before claiming the end-to-end performance goal.
 - Index-backed placement proof makes display-only Core presentations unique across pages.

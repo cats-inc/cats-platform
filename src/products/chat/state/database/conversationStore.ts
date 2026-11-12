@@ -9,6 +9,8 @@ import { presentationTargetKey, type MessagePresentationPlacement } from '../../
 import { MESSAGE_TURN, MESSAGE_TARGET_STATE, MESSAGE_TARGET, MESSAGE_EVENT, MESSAGE_TERMINAL } from '../../../../platform/persistence/state-db/messageIndex.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import { randomUUID } from 'node:crypto';
+import { DEFAULT_MESSAGE_PAGE_SIZE } from '../../shared/transcript.js';
 import {
   buildSearchQuery, conversationTerm, indexText, INDEX_FORM,
 } from '../../../../platform/persistence/state-db/searchText.js';
@@ -64,7 +66,7 @@ export class ConversationDatabase {
   }
 
   /** Only candidate targets in this window reach indexed global-placement probes. */
-  presentationPlacements(core: CatsCoreState, channelId: string, page: MessagePage, newest: boolean): MessagePresentationPlacement[] {
+  presentationPlacements(core: CatsCoreState, channelId: string, page: MessagePage, newest: boolean, force = false): MessagePresentationPlacement[] {
     const ids = new Set(page.messages.map(message => message.id));
     const targets = new Set(page.messages.map(message => presentationTargetKey(message.metadata?.turnId, message.metadata?.targetStateId)));
     const times = page.messages.map(message => message.createdAt).sort();
@@ -86,7 +88,7 @@ export class ConversationDatabase {
       const live = value?.phase === 'streaming' && (!lane || !['failed', 'cancelled', 'completed'].includes(lane.status));
       const withinTime = times.length > 0 && (segment.createdAt >= times[0]! || page.nextCursor === null)
         && (newest || !nextTime || segment.createdAt < String(nextTime.created_at));
-      if (!targets.has(key) && !ids.has(String(segment.metadata.sourceMessageId)) && !withinTime
+      if (!force && !targets.has(key) && !ids.has(String(segment.metadata.sourceMessageId)) && !withinTime
         && !(live && newest) && !(newest && page.total === 0)) continue;
       const turn = segment.turnId;
       const target = typeof segment.metadata.targetStateId === 'string' ? segment.metadata.targetStateId : null;
@@ -105,6 +107,11 @@ export class ConversationDatabase {
         anchorMessageId: anchor ? String(anchor.message_id) : null, rejected: Boolean(rejected), newestEmpty: newest && page.total === 0 });
     }
     return proofs;
+  }
+
+  messagePosition(channelId: string, messageId: string): number | null {
+    const row = this.database.get('select position from messages where channel_id = ? and message_id = ?', channelId, messageId);
+    return row ? Number(row.position) : null;
   }
 
   projectionMetadata(): ChannelProjectionMetadata[] {
@@ -147,6 +154,7 @@ export class ConversationDatabase {
         messages: selected.map(row => JSON.parse(String(row.json)) as ChatMessage),
         total: Number(channel.message_count),
         orderRevision: String(order),
+        historyRevision: this.database.meta(`channel_history:${channelId}`) ?? '0',
         nextCursor: hasMore ? encodeMessageCursor(channelId, order, Number(selected[0]!.position)) : null,
       };
     });
@@ -212,7 +220,27 @@ export class ConversationDatabase {
         this.database.run('update messages set position = ? where id = ?', -Number(row.position) - 1, row.id!);
       }
     }
-    messages.forEach((message, index) => this.putMessage(channel.id, message, index, byId.get(message.id)));
+    let changedOlder = false;
+    const previousLatestTime = this.database.get('select created_at, position from messages where channel_id = ? order by created_at desc, position desc limit 1', channel.id);
+    messages.forEach((message, index) => {
+      const previous = byId.get(message.id);
+      const changed = this.putMessage(channel.id, message, index, previous);
+      if (changed && index < messages.length - DEFAULT_MESSAGE_PAGE_SIZE) changedOlder = true;
+      if (changed && messages.length > DEFAULT_MESSAGE_PAGE_SIZE) {
+        const oldMessage = previous ? JSON.parse(String(previous.json)) as ChatMessage : undefined;
+        const placement = (item: ChatMessage | undefined) => {
+          const metadata = item?.metadata;
+          return ['assistant_turn_segment', 'assistant_finalization_rejected'].includes(String(metadata?.event))
+            ? JSON.stringify([metadata?.event, metadata?.turnId, metadata?.targetStateId, metadata?.targetId, metadata?.terminal]) : null;
+        };
+        if (placement(message) !== placement(oldMessage) || oldMessage && oldMessage.createdAt !== message.createdAt
+          // With non-monotonic imported times, a new maximum can move a sealed
+          // Core-only response from an old row into the newest window too.
+          || !oldMessage && previousLatestTime && (message.createdAt <= String(previousLatestTime.created_at)
+            || Number(previousLatestTime.position) < messages.length - DEFAULT_MESSAGE_PAGE_SIZE)) changedOlder = true;
+      }
+    });
+    if (changedOlder) this.database.setMeta(`channel_history:${channel.id}`, randomUUID());
   }
 
   /** Initial import gives search row IDs chronological order, independently of channel order. */
@@ -312,6 +340,7 @@ export class ConversationDatabase {
       this.database.run('delete from messages where channel_id = ?', id);
       this.database.run('delete from channel_catalog where channel_id = ?', id);
       this.database.run('delete from meta where key = ?', `channel_choice:${id}`);
+      this.database.run('delete from meta where key = ?', `channel_history:${id}`);
       this.database.run('delete from channels where id = ?', id);
     });
   }
@@ -336,10 +365,10 @@ export class ConversationDatabase {
   }
 
   private putMessage(channelId: string, message: ChatMessage, position: number,
-    previous?: Record<string, unknown>): void {
+    previous?: Record<string, unknown>): boolean {
     if (message.channelId !== channelId) throw new Error('Message belongs to another conversation');
     const json = JSON.stringify(message);
-    if (previous?.json === json && previous.position === position) return;
+    if (previous?.json === json && previous.position === position) return false;
     let id: number;
     if (previous) {
       id = Number(previous.id);
@@ -350,6 +379,7 @@ export class ConversationDatabase {
         channelId, message.id, position, message.createdAt, json);
     }
     this.indexMessage(id, channelId, message);
+    return true;
   }
 
   private assertIndexWritable(): void {

@@ -104,6 +104,11 @@ import {
 } from '../../../conversationBehavior.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+import { usePagedTranscript } from '../../hooks/usePagedTranscript.js';
+import { useTranscriptHistoryReset } from '../../hooks/useTranscriptHistoryReset.js';
+import { TranscriptHistoryControls } from './TranscriptHistoryControls.js';
+import { TranscriptSearch } from './TranscriptSearch.js';
+import './transcriptQueries.css';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 let _lastLiveIndicatorLogAt: number | null = null;
@@ -295,7 +300,7 @@ export interface ConversationViewProps {
 
 export function ConversationView({
   payload,
-  selectedChannel,
+  selectedChannel: incomingSelectedChannel,
   routeChannelId = null,
   operatorSnapshot,
   operatorLoading,
@@ -356,6 +361,11 @@ export function ConversationView({
 }: ConversationViewProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  // All ongoing direct/group/parallel modes share transcript paging only. Their
+  // composer, participant chips and product action contracts remain independent.
+  const transcript = usePagedTranscript(incomingSelectedChannel, payload.scopeId);
+  const selectedChannel = transcript.channel;
+  const [searchOpen, setSearchOpen] = useState(false);
   const resolvedSidePanelTitle = sidePanelTitle || t(messageKeys.chatNewChatDraftSidePanelTitle);
   const conversationBehavior = useMemo(
     () => resolveConversationBehaviorPreferences(
@@ -876,13 +886,16 @@ export function ConversationView({
     ],
   );
   const stopBusy = isParallelChatBusy(busy, 'stop');
-  const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } =
+  const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom, preserveScrollPosition } =
     useTranscriptAutoScroll({
       channelId: selectedChannel.id,
       scrollKey: transcriptScrollKey,
       scrollOnChannelChange: true,
       scopeKey: payload.scopeId,
+      layoutKey: transcript.state.version,
     });
+  useEffect(() => transcript.history.beforeChange(preserveScrollPosition), [transcript.history, preserveScrollPosition]);
+  useTranscriptHistoryReset(transcript.history, transcript.state.resetVersion, scrollToBottom);
 
   useIsoLayoutEffect(() => {
     if (!visibleLiveIndicator?.active || !isNearBottom) {
@@ -1048,7 +1061,9 @@ export function ConversationView({
     onOperatorAction,
   });
 
-  const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;
+  const topBarExtraActions = <>{renderTopBarExtraActions?.(viewContext) ?? null}
+    {transcript.enabled ? <button type="button" className="transcriptSearchButton" onClick={() => setSearchOpen(true)}>
+      {t(messageKeys.transcriptSearch)}</button> : null}</>;
   const statusRow = renderStatusRow?.(viewContext) ?? null;
   const composerHeaderAccessory = renderComposerHeaderAccessory?.(viewContext) ?? null;
   const composerHeaderWhereExtras = renderComposerHeaderWhereExtras?.(viewContext) ?? null;
@@ -1147,7 +1162,11 @@ export function ConversationView({
         />
       ) : null}
     >
+      {searchOpen ? <TranscriptSearch channelId={selectedChannel.id}
+        titles={new Map(payload.chat.channels.map(channel => [channel.id, channel.title]))}
+        onClose={() => setSearchOpen(false)} onSelect={onSelect} /> : null}
       <ConversationTranscriptPanel
+        historyControls={transcript.enabled ? <TranscriptHistoryControls history={transcript.history} state={transcript.state} /> : null}
         hasConversationStarted={hasConversationStarted}
         greeting={greeting}
         transcriptListRef={transcriptListRef}

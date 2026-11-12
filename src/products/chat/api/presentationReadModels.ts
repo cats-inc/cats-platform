@@ -12,8 +12,8 @@ export function presentationChat(snapshot: ChatPresentationSnapshot): ChatState 
 
 export function presentedChannelWindow(snapshot: ChatMessageWindow): TranscriptChannelView {
   const state: ChatState = { ...snapshot.metadata, channels: [snapshot.channel] };
-  const { total, nextCursor, orderRevision } = snapshot.page;
-  const messagePage = { total, nextCursor, orderRevision };
+  const { total, nextCursor, orderRevision, historyRevision } = snapshot.page;
+  const messagePage = { total, nextCursor, orderRevision, historyRevision, windowCount: snapshot.page.messages.length };
   const view: TranscriptChannelView = { ...buildChannelView(state, snapshot.channel), messagePage };
   return enrichConversationPresentation(view, snapshot.core, snapshot.placements);
 }

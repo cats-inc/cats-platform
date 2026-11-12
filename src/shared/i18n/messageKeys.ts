@@ -4646,6 +4646,20 @@ export const messageKeys = {
   postNotifyFailed: 'companion.posts.postNotifyFailed',
   postSharedVisibility: 'companion.posts.postSharedVisibility',
   postLoadMore: 'companion.posts.postLoadMore',
+  transcriptLoadOlder: 'transcript.loadOlder',
+  transcriptShowLatest: 'transcript.showLatest',
+  transcriptLoading: 'transcript.loading',
+  transcriptHistoryChanged: 'transcript.historyChanged',
+  transcriptQueryFailed: 'transcript.queryFailed',
+  transcriptSearch: 'transcript.search',
+  transcriptSearchClose: 'transcript.searchClose',
+  transcriptSearchScope: 'transcript.searchScope',
+  transcriptSearchCurrent: 'transcript.searchCurrent',
+  transcriptSearchAll: 'transcript.searchAll',
+  transcriptSearchEmpty: 'transcript.searchEmpty',
+  transcriptSearchConversation: 'transcript.searchConversation',
+  transcriptSearchOpen: 'transcript.searchOpen',
+  transcriptSearchReadMore: 'transcript.searchReadMore',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];
