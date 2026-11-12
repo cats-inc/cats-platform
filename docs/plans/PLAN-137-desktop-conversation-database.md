@@ -65,6 +65,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
   Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
+  Codec foundation retains raw records, group/Core context, member/whole/logical digests and
+  bounded cold paging. Pending: cold catalog/revisions and backed-up schema upgrade, native
+  worker/reservations and crash recovery, archive/restore/deletion integration, product/CLI
+  controls, and self-contained snapshots/restore of referenced immutable assets. Do not mark
+  FR-15 complete on codec-only evidence.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -144,6 +149,8 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Full bundled sidecar CLI passed its **1/1** acceptance, executing help/check/snapshot/restore/export under actual Node and Electron from sidecar layout with exact linked installed dependencies. Server build and fixture typecheck passed. Normal CLI startup/auth/lifecycle plus schema-upgrade regressions passed **30/30 Node**; schema checks passed **13/13 Electron**. This is local Windows evidence, not three-platform CI or a release. |
 | 2026-11-12 | Independent restore and CLI reviews have no blocking finding in their implemented scope. Resolved configured-HOME selection mismatch, restore admission during pending reset, legacy lock-wait cancellation and private error formatting. Actual CLI SIGINT uses a test-only IPC preload to emit the process event on Windows after observing that child's real lock candidate, proving exit 130 while the parent still holds the lock and state remains unchanged. |
 | 2026-11-12 | Fixed configured `manifest.json` collisions in snapshots, paired restore and schema-1/2 upgrade backups. New proof names append to the profile basename; metadata, DB and receipt retain their names. Earlier generic snapshot manifests remain read-only/restorable. New regressions prove canonical equality, exact metadata bytes and digest proofs for the colliding profile; old generic snapshots restore without rewriting the selected backup. |
+| 2026-11-12 | Cold archive codec foundation now writes standard concatenated-gzip JSONL with complete header/message records and individual group/Core context records; proves member, whole-file and logical digests by full readback before returning a manifest. Indexed member ranges support exclusive cold pages without decompressing unrelated history. Strict JSON/identity/count/path/range/UTF-8/decompression bounds fail without truncation; owned-inode cleanup preserves existing/replaced paths and controlled errors hide source diagnostics. This module is not yet wired to production archive actions or hot-row removal. |
+| 2026-11-12 | Codec checkpoint passed **20/20 Node and 20/20 Electron**, zero skipped, plus server build and fixture typecheck on Windows. Covers rich Unicode/NUL/special-key records, group/Core roundtrip, cross-member/empty paging, corrupt old evidence outside a newest-page read, malformed manifests/JSONL, source count/identity failures, existing/replaced files, closed handles and oversized records. Independent read-only review has no remaining blocking P1/P2 in the codec slice after fixing POSIX directory durability. Its isolated child regression injects directory-sync failure (simulated directory handle on Windows, real payload/manifest IO), proving safe failure/cleanup and unchanged source bytes. Actual POSIX execution remains a hosted-CI gate. FR-15 catalog/transactions/recovery/worker/product/backup integration remains pending. |
 
 *Created and last updated: 2026-11-12*
 

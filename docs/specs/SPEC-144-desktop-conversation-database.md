@@ -212,6 +212,36 @@ publishes receipt/metadata and validates completion before removing the journal.
 the same manifest; unknown active/staged changes fail closed. Restore cannot revive an older
 automatic-deletion opt-in. The operations guide records commands and recovery behavior.
 
+### Cold archive integration contract
+
+FR-15 uses immutable external compressed JSONL, not a second transcript table. The codec
+foundation writes a header, individual group/Core context records and complete ordered raw
+messages as concatenated standard gzip members. Member ranges and compressed hashes permit
+bounded cold paging; a whole-file digest and a logical JSONL digest prove complete readback.
+The writer verifies the entire payload before producing its manifest. It never removes hot
+rows. UUID filenames are independent of the configured profile basename. Default chunks
+contain at most 200 records/about 512 KiB; a single larger JSON record is retained intact up
+to an explicit 64 MiB limit. Over-limit/non-JSON input fails without truncation. Manifest
+size, offsets and decompression output are bounded. This codec is synchronous and belongs in
+a native maintenance worker or an offline command, not a serving callback.
+
+The remaining integration must introduce a backed-up schema boundary for cold pointers and
+per-channel content revisions. Prepare/compress/verify off the serving thread, reserving the
+target with its live profile lease. Before the durable metadata handoff removes hot messages
+and FTS entries, compare the target content revision, reject active execution, and promote the
+verified immutable assets. Unrelated conversation writes must not invalidate preparation.
+Interrupted jobs require recoverable reservations; abandoned work cannot delete another
+process's open stage. Explicit restore verifies the cold payload before rehydrating hot rows.
+Archive keeps channel/group/Core relationships; owner deletion removes the pointer and uses
+recoverable asset cleanup, without resurrecting archived content. Full logical exports/global
+snapshots must hydrate cold history; ordinary mutations must not silently reinsert it.
+
+Snapshots, schema-upgrade backups and paired restore must include and verify every referenced
+cold asset, so a backup remains usable after the original profile is removed. A source-asset
+race defers snapshot publication and preserves the previous good backup. Product controls,
+authenticated operations, archive/restore crash recovery, native worker packaging and this
+backup integration remain unimplemented; codec tests alone do not satisfy FR-15.
+
 ## Dependencies and open validation
 
 - Attribution: Cats Bot `state-db-p1`; no Bot dependency or changes.
