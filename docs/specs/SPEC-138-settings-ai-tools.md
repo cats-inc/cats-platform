@@ -124,6 +124,15 @@ ticks.
     Nothing there blocks anything.
 12. FR-12: Connection rows (OpenClaw, remote Ollama) keep their address field and Test connection,
     saved and tested through Runtime as on first run.
+    - OpenClaw also has a localized, masked Gateway token field and **Save and test connection**.
+      Installed Desktop users can set, replace, or explicitly remove the credential here without
+      editing dotenv. An empty field preserves the saved token; a successful save clears the
+      input and reports only whether a credential is configured. Drafts, operation snapshots,
+      setup logs and read models never contain it. Runtime atomically persists the credential
+      with the selected instance in its private local provider configuration, applies it live,
+      and retains it on restart. Changing Gateway authority requires explicit replacement or
+      removal. Externally managed authentication is read-only; an older Runtime without the
+      credential-editing capability explains that an update is required.
 
 **Log and details**
 

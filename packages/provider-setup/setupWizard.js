@@ -26,7 +26,8 @@ export function mountSetupWizard(root, bridge, options) {
     queue: [], running: null, runStart: null, stopAfter: false, stopRequested: false, pageError: null, ticket: 0,
     conn: {
       ollama: { remote: false, address: ADDRESS_DEFAULT.ollama, state: 'untested', error: null, changed: false },
-      openclaw: { remote: true, address: ADDRESS_DEFAULT.openclaw, state: 'untested', error: null, changed: false },
+      openclaw: { remote: true, address: ADDRESS_DEFAULT.openclaw, state: 'untested', error: null, changed: false,
+        token: '', clearToken: false, tokenConfigured: false, tokenEditable: false, tokenSupported: false, editable: true },
     },
     ollama: { installed: false, running: false, models: [], modelsKnown: false },
     pull: { name: '', state: 'idle', percent: null, error: null, status: '' },
@@ -602,10 +603,11 @@ export function mountSetupWizard(root, bridge, options) {
     return null;
   }
 
-  function selectionTargets(endpoints = {}) {
+  function selectionTargets(endpoints = {}, tokens = {}) {
     const chosen = [...S.picks].filter((id) => TOOLS[id]).map((id) => ({
       ...TOOLS[id].target,
       ...(endpoints[id] ? { endpoint: endpoints[id] } : {}),
+      ...(Object.hasOwn(tokens, id) ? { authToken: tokens[id] } : {}),
     }));
     return [...chosen, ...CUSTOM.map((target) => ({ provider: target.provider, backend: target.backend, instance: target.instance }))];
   }
@@ -623,11 +625,21 @@ export function mountSetupWizard(root, bridge, options) {
     renderPage();
     const tool = TOOLS[id];
     try {
+      const tokens = id === 'openclaw' && conn.tokenEditable
+        ? conn.token.trim() ? { openclaw: conn.token.trim() } : conn.clearToken ? { openclaw: null } : {} : {};
       const saved = await providerOperation(() => bridge.applyProviderSetup({
-        targets: selectionTargets({ [id]: conn.address.trim() }), expectedRevision: S.revision, detectAfter: false,
+        targets: selectionTargets(conn.editable === false ? {} : { [id]: conn.address.trim() }, tokens), expectedRevision: S.revision, detectAfter: false,
       }));
       S.snap = saved;
       S.revision = saved.runtime.selection.revision;
+      if (id === 'openclaw') {
+        conn.token = '';
+        conn.clearToken = false;
+        const connection = (saved.runtime.connections || []).find((entry) => targetKey(entry) === targetKey(tool.target));
+        conn.tokenConfigured = connection?.tokenConfigured === true;
+        conn.tokenEditable = connection?.tokenEditable === true;
+        conn.tokenSupported = typeof connection?.tokenEditable === 'boolean';
+      }
       const next = await providerOperation(() => bridge.runProviderSetup({ action: 'detect', targets: [tool.target], expectedRevision: S.revision }));
       S.snap = next;
       const observation = (next.runtime.observations || []).find((entry) => targetKey(entry) === targetKey(tool.target));
@@ -951,6 +963,7 @@ export function mountSetupWizard(root, bridge, options) {
 
   function render(focusHeading = false) {
     if (destroyed || chrome.isDetailsOpen()) return;
+    syncConnectionMetadata();
     withFocus(() => {
       renderRail();
       pane.innerHTML = [null, pageOne, pageTwo, pageThree][S.page]();
@@ -1168,12 +1181,22 @@ export function mountSetupWizard(root, bridge, options) {
     const body = id === 'openclaw'
       ? T('Cats connects to a gateway that is already running; nothing is installed. Checking this computer does not touch this address.', 'Cats 會連到已在執行的閘道，不會安裝任何東西。檢查這台電腦時不會碰這個位址。')
       : T('Cats uses Ollama on this address and installs nothing here. It answers with the models that computer has.', 'Cats 會用這個位址上的 Ollama，這台電腦不會安裝任何東西。可用的模型由那台電腦決定。');
+    const token = id === 'openclaw' ? `<div class="addr"><label for="token-openclaw">${E(T('Gateway token', '閘道權杖（Token）'))}</label>
+      <input class="input" type="password" id="token-openclaw" data-input="gateway-token" value="${E(conn.token)}" maxlength="4096" autocomplete="off" spellcheck="false"
+        placeholder="${E(conn.tokenConfigured ? T('Saved — leave blank to keep', '已設定，留空保留原值') : T('Paste Gateway token', '貼上 Gateway token'))}"
+        ${!conn.tokenEditable || S.phase !== 'idle' ? 'disabled' : ''}>
+      ${conn.tokenEditable && conn.tokenConfigured ? `<button type="button" class="more" data-act="clear-gateway-token" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(conn.clearToken ? T('Keep saved token', '保留已存 token') : T('Remove saved token', '清除已存 token'))}</button>` : ''}</div>
+      <p class="hint-inline">${E(!conn.tokenSupported ? T('Update Cats Runtime to configure a Gateway token here.', '請更新 Cats Runtime，才能在此設定 Gateway token。')
+        : !conn.tokenEditable ? T('Authentication is managed by your existing Runtime configuration.', '驗證由現有 Runtime 設定管理。')
+        : conn.clearToken ? T('The saved token will be removed when you save.', '按儲存後會清除已存的 token。')
+          : T('Cats saves this credential locally. Leave blank to keep a saved token.', 'Cats 會在本機儲存這份憑證，留空會保留已存的 token。'))}</p>` : '';
     return `<li class="row ${depCls} ${conn.state === 'failed' ? 'is-failed' : ''}" data-row="${E(id)}">
       <div class="row-top"><span class="glyph">${glyph}</span>
         <div class="row-text"><strong>${E(label)}</strong><p>${E(body)}</p></div>${state}</div>
-      <div class="addr"><input class="input" id="addr-${E(id)}" data-input="address" data-arg="${E(id)}" value="${E(conn.address)}" placeholder="${E(ADDRESS_DEFAULT[id])}" spellcheck="false" aria-label="${E(T('Address', '連線位址'))}" aria-invalid="${conn.state === 'invalid'}" ${conn.state === 'testing' ? 'disabled' : ''}>
-        <button type="button" class="btn small" id="test-${E(id)}" data-act="test" data-arg="${E(id)}" ${conn.state === 'testing' || S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Test connection', '測試連線'))}</button>
+      <div class="addr"><input class="input" id="addr-${E(id)}" data-input="address" data-arg="${E(id)}" value="${E(conn.address)}" placeholder="${E(ADDRESS_DEFAULT[id])}" spellcheck="false" aria-label="${E(T('Address', '連線位址'))}" aria-invalid="${conn.state === 'invalid'}" ${conn.state === 'testing' || conn.editable === false ? 'disabled' : ''}>
+        <button type="button" class="btn small" id="test-${E(id)}" data-act="test" data-arg="${E(id)}" ${conn.state === 'testing' || S.phase !== 'idle' ? 'disabled' : ''}>${E(id === 'openclaw' ? T('Save and test connection', '儲存並測試連線') : T('Test connection', '測試連線'))}</button>
         ${id === 'ollama' ? `<button type="button" class="more" id="ollama-local" data-act="ollama-remote" data-arg="off" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Use this computer', '改回這台電腦'))}</button>` : ''}</div>
+      ${token}
       ${conn.state === 'invalid' ? `<p class="addr-error" role="alert">${E(conn.error)}</p>` : ''}
       ${conn.state === 'failed' ? `<p class="addr-error" role="alert">${E(T(`Could not reach ${conn.address}. Check that it is running and this computer can reach it. The log has the reason.`, `連不上 ${conn.address}。請確認它正在執行，而且這台電腦連得到。原因寫在記錄裡。`))}</p><div class="row-actions">${detailsLink(`conn:${id}`)}</div>` : ''}
     </li>`;
@@ -1686,10 +1709,24 @@ export function mountSetupWizard(root, bridge, options) {
   let pendingPicks = true;
   let destroyed = false;
 
+  function syncConnectionMetadata() {
+    for (const connection of S.snap?.runtime.connections || []) {
+      const conn = S.conn[connection.provider];
+      if (!conn || targetKey(connection) !== targetKey(TOOLS[connection.provider]?.target || {})) continue;
+      conn.editable = connection.editable !== false;
+      if (connection.provider === 'openclaw') {
+        conn.tokenConfigured = connection.tokenConfigured === true;
+        conn.tokenEditable = connection.tokenEditable === true;
+        conn.tokenSupported = typeof connection.tokenEditable === 'boolean';
+      }
+    }
+  }
+
   function acceptSnapshot(next) {
     S.snap = next;
     const selection = next.runtime.selection;
     buildTools();
+    syncConnectionMetadata();
     if (pendingPicks) {
       pendingPicks = false;
       S.revision = selection.revision;
@@ -1719,13 +1756,14 @@ export function mountSetupWizard(root, bridge, options) {
       const next = await bridge.getProviderSetup(CONTEXT);
       if (destroyed) return;
       const before = S.catalog;
+      const connectionsChanged = JSON.stringify(S.snap?.runtime.connections) !== JSON.stringify(next.runtime.connections);
       const seen = SETTINGS ? JSON.stringify([next.runtime.observations, next.prerequisites]) : '';
       acceptSnapshot(next);
       everLoaded = true;
       // Settings rows before a check show the last scan, so a new scan redraws them.
       const rescanned = SETTINGS && !S.checked && seen !== lastSeen;
       lastSeen = seen;
-      if (first || before !== S.catalog || rescanned) render(first);
+      if (first || before !== S.catalog || rescanned || connectionsChanged) render(first);
     } catch (error) {
       if (destroyed) return;
       S.catalogError = String(error.message || error);
@@ -1818,6 +1856,14 @@ export function mountSetupWizard(root, bridge, options) {
         if (wizardBridge.relaunch) Promise.resolve(wizardBridge.relaunch({ ...stateBlob(), priorChanges: chrome.logTotals().changes })).catch(() => undefined);
         break;
       case 'test': void testConnection(arg); break;
+      case 'clear-gateway-token':
+        if (S.phase === 'idle' && S.conn.openclaw.tokenEditable) {
+          S.conn.openclaw.clearToken = !S.conn.openclaw.clearToken;
+          S.conn.openclaw.token = '';
+          S.conn.openclaw.state = 'untested';
+          renderPage();
+        }
+        break;
       case 'ollama-remote': void setOllamaRemote(arg === 'on'); break;
       case 'copy-manual': copyInto(factsOf(arg, SETTINGS ? S.changes[arg] || null : null).manual, `manual:${arg}`); break;
       case 'copy-signin': copyInto((S.facts.signIn || {})[arg], `signin:${arg}`); break;
@@ -1907,6 +1953,12 @@ export function mountSetupWizard(root, bridge, options) {
         // Only what the page shows about the address changes, so typing keeps its place.
         if (was !== 'untested') renderPage();
       }
+    } else if (kind === 'gateway-token') {
+      const conn = S.conn.openclaw;
+      const wasClearing = conn.clearToken;
+      conn.token = target.value;
+      conn.clearToken = false;
+      if (wasClearing || conn.state !== 'untested') { conn.state = 'untested'; conn.error = null; renderPage(); }
     } else if (kind === 'pull') {
       S.pull.name = target.value;
       if (S.pull.state === 'invalid') { S.pull.state = 'idle'; renderPage(); }

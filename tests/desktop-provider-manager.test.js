@@ -21,7 +21,7 @@ function fixture(overrides = {}) {
       calls.push({ path, body });
       if (path === '/setup-state') return structuredClone(runtime);
       if (path === '/setup-selection') {
-        runtime.selection = { ...runtime.selection, revision: 'two', targets: body.targets, state: body.targets.length ? 'selected' : 'empty' };
+        runtime.selection = { ...runtime.selection, revision: 'two', targets: body.targets.map(({ provider, backend, instance }) => ({ provider, backend, instance })), state: body.targets.length ? 'selected' : 'empty' };
         return {};
       }
       if (path === '/setup-scan') {
@@ -40,6 +40,52 @@ test('passive reads and apply without detection spend no provider work', async (
   await f.manager.apply({ targets: [codex], expectedRevision: 'one', detectAfter: false });
   assert.equal(f.calls.some((entry) => entry.path === '/setup-scan' || entry.helper), false);
   assert.deepEqual(f.runtime.selection.targets, [codex]);
+});
+
+test('Gateway credentials cross the write boundary only, and unsupported or managed authentication is rejected', async () => {
+  const gateway = { provider: 'openclaw', backend: 'agent', instance: 'gateway' };
+  for (const tokenEditable of [undefined, false, true]) {
+    const f = fixture();
+    f.runtime.connections = [{ ...gateway, endpoint: 'ws://localhost:18789', editable: true, tokenEditable }];
+    const operation = f.manager.apply({ targets: [{ ...gateway, authToken: 'test-write-only-token' }], expectedRevision: 'one', detectAfter: false });
+    if (tokenEditable === true) {
+      const saved = await operation;
+      assert.equal(JSON.stringify(saved).includes('test-write-only-token'), false);
+      assert.equal(f.calls.find((entry) => entry.path === '/setup-selection').body.targets[0].authToken, 'test-write-only-token');
+    } else {
+      await assert.rejects(operation, tokenEditable === undefined ? /Update Cats Runtime/ : /managed/);
+      assert.equal(f.calls.some((entry) => entry.path === '/setup-selection'), false);
+    }
+  }
+});
+
+test('a concurrent read during token saving never returns the token in operation targets', async () => {
+  const gateway = { provider: 'openclaw', backend: 'agent', instance: 'gateway' };
+  let release;
+  let started;
+  const saving = new Promise((resolve) => { started = resolve; });
+  const blocked = new Promise((resolve) => { release = resolve; });
+  let f;
+  f = fixture({ request: async (path, init) => {
+    if (path === '/setup-state') return structuredClone(f.runtime);
+    if (path === '/setup-selection') {
+      started();
+      await blocked;
+      f.runtime.selection.targets = [gateway];
+      f.runtime.selection.revision = 'two';
+      return {};
+    }
+    throw new Error('Unexpected test request');
+  } });
+  f.runtime.connections = [{ ...gateway, endpoint: 'ws://localhost:18789', editable: true, tokenEditable: true }];
+  const operation = f.manager.apply({ targets: [{ ...gateway, authToken: 'pending-test-token' }], expectedRevision: 'one', detectAfter: false });
+  await saving;
+  try {
+    const snapshot = await f.manager.read();
+    assert.equal(snapshot.operations.length, 1);
+    assert.equal(JSON.stringify(snapshot).includes('pending-test-token'), false);
+  } finally { release(); }
+  await operation;
 });
 
 test('fresh Desktop reads expose prerequisite helpers and retained checks without selecting providers', async () => {
