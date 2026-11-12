@@ -1,6 +1,6 @@
 {
   "name": "@cats-inc/cats-platform",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
   "author": "sammykenny2 <sammykenny2@gmail.com>",
   "homepage": "https://github.com/cats-inc/cats-platform",
@@ -184,7 +184,9 @@
       {
         "from": "build/desktop-packaging/shared/bundled-plugins",
         "to": "app-sidecar/bundled-plugins",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "build/desktop-packaging/shared/app-sidecar/LICENSE",

@@ -2,6 +2,71 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-12 — Desktop 0.16.1 standard preview: reliable update discovery
+
+Selected distribution: Desktop **0.16.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**, optional preview **Agency 0.1.0** installer.
+
+- **Check for Updates.** Development milestone tags in GitHub's Atom feed no
+  longer hide installable versions or cause missing updater-file errors. Preview
+  checks sort plain version tags and require matching platform metadata, safe
+  versioned asset names, sizes, SHA-512 checksums and a compatible architecture's
+  update package. Missing/invalid metadata can fall back to another version;
+  network, authorization and service failures remain errors. Native download,
+  checksum, signature and installer checks remain in place. (cats-platform#458)
+- **Errors.** Missing or invalid release information maps to the existing
+  localized error categories. Stable release selection remains independent of
+  preview discovery. The existing builder-util-runtime **9.7.0** dependency is
+  now declared directly for the provider's XML/error helpers; no dependency
+  version is upgraded by that declaration.
+- **Storage direction.** ADR-152 is documentation for a future Desktop database
+  pilot. This patch does not implement that pilot or change persisted formats.
+- **Source selection:** cats-runtime@77d3e861aff5a8871e138e3be5ed28ce96c2ab09; main@77d3e861aff5a8871e138e3be5ed28ce96c2ab09.
+- **Exact source and modules.** Platform main at selection is
+  `355a9469a7f08314bf04ef3c803895f79296d6ec`. Freeze the completed bump commit
+  in `release/v0.16.1`; the workflow records that exact Desktop source without
+  a self-reference in this file. Runtime **0.6.2** is unchanged from 0.16.0,
+  with no changes left out at selection. Shared conversation UI **0.1.0** keeps
+  content digest `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`
+  and tarball SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  The nine shared-tool pins retain cats-one
+  `f8b0d8a6e566b44d788ffc77912665ef46b738d3`, also its main at selection.
+  Catlas/orchestrator knowledge stays at revision `2026-11-12.1` for `0.16.x`.
+- **Bundled inputs.** Usage **0.5.4** remains pinned to
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`; Apps main at selection
+  is `015448936e3685091b09f7d9966104cdd952e68c`. Agency **0.1.0** keeps SHA-256
+  `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`;
+  Plugins main at selection is `12411d5dc7d045d007267e73cff7fd494b631cfa`.
+  Exact App/Plugin artifacts and their installation/compatibility gates are retained.
+- **Compatibility, backup and recovery.** This is a compatible patch on 0.16.x;
+  it adds no mandatory data migration, App SDK change or provider configuration
+  change. Upgrading from 0.15.x retains 0.16.0's migrations and recovery rules
+  below. Before installation, stop processes using the data roots and back up
+  `~/.cats`, configured overrides and workspace attachment directories. If startup
+  or installation fails, preserve those roots and reinstall 0.16.1 or return to
+  0.16.0 with processes stopped; those versions use the same persisted formats.
+- **Signing and publication.** Run exact-source ci.yaml on `release/v0.16.1`,
+  then dispatch desktop-release.yml from that same SHA with `tag=v0.16.1`, the
+  Runtime SHA above and `unsigned=false`. Windows x64/arm64 ship NSIS installers,
+  macOS ships a universal x64/arm64 DMG and updater ZIP, and Linux ships
+  amd64/arm64 DEBs. Standard expected trust is macOS **signed + notarized**,
+  Windows **unsigned: no certificate**, Linux **n/a**. Per-platform receipts and
+  native signing/notarization checks establish actual trust. Same-team signed
+  macOS, Windows NSIS and Linux DEB retain their update paths.
+- **Validation boundary.** The update fix passed 200 focused tests, Desktop host
+  compilation and independent review; its full PR CI passed. Recorded public
+  feed/metadata selected 0.16.0 while the Bot feed's milestone case selected
+  0.5.9, without downloading installers. Release gates enforce full CI for the
+  exact frozen bump source, packaged identity/startup, source receipts, updater
+  metadata, checksums and signing. This does not claim installed upgrade/rollback
+  acceptance on every OS. Platform npm, Runtime npm, Apps, Plugins and cats-one
+  remain separate publication targets.
+
+Publication results: the `v0.16.1` GitHub Standard Preview, its source/build
+receipts, checksums, provenance and Actions run.
+
 ## 2026-11-12 — Desktop 0.16.0 standard preview: product scope, conversation tools and Projects
 
 Selected distribution: Desktop **0.16.0 standard-profile preview**, App SDK
