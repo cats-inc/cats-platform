@@ -8,6 +8,8 @@ import { keepOwnerWorkProjects } from './model/workProject.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import type { MessagePage, MessageSearchHit, MessageSearchOptions } from '../shared/transcript.js';
+import { materializedMessagePage } from './materializedMessagePage.js';
 
 import type { ChatState, ChatChannelState } from '../api/contracts.js';
 import type { ChannelProjectionMetadata } from './core-projection/scoped.js';
@@ -81,6 +83,8 @@ export interface ChatStore extends CoreStore {
   withDataReset?<T>(operation: () => Promise<T>): Promise<T>;
   /** A dispatch-local view: metadata plus only the requested channel's transcript. */
   readChannelState?(id: string): Promise<ChatState>;
+  readMessagePage?(id: string, limit?: number, before?: string): Promise<MessagePage>;
+  searchMessages?(query: string, options?: MessageSearchOptions): Promise<MessageSearchHit[]>;
   /** Synchronous existing-channel mutation; optional metadata is limited to derived memory. */
   updateChannel?(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null>;
 }
@@ -691,6 +695,14 @@ export class LegacyJsonChatStore implements ChatStore {
 }
 
 export class MemoryChatStore implements ChatStore {
+  async readMessagePage(id: string, limit = 50, before?: string): Promise<MessagePage> {
+    return this.runExclusive(() => {
+      const channel = this.chatState.channels.find(value => value.id === id);
+      if (!channel) throw new Error(`Channel not found: ${id}`);
+      return materializedMessagePage(channel, this.messageOrderRevisions.get(id) ?? 0, limit, before);
+    });
+  }
+  private readonly messageOrderRevisions = new Map<string, number>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private chatState: ChatState;
   private coreState: CatsCoreState;
@@ -786,7 +798,23 @@ export class MemoryChatStore implements ChatStore {
     core: CatsCoreState,
   ): PersistedChatSnapshot {
     normalizeOwnerLifecycle(core.ownerLifecycle);
-    this.chatState = compactOwnerWorkflowHistory(structuredClone(chat), core);
+    const next = compactOwnerWorkflowHistory(structuredClone(chat), core);
+    const nextIds = new Set(next.channels.map(channel => channel.id));
+    const previousById = new Map(this.chatState.channels.map(channel => [channel.id, channel]));
+    for (const channel of next.channels) {
+      const previous = previousById.get(channel.id);
+      // Tail appends and body edits preserve every existing position. Any other
+      // order/deletion change advances the generation, matching the SQL store.
+      if (previous?.messages.some((message, index) => channel.messages[index]?.id !== message.id)) {
+        this.messageOrderRevisions.set(channel.id, (this.messageOrderRevisions.get(channel.id) ?? 0) + 1);
+      }
+    }
+    for (const channel of this.chatState.channels) {
+      if (!nextIds.has(channel.id)) {
+        this.messageOrderRevisions.set(channel.id, (this.messageOrderRevisions.get(channel.id) ?? 0) + 1);
+      }
+    }
+    this.chatState = next;
     this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(core));
     return buildPersistedChatSnapshot(this.chatState, this.coreState);
   }

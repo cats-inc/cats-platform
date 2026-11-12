@@ -6,6 +6,8 @@ import {
   isClientMessageIdTooLongError,
 } from '../shared/clientMessageIdentity.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
+import { MessageCursorExpiredError } from '../shared/transcript.js';
+import { ProfileStorageError } from '../state/database/profileFormat.js';
 
 export function errorStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : '';
@@ -53,6 +55,14 @@ export function handleRestError(
   context: ChatApiRouteContext,
   error: unknown,
 ): void {
+  if (error instanceof MessageCursorExpiredError) {
+    sendRestError(context, 409, error.code, error.message, { reload: true });
+    return;
+  }
+  if (error instanceof ProfileStorageError) {
+    sendRestError(context, 503, error.code, error.message);
+    return;
+  }
   if (error instanceof ChatApiError) {
     sendRestError(
       context,

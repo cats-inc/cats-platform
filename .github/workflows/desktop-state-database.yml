@@ -6,6 +6,10 @@ on:
     paths:
       - 'src/platform/persistence/state-db/**'
       - 'src/products/chat/state/**'
+      - 'src/products/chat/shared/transcript.ts'
+      - 'src/products/chat/api/routeErrors.ts'
+      - 'src/products/chat/api/resources/**'
+      - 'src/products/shared/renderer/api/transcript.ts'
       - 'src/index.ts'
       - 'src/shared/platformDataReset.ts'
       - 'desktop/host/processSupervisor.ts'

@@ -157,7 +157,7 @@ test('message page uses an exclusive indexed position and maintains chronologica
   const last = store.page('alpha', 2, second.nextCursor);
   assert.deepEqual(last.messages.map(message => message.body), ['0']);
   assert.equal(last.nextCursor, null);
-  assert.throws(() => store.page('missing'), /does not exist/);
+  assert.throws(() => store.page('missing'), /Channel not found:/);
   assert.throws(() => store.page('alpha', 201), RangeError);
   assert.throws(() => store.page('alpha', 2, 'bad'), RangeError);
   assert.throws(() => store.page('unrelated', 2, first.nextCursor), RangeError);

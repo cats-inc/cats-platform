@@ -1,5 +1,6 @@
 export { normalizeAppShellPayload } from './normalization.js';
 export { expectJson, readErrorMessage } from './http.js';
+export { fetchMessagePage, searchConversationMessages, TranscriptQueryError } from './transcript.js';
 
 export {
   fetchAdvancedProviderModels,

@@ -1,38 +1,12 @@
 import type { ChatChannelState, ChatMessage, ChatState } from '../../api/contracts.js';
 import type { StateDatabase, StateRow } from '../../../../platform/persistence/state-db/stateDatabase.js';
 import type { ChannelProjectionMetadata } from '../core-projection/scoped.js';
+import { MessageCursorExpiredError, type MessagePage, type MessageSearchHit } from '../../shared/transcript.js';
+export { MessageCursorExpiredError, type MessagePage, type MessageSearchHit } from '../../shared/transcript.js';
+import { decodeMessageCursor, encodeMessageCursor } from '../messageCursor.js';
 import {
   buildSearchQuery, conversationTerm, indexText, INDEX_FORM,
 } from '../../../../platform/persistence/state-db/searchText.js';
-
-export interface MessagePage {
-  messages: ChatMessage[];
-  total: number;
-  /** Opaque, exclusive position plus channel order generation; stale cursors force refresh. */
-  nextCursor: string | null;
-}
-
-export class MessageCursorExpiredError extends Error {
-  readonly code = 'stale_message_cursor';
-  constructor() { super('Conversation message order changed; reload the newest page.'); }
-}
-
-interface PageCursor { v: 1; channel: string; order: number; before: number; }
-
-function decodeCursor(value: string, channelId: string): PageCursor {
-  try {
-    if (value.length > 4096 || !/^[a-zA-Z0-9_-]+$/u.test(value)) throw new Error();
-    const cursor = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as PageCursor;
-    if (cursor?.v !== 1 || cursor.channel !== channelId || !Number.isSafeInteger(cursor.order)
-      || cursor.order < 0 || !Number.isSafeInteger(cursor.before) || cursor.before < 0) throw new Error();
-    return cursor;
-  } catch { throw new RangeError('Invalid conversation page cursor'); }
-}
-
-export interface MessageSearchHit {
-  channelId: string;
-  message: ChatMessage;
-}
 
 function bounded(value: number, maximum: number, name: string): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > maximum) {
@@ -90,10 +64,10 @@ export class ConversationDatabase {
 
   page(channelId: string, limit = 50, before?: string): MessagePage {
     bounded(limit, 200, 'limit');
-    const cursor = before === undefined ? null : decodeCursor(before, channelId);
+    const cursor = before === undefined ? null : decodeMessageCursor(before, channelId);
     return this.database.snapshot(() => {
       const channel = this.database.get('select message_count, order_revision from channels where id = ?', channelId);
-      if (!channel) throw new Error('Conversation does not exist');
+      if (!channel) throw new Error(`Channel not found: ${channelId}`);
       const order = Number(channel.order_revision);
       if (cursor && cursor.order !== order) throw new MessageCursorExpiredError();
       const rows = cursor === null
@@ -104,8 +78,7 @@ export class ConversationDatabase {
       return {
         messages: selected.map(row => JSON.parse(String(row.json)) as ChatMessage),
         total: Number(channel.message_count),
-        nextCursor: hasMore ? Buffer.from(JSON.stringify({ v: 1, channel: channelId, order,
-          before: Number(selected[0]!.position) } satisfies PageCursor)).toString('base64url') : null,
+        nextCursor: hasMore ? encodeMessageCursor(channelId, order, Number(selected[0]!.position)) : null,
       };
     });
   }

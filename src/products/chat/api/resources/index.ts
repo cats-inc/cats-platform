@@ -12,10 +12,12 @@ import { routeParallelChatGroupResourceApi } from './parallelChatGroupRoutes.js'
 import { routeChatEventApi } from './eventRoutes.js';
 import { routeChatOrchestratorResourceApi } from './orchestratorRoutes.js';
 import { routeChatPreferenceResourceApi } from './preferenceRoutes.js';
+import { routeMessageSearch } from './messageQueryRoutes.js';
 
 export async function routeChatResourceApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (await routeMessageSearch(context)) return true;
   if (await routeConversationDiagnostics(context)) {
     return true;
   }

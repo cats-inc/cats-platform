@@ -144,6 +144,17 @@ Snapshot-shaped product APIs remain available for global operations during this 
 while conversation-specific reads/writes use the indexed adapter. They must not be cited
 as constant-time operations. Cold normalization and Core projection remain measurable costs.
 
+The query API uses `GET /api/channels/:id/messages?limit=&before=` with newest-first
+windows presented chronologically, cached `total` and exclusive `nextCursor`. Invalid
+input returns 400, missing channels 404, stale cursors 409 with `reload: true`, and storage
+failures 503 with no raw diagnostic content. Search uses authenticated
+`GET /api/conversations/messages/search?q=&channelId=&limit=` (200-character query,
+at most 12 distinct words, 100 results). Both routes redact proposal-card records.
+DTOs and renderer fetch/error helpers live in browser-safe modules. The Memory fixture
+store tracks its own order generation; production never falls back to JSON/materialized
+queries. App-shell/entity subscription windows and the Desktop controls remain pending;
+query endpoints alone do not satisfy the renderer or end-to-end performance requirements.
+
 The implementation's schema 2 keeps a separate compact channel catalog for shared root,
 participant and memory projections. A scoped writer must not parse unrelated workflow JSON.
 It applies known projection-field deltas to existing Core records, retaining passive fields

@@ -56,7 +56,10 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 ## Phase 3 — Product consumers and cold storage (FR-8, FR-9, FR-15)
 
 - [ ] Connect indexed paging to message API and renderer while retaining live behavior.
+  The indexed message API and browser-safe client are implemented; app-shell/entity
+  subscriptions and mounted transcript paging remain pending.
 - [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
+  The authenticated/redacted query endpoint and client are implemented; Desktop controls remain pending.
 - [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
   Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
@@ -117,6 +120,8 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Added content-free failure causes with an internally selected source code, SQLite result code and operation phase, preserving no original exception/message/path. The new injected-filesystem/SQLite regression passed under Node and Electron; server build passed. Independent review found no blocking P1/P2 in this diagnostic change. This improves future evidence and does not resolve the earlier intermittent failure. |
 | 2026-11-12 | Schema 2 adds an independent compact catalog. Recognized schema-1 profiles are offline-admitted, backed up with exact JSON/receipt and a verified standalone database snapshot, then upgraded in one SQL transaction bound to admitted schema/installation/revision/metadata digest. Canonical logical exports agree; failure, pending handoff, source replacement, wrong receipt and close-before-worker tests pass. No format/version release was published. |
 | 2026-11-12 | Independent scoped/worker reviews resolved all blocking P1/P2 in their slice: changed-record extension preservation, own `__proto__` JSON keys, hidden JSON workflow scans, native worker survival after parent death, backup-source admission races, receipt admission and close/spawn cancellation. The special-key test now starts with an existing empty metadata object to exercise the original recursive failure. Remaining product/maintenance/UI requirements are not approved by these slice reviews. |
+| 2026-11-12 | Indexed message paging/search now reach authenticated product routes with browser-safe typed clients. Actual server/database query checks passed **6/6 Node and 6/6 Electron**, including a malformed sibling, private-card redaction, unauthenticated rejection, cursor invalidation and safe storage failures. **84/84** affected query/REST/Memory-store regressions and **18/18** bundled client/auth checks passed. Memory fixture queries share the generation cursor protocol and mutation queue; no production materialized fallback was added. Independent API/client review found no blocking P1/P2. These checks do not cover mounted Desktop transcript/search controls, app-shell or entity-subscription windowing, which remain pending. |
+| 2026-11-12 | Query checkpoint builds passed: server, actual web renderer (`build:web`), typed test bundling and test-fixture typecheck. The web build retains its existing large-chunk notice; it did not fail. Final client cancellation regression and its independent review preserve AbortError when an error body is interrupted. Existing server-side query DTO/error re-exports remain available. This is local Windows evidence, not hosted three-OS acceptance. |
 
 *Created and last updated: 2026-11-12*
 
@@ -128,8 +133,9 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: diagnose the intermittent Electron multi-process initialization failure, then indexed
-API/renderer paging/search and remaining scoped REST consumers; explicit compressed
+Next work: app-shell/entity-subscription windows and mounted Desktop paging/search,
+remaining scoped REST consumers, and the still-unexplained Electron multi-process startup
+failure (retain the new safe diagnostic evidence); explicit compressed
 archives; daily paired snapshot publication/retention and offline CLI commands; then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
