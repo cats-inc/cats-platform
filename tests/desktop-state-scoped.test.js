@@ -12,6 +12,8 @@ import { openStateDatabase } from '../build/server/platform/persistence/state-db
 import { createLockedDispatchChatStore } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
 import { buildChatConversationId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
+import { createChannel } from '../build/server/products/chat/state/model/index.js';
+import { assertConversationWritable } from '../build/server/products/chat/shared/conversationArchive.js';
 
 const TIME = '2026-01-01T00:00:00.000Z';
 function richSource() {
@@ -238,5 +240,146 @@ test('separate scoped writers preserve coupled Core counts across the same and s
     assert.equal(channel.messages.length, count); assert.equal(channel.title, `Count ${count}`);
     assert.equal(new Set(channel.messages.map(message => message.id)).size, count);
     assert.equal(core.workItems.find(item => item.id === `work-item-chat-channel-${channelId}`).metadata.messageCount, count);
+  }
+});
+
+test('a scoped batch preserves malformed unrelated rows and projects every selected member together', async t => {
+  let source = richSource();
+  source = normalizeImportedChatSnapshot(createChannel(source.chat, { originSurface: 'work', title: 'Unrelated',
+    topic: '', temporaryParticipants: [{ participantId: 'unrelated', name: 'Unrelated', provider: 'codex' }],
+    skipBossCatGreeting: true }, new Date(TIME)));
+  const third = source.chat.selectedChannelId;
+  source.containers.find(container => container.id === CHAT_ROOT_CONTAINER_ID).metadata.passive = { keep: true };
+  const { store, file } = await fixture(t, source);
+  const [id, other] = source.chat.parallelChatGroups[0].memberChannelIds;
+  const before = await store.readCore();
+  const db = openStateDatabase({ file: databasePath(file), mode: 'writer' });
+  db.run('update channels set json = ? where id = ?', '{bad unrelated header', third);
+  db.run('update messages set json = ? where channel_id = ?', '{bad unrelated message', third);
+  const rows = db.all('select id, json from messages where channel_id = ?', third); db.close();
+  store.read = store.updateSnapshot = () => { throw Error('Global snapshot forbidden'); };
+  let notices = 0; store.subscribeCore(() => notices++);
+  const result = await store.updateChannels([other, 'missing', id, other], state => {
+    assert.deepEqual(state.channels.map(channel => channel.id), [id, other]);
+    for (const channel of state.channels) append(channel, 'Batch 公園 atomic');
+    state.selectedChannelId = id;
+    state.parallelChatGroups[0].updatedAt = state.channels[0].updatedAt;
+    state.parallelChatGroups[0].lastMessageAt = state.channels[0].updatedAt;
+    return state;
+  });
+  assert.equal(notices, 1); assert.equal(result.channels.length, 2);
+  const after = await store.readCore();
+  assert.deepEqual(otherRecords(after, third), otherRecords(before, third));
+  const root = after.containers.find(container => container.id === CHAT_ROOT_CONTAINER_ID);
+  assert.deepEqual(root.metadata.channelIds, before.containers.find(container => container.id === root.id).metadata.channelIds);
+  assert.deepEqual(root.metadata.passive, { keep: true });
+  for (const channelId of [id, other]) {
+    assert.equal(after.workItems.find(item => item.id === `work-item-chat-channel-${channelId}`).metadata.messageCount, 3);
+    assert.equal((await store.searchMessages('atomic', { channelId })).length, 1);
+  }
+  const check = openStateDatabase({ file: databasePath(file), mode: 'reader' });
+  try { assert.deepEqual(check.all('select id, json from messages where channel_id = ?', third), rows); }
+  finally { check.close(); }
+});
+
+test('scoped batches reject async, context, identity, ordering and global metadata edits without publication', async t => {
+  const { store, file, id, other } = await fixture(t);
+  const before = await readFile(file);
+  const invalid = [
+    async state => state,
+    (state, context) => { context.core.updatedAt = 'changed'; return state; },
+    state => { state.channels.reverse(); return state; },
+    state => { state.channels.pop(); return state; },
+    state => { state.channels[1].messages[0].channelId = id; return state; },
+    state => { state.name = 'Unrelated global rename'; return state; },
+    state => { state.selectedChannelId = 'outside'; return state; },
+    state => { state.parallelChatGroups[0].memberChannelIds.reverse(); return state; },
+    state => { state.parallelChatGroups[0].title = 'Unrelated rename'; return state; },
+  ];
+  for (const mutate of invalid) {
+    await assert.rejects(store.updateChannels([id, other], mutate), TypeError);
+    assert.deepEqual(await readFile(file), before);
+  }
+  let calls = 0;
+  assert.equal((await store.updateChannels([], () => { calls++; })).channels.length, 0);
+  assert.equal((await store.updateChannels(['missing'], () => { calls++; })).channels.length, 0);
+  assert.equal(calls, 0);
+  await store.updateChannels([id, other], state => state);
+  assert.deepEqual(await readFile(file), before);
+});
+
+test('failure while storing the second batch member rolls back the first member and FTS', async t => {
+  const { store, file, id, other } = await fixture(t);
+  const before = await readFile(file), channels = await store.readChannelStates([id, other]);
+  await assert.rejects(store.updateChannels([id, other], state => {
+    append(state.channels[0], 'rollbackuniqueword');
+    state.channels[1].messages.push(structuredClone(state.channels[1].messages[0]));
+    return state;
+  }), /Duplicate message identity/);
+  assert.deepEqual(await readFile(file), before);
+  assert.deepEqual(await store.readChannelStates([id, other]), channels);
+  assert.deepEqual(await store.searchMessages('rollbackuniqueword'), []);
+});
+
+test('one durable interrupted batch recovers both target rows and their coupled Core projection', async t => {
+  const { store, create, file, id, other } = await fixture(t);
+  let armed = true;
+  const interrupted = create({ checkpoint: phase => {
+    if (armed && phase === 'database_committed') { armed = false; throw Error('batch publication interrupted'); }
+  } });
+  await interrupted.initialize();
+  await assert.rejects(interrupted.updateChannels([id, other], state => {
+    for (const channel of state.channels) append(channel, 'Recovered batch');
+    return state;
+  }), /batch publication interrupted/);
+  const current = await store.readChannelStates([id, other]), core = await store.readCore();
+  for (const channel of current.channels) {
+    assert.equal(channel.messages.length, 3);
+    assert.equal(channel.messages.at(-1).body, 'Recovered batch');
+    assert.equal(core.workItems.find(item => item.id === `work-item-chat-channel-${channel.id}`).metadata.messageCount, 3);
+  }
+  const recovered = await readFile(file); await store.readChannelStates([id, other]);
+  assert.deepEqual(await readFile(file), recovered);
+});
+
+test('batch header admission rejects a cold required target before decoding another malformed transcript', async t => {
+  const { store, file, id, other } = await fixture(t, snapshot());
+  await store.archiveConversation(id, 'archive');
+  assert.equal((await store.readChannelHeader(id)).status, 'archived');
+  // A header-only callback must run before even an independently corrupted hot member is decoded.
+  const db = openStateDatabase({ file: databasePath(file), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{bad hot member', other); db.close();
+  let called = false;
+  await assert.rejects(store.updateChannels([other, id], () => { called = true; }, {
+    preflight: state => { for (const channel of state.channels) assertConversationWritable(channel); },
+  }), { code: 'conversation_archived' });
+  assert.equal(called, false);
+});
+
+test('target presentation writes preserve unrelated malformed transcripts and reject canonical-ID escapes', async t => {
+  const { store, file, id, other } = await fixture(t);
+  const before = await store.readCore(), source = await store.readChannel(id);
+  const db = openStateDatabase({ file: databasePath(file), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{malformed unrelated', other); db.close();
+  const segment = { id: 'presentation:scoped', kind: 'status', status: 'complete', content: null,
+    conversationId: buildChatConversationId(id), turnId: 'presentation-turn', laneId: 'presentation-lane',
+    sessionId: null, sequence: 0, createdAt: TIME, metadata: { event: 'conversation_presentation', channelId: id,
+      sourceMessageId: source.messages[0].id, presentation: { version: 1, id: 'presentation:scoped', phase: 'sealed', blocks: [
+        { id: 'text', index: 0, kind: 'text', text: 'Scoped status', title: null, toolName: null, toolId: null, status: 'complete' },
+      ] } } };
+  await store.writeConversationPresentation(id, segment, new Date(TIME));
+  const after = await store.readCore();
+  assert.deepEqual(otherRecords(after, other), otherRecords(before, other));
+  assert.deepEqual((await store.readChannel(id)).messages, source.messages);
+  assert.equal(after.segments.find(record => record.id === segment.id).metadata.presentation.blocks[0].text, 'Scoped status');
+  const sibling = before.segments.find(record => record.conversationId === buildChatConversationId(other));
+  const saved = await readFile(file);
+  for (const invalid of [
+    { ...segment, id: ` ${sibling.id} ` }, { ...segment, id: '  ' },
+    { ...segment, id: sibling.id }, { ...segment, conversationId: buildChatConversationId(other) },
+    { ...segment, metadata: { ...segment.metadata, channelId: other } },
+  ]) {
+    await assert.rejects(store.writeConversationPresentation(id, invalid, new Date(TIME)), TypeError);
+    assert.deepEqual(await readFile(file), saved);
   }
 });

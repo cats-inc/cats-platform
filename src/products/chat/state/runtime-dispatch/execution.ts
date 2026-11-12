@@ -71,7 +71,7 @@ export interface DispatchExecution extends DispatchRequest {
   terminalMessageMetadata?: Record<string, unknown>;
 }
 
-type RuntimeEffectCoreStore = Pick<ChatStore, 'updateCore'>;
+type RuntimeEffectCoreStore = Pick<ChatStore, 'updateCore' | 'writeConversationPresentation'>;
 
 function readRuntimeEnvelopeMetadataString(
   envelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>,

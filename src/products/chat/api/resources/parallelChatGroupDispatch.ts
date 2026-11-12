@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
@@ -12,7 +13,9 @@ import {
 } from '../../state/model/index.js';
 import { createMergedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
-import { updateChatState } from '../../state/store.js';
+import { readConversationsState, updateConversationsState } from '../scopedConversationState.js';
+import { closeUnreferencedConversationSessions, trackCreatedRuntimeSessions } from '../conversationRuntimeCleanup.js';
+import { ChatApiError } from '../routeErrors.js';
 import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import type {
   ParallelChatDispatchResponse,
@@ -20,6 +23,7 @@ import type {
   SendChannelMessageInput,
   SendParallelChatMessageInput,
   ChatState,
+  ChatChannelState,
   ChannelDispatchOrchestratorSummary,
 } from '../contracts.js';
 import { persistAttachmentsForChannels } from '../../state/channelAttachments.js';
@@ -113,6 +117,34 @@ export class ParallelChatAttachmentWorkspaceError extends Error {
     this.name = 'ParallelChatAttachmentWorkspaceError';
     this.channelIds = channelIds;
   }
+}
+
+/** Ignore ordinary lease progress; owner membership, execution and terminal changes invalidate preparation. */
+function executionAdmission(channel: ChatChannelState) {
+  const routing = channel.roomRouting, turn = routing?.workflow.activeTurn;
+  return {
+    repoPath: channel.repoPath, chatCwd: channel.chatCwd,
+    runtimeWorkspaceKind: channel.runtimeWorkspaceKind, runtimeWorkspaceAccess: channel.runtimeWorkspaceAccess,
+    runtimePermissionMode: channel.runtimePermissionMode, runtimeExecutionPolicy: channel.runtimeExecutionPolicy,
+    coordinatorParticipantId: channel.coordinatorParticipantId,
+    routing: routing ? { mode: routing.mode, defaultRecipientId: routing.defaultRecipientId,
+      maxContinuations: routing.maxContinuations, maxDispatchesPerTurn: routing.maxDispatchesPerTurn,
+      maxTargetVisitsPerTurn: routing.maxTargetVisitsPerTurn,
+      turn: turn ? { id: turn.id, completedAt: turn.completedAt,
+        terminal: ['completed', 'failed', 'cancelled'].includes(turn.status) ? turn.status : null } : null } : null,
+    participants: resolveChannelParticipantAssignments(channel).map(({ execution, ...assignment }) => ({ ...assignment,
+      execution: { target: execution.target, modelSelection: execution.modelSelection,
+        sessionId: execution.lease.sessionId, laneId: execution.lease.laneId,
+        terminal: ['closed', 'removed'].includes(execution.lease.status) ? execution.lease.status : null },
+    })),
+  };
+}
+
+function touchCurrentParallelGroup(state: ChatState, groupId: string, ids: readonly string[], nowIso: string): void {
+  const group = state.parallelChatGroups.find(group => group.id === groupId);
+  if (!group || !group.memberChannelIds.every(id => ids.includes(id))) return;
+  touchParallelChatGroup(state, groupId, group.updatedAt > nowIso ? group.updatedAt : nowIso,
+    group.lastMessageAt && group.lastMessageAt > nowIso ? group.lastMessageAt : nowIso);
 }
 
 export async function dispatchParallelChatBodies(
@@ -260,85 +292,124 @@ async function stageParallelChatBodies(
   }
 
   const begunDispatches: BegunParallelChatDispatch[] = [];
-  for (const [channelId, input] of effectiveChannelInputs.entries()) {
-    const trimmedBody = input.body.trim();
-    if (!trimmedBody) {
-      begunDispatches.push({
-        channelId,
-        begun: null,
-        status: 'skipped',
-      });
-      continue;
-    }
+  const trackedBegins: Array<{ channelId: string; tracked: ReturnType<typeof trackCreatedRuntimeSessions> }> = [];
+  try {
+    for (const [channelId, input] of effectiveChannelInputs.entries()) {
+      const trimmedBody = input.body.trim();
+      if (!trimmedBody) {
+        begunDispatches.push({
+          channelId,
+          begun: null,
+          status: 'skipped',
+        });
+        continue;
+      }
 
-    try {
-      const begun = await beginChannelMessageDispatch(
-        acknowledgedState,
-        channelId,
-        withMemberAudience(acknowledgedState, channelId, { ...input, body: trimmedBody }),
-        context.dependencies.runtimeClient,
-        now,
-        {
-          companionStore: context.dependencies.companionStore,
-          memoryService: context.dependencies.memoryService,
-          chatStatePath: context.dependencies.config.chatStatePath,
-          runtimeDataDir: context.dependencies.config.runtimeDataDir,
-          runtimeRecovery: {
-            staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+      try {
+        const tracked = trackCreatedRuntimeSessions(context.dependencies.runtimeClient);
+        trackedBegins.push({ channelId, tracked });
+        const begun = await beginChannelMessageDispatch(
+          acknowledgedState,
+          channelId,
+          withMemberAudience(acknowledgedState, channelId, { ...input, body: trimmedBody }),
+          tracked.runtimeClient,
+          now,
+          {
+            companionStore: context.dependencies.companionStore,
+            memoryService: context.dependencies.memoryService,
+            chatStatePath: context.dependencies.config.chatStatePath,
+            runtimeDataDir: context.dependencies.config.runtimeDataDir,
+            runtimeRecovery: {
+              staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+            },
+            providerCapabilityBootstrapConfig:
+              context.dependencies.providerCapabilityBootstrapConfig,
+            providerCapabilityBootstrapDiagnosticSink:
+              context.dependencies.providerCapabilityBootstrapDiagnosticSink,
+            naturalProductIntentMode: context.dependencies.config.chatNaturalProductIntentMode,
+            cancellationRegistry: channelDispatchCancellationRegistry,
+            onStateWritten: notifyStreamTargetChanged,
           },
-          providerCapabilityBootstrapConfig:
-            context.dependencies.providerCapabilityBootstrapConfig,
-          providerCapabilityBootstrapDiagnosticSink:
-            context.dependencies.providerCapabilityBootstrapDiagnosticSink,
-          naturalProductIntentMode: context.dependencies.config.chatNaturalProductIntentMode,
-          cancellationRegistry: channelDispatchCancellationRegistry,
-          onStateWritten: notifyStreamTargetChanged,
-        },
-      );
-      acknowledgedState = replaceState(
-        acknowledgedState,
-        requireChannel(begun.state, channelId),
-      );
-      begunDispatches.push({
-        channelId,
-        begun,
-        status: 'sent',
-        sourceMessageId: begun.results[0]?.sourceMessageId,
-        orchestrator: buildChannelDispatchOrchestratorSummaryFromBegun(channelId, begun),
-      });
-    } catch (error) {
-      begunDispatches.push({
-        channelId,
-        begun: null,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
-      });
+        );
+        acknowledgedState = replaceState(
+          acknowledgedState,
+          requireChannel(begun.state, channelId),
+        );
+        begunDispatches.push({
+          channelId,
+          begun,
+          status: 'sent',
+          sourceMessageId: begun.results[0]?.sourceMessageId,
+          orchestrator: buildChannelDispatchOrchestratorSummaryFromBegun(channelId, begun),
+        });
+      } catch (error) {
+        begunDispatches.push({
+          channelId,
+          begun: null,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
+        });
+      }
+    }
+
+    let mergedState = acknowledgedState;
+    if (options.persistAcknowledgedStateBeforeDispatch) {
+      mergedState = await updateConversationsState(context.dependencies.chatStore, options.lockedChannelIds, (latest, scope) => {
+        for (const dispatch of begunDispatches) {
+          if (!dispatch.begun || dispatch.status !== 'sent') continue;
+          const current = executionAdmission(requireChannel(latest, dispatch.channelId));
+          if (!isDeepStrictEqual(current, executionAdmission(requireChannel(options.baselineState, dispatch.channelId)))
+            && !isDeepStrictEqual(current, executionAdmission(requireChannel(acknowledgedState, dispatch.channelId)))) {
+            throw new ChatApiError(409, 'conversation_changed', 'A parallel conversation changed while preparing dispatch. Reload and try again.');
+          }
+        }
+        const replacements = new Map(latest.channels.map(channel => {
+          const prepared = acknowledgedState.channels.find(value => value.id === channel.id);
+          return [channel.id, prepared && prepared.updatedAt > channel.updatedAt
+            ? { ...channel, updatedAt: prepared.updatedAt } : channel];
+        }));
+        const catalog = scope?.channelCatalog.map(channel => replacements.get(channel.id) ?? channel);
+        for (const channelId of options.lockedChannelIds) {
+          if (latest.channels.some((channel) => channel.id === channelId)) {
+            if (isDeepStrictEqual(requireChannel(options.baselineState, channelId), requireChannel(acknowledgedState, channelId))) continue;
+            latest = mergeCompletedDispatchState(latest, options.baselineState, acknowledgedState, channelId, now, catalog);
+          }
+        }
+        touchCurrentParallelGroup(latest, options.groupId, options.lockedChannelIds, nowIso);
+        latest.selectedChannelId = options.activeChannelId;
+        requireChannel(latest, options.activeChannelId).unreadCount = 0;
+        return latest;
+      }, { excludeArchived: true, preflight: headers => {
+        const group = headers.parallelChatGroups.find(group => group.id === options.groupId);
+        if (!group || !isDeepStrictEqual(group.memberChannelIds, options.lockedChannelIds)
+          || options.lockedChannelIds.some(id => !headers.channels.some(channel => channel.id === id))) {
+          throw new ChatApiError(409, 'parallel_group_changed', 'The parallel conversation changed. Reload and try again.');
+        }
+        for (const channel of headers.channels) {
+          const input = effectiveChannelInputs.get(channel.id);
+          const baseline = requireChannel(options.baselineState, channel.id);
+          const prepared = requireChannel(options.state, channel.id);
+          if (channel.id === options.activeChannelId || input?.body.trim() || options.sharedAttachments?.length
+            || !isDeepStrictEqual(baseline.messages, prepared.messages)) assertConversationWritable(channel);
+        }
+      } });
+      for (const dispatch of begunDispatches) if (dispatch.begun) dispatch.begun.state = structuredClone(mergedState);
+    }
+
+    return {
+      groupId: options.groupId,
+      now,
+      nowIso,
+      lockedChannelIds: [...options.lockedChannelIds],
+      acknowledgedState: mergedState,
+      begunDispatches,
+    };
+  } finally {
+    for (const { channelId, tracked } of trackedBegins) {
+      await closeUnreferencedConversationSessions({ ...context.dependencies, runtimeClient: tracked.runtimeClient },
+        channelId, [...tracked.pending]);
     }
   }
-
-  let mergedState = acknowledgedState;
-  if (options.persistAcknowledgedStateBeforeDispatch) {
-    mergedState = await updateChatState(context.dependencies.chatStore, (latest) => {
-      for (const channelId of options.lockedChannelIds) {
-        if (latest.channels.some((channel) => channel.id === channelId)) {
-          latest = mergeCompletedDispatchState(latest, options.baselineState, acknowledgedState, channelId, now);
-        }
-      }
-      if (latest.parallelChatGroups.some((group) => group.id === options.groupId)) {
-        touchParallelChatGroup(latest, options.groupId, nowIso, nowIso);
-      }
-      return selectChannel(latest, options.activeChannelId, now);
-    });
-  }
-
-  return {
-    groupId: options.groupId,
-    now,
-    nowIso,
-    lockedChannelIds: [...options.lockedChannelIds],
-    acknowledgedState: mergedState,
-    begunDispatches,
-  };
 }
 
 export async function finalizeParallelChatBodies(
@@ -358,9 +429,10 @@ export async function finalizeParallelChatBodies(
         };
       }
 
+      const tracked = trackCreatedRuntimeSessions(context.dependencies.runtimeClient);
       try {
         const dispatchChatStore = createMergedDispatchChatStore({
-          runtimeClient: context.dependencies.runtimeClient,
+          runtimeClient: tracked.runtimeClient,
           chatStore: context.dependencies.chatStore,
           mutationGate: context.dependencies.mutationGate,
           channelId: dispatch.channelId,
@@ -386,7 +458,7 @@ export async function finalizeParallelChatBodies(
         const completed = await continueBegunChannelMessageDispatch(
           dispatch.begun,
           dispatch.channelId,
-          context.dependencies.runtimeClient,
+          tracked.runtimeClient,
           staged.now,
           {
             companionStore: context.dependencies.companionStore,
@@ -423,6 +495,9 @@ export async function finalizeParallelChatBodies(
           orchestrator: dispatch.orchestrator,
           rawError: error,
         };
+      } finally {
+        await closeUnreferencedConversationSessions({ ...context.dependencies, runtimeClient: tracked.runtimeClient },
+          dispatch.channelId, [...tracked.pending]);
       }
     }),
   );
@@ -431,12 +506,12 @@ export async function finalizeParallelChatBodies(
     context,
     staged.lockedChannelIds,
     async () => {
-      const baseline = await context.dependencies.chatStore.read();
+      const baseline = await readConversationsState(context.dependencies.chatStore, staged.lockedChannelIds, { excludeArchived: true });
       let mergedState = structuredClone(baseline);
       const results: ParallelChatDispatchResult[] = [];
 
       for (const dispatch of dispatches) {
-        if (!mergedState.channels.some((channel) => channel.id === dispatch.channelId)) {
+        if (!mergedState.channels.some((channel) => channel.id === dispatch.channelId && channel.status !== 'archived')) {
           results.push({
             channelId: dispatch.channelId,
             status: dispatch.status,
@@ -448,6 +523,16 @@ export async function finalizeParallelChatBodies(
         }
 
         if (dispatch.kind === 'failed') {
+          const currentTurn = requireChannel(mergedState, dispatch.channelId).roomRouting?.workflow.activeTurn;
+          const expectedTurn = dispatch.begun.preparedTurn?.activeTurn;
+          // A later owner turn owns its workflow; an old failure must not settle that turn.
+          if (currentTurn && currentTurn.id !== expectedTurn?.id) {
+            results.push({ channelId: dispatch.channelId, status: dispatch.status,
+              ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
+              ...(dispatch.error ? { error: dispatch.error } : {}),
+              ...(dispatch.orchestrator ? { orchestrator: dispatch.orchestrator } : {}) });
+            continue;
+          }
           const settled = await settleBegunChannelMessageDispatchFailure(
             dispatch.begun,
             dispatch.channelId,
@@ -473,21 +558,23 @@ export async function finalizeParallelChatBodies(
         });
       }
 
-      if (mergedState.parallelChatGroups.some((group) => group.id === staged.groupId)) {
-        touchParallelChatGroup(mergedState, staged.groupId, staged.nowIso, staged.nowIso);
-      }
-      const persisted = await updateChatState(context.dependencies.chatStore, (latest) => {
+      const persisted = await updateConversationsState(context.dependencies.chatStore, staged.lockedChannelIds, (latest, scope) => {
+        const replacements = new Map(latest.channels.map(channel => {
+          const prepared = mergedState.channels.find(value => value.id === channel.id);
+          return [channel.id, prepared && prepared.updatedAt > channel.updatedAt
+            ? { ...channel, updatedAt: prepared.updatedAt } : channel];
+        }));
+        const catalog = scope?.channelCatalog.map(channel => replacements.get(channel.id) ?? channel);
         for (const dispatch of dispatches) {
-          if (latest.channels.some((channel) => channel.id === dispatch.channelId)
+          if (dispatch.kind !== 'noop'
+            && latest.channels.some((channel) => channel.id === dispatch.channelId && channel.status !== 'archived')
             && baseline.channels.some((channel) => channel.id === dispatch.channelId)) {
-            latest = mergeCompletedDispatchState(latest, baseline, mergedState, dispatch.channelId, staged.now);
+            latest = mergeCompletedDispatchState(latest, baseline, mergedState, dispatch.channelId, staged.now, catalog);
           }
         }
-        if (latest.parallelChatGroups.some((group) => group.id === staged.groupId)) {
-          touchParallelChatGroup(latest, staged.groupId, staged.nowIso, staged.nowIso);
-        }
+        touchCurrentParallelGroup(latest, staged.groupId, latest.channels.map(channel => channel.id), staged.nowIso);
         return latest;
-      });
+      }, { excludeArchived: true });
       const appShell = await buildAppShellPayload(context.dependencies, persisted);
       return {
         appShell,

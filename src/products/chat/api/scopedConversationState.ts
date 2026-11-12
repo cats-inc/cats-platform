@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { ChatChannelState, ChatState } from './contracts.js';
-import type { ChatChannelMutationContext, ChatStore } from '../state/store.js';
+import type { ChatChannelMutationContext, ChatChannelsMutationOptions, ChatStore } from '../state/store.js';
 import { ChatApiError } from './routeErrors.js';
 import { assertConversationWritable } from '../shared/conversationArchive.js';
 
@@ -14,8 +14,11 @@ export function readConversationMetadata(store: ChatStore, ids: string | readonl
   return store.readChannelStates?.(typeof ids === 'string' ? [ids] : ids, { metadataOnly: true }) ?? store.read();
 }
 
-export function readConversationsState(store: ChatStore, ids: readonly string[]): Promise<ChatState> {
-  return store.readChannelStates?.(ids) ?? store.read();
+export async function readConversationsState(store: ChatStore, ids: readonly string[],
+  options: { excludeArchived?: boolean; archivedMetadataOnly?: boolean } = {}): Promise<ChatState> {
+  if (store.readChannelStates) return store.readChannelStates(ids, options);
+  const state = await store.read();
+  return options.excludeArchived ? { ...state, channels: state.channels.filter(channel => channel.status !== 'archived') } : state;
 }
 
 export async function assertWritableConversation(store: ChatStore, id: string): Promise<void> {
@@ -62,6 +65,24 @@ export async function updateConversationState(store: ChatStore, id: string,
   });
   if (!committed) throw new Error(`Channel not found: ${id}`);
   return { ...result, channels: [committed] };
+}
+
+/** Existing selected members publish together; never pass their partial view to a global writer. */
+export async function updateConversationsState(store: ChatStore, ids: readonly string[],
+  mutate: (state: ChatState, context?: ChatChannelMutationContext) => ChatState,
+  options: ChatChannelsMutationOptions = {}): Promise<ChatState> {
+  if (store.updateChannels) return store.updateChannels(ids, mutate, options);
+  const apply = (state: ChatState) => {
+    options.preflight?.({ ...structuredClone(state), channels: state.channels.filter(channel => ids.includes(channel.id))
+      .map(({ messages: _messages, ...header }) => ({ ...structuredClone(header), messages: [] })) });
+    if (!options.excludeArchived) return mutate(state);
+    const active = state.channels.filter(channel => channel.status !== 'archived');
+    const result = mutate({ ...state, channels: active });
+    const replacements = new Map(result.channels.map(channel => [channel.id, channel]));
+    return { ...result, channels: state.channels.map(channel => replacements.get(channel.id) ?? channel) };
+  };
+  if (store.updateSnapshot) return (await store.updateSnapshot(({ chat, core }) => ({ chat: apply(chat), core }))).chat;
+  return store.write(apply(await store.read()));
 }
 
 /** An owner participant operation may prepare Runtime work outside the store lock.

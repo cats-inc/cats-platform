@@ -1,6 +1,7 @@
 import type { CompanionSnapshot } from '../companion/contracts.js';
 import { CompanionGenerationService } from '../companion/generationService.js';
 import { createHash } from 'node:crypto';
+import { readConversationCatalog } from './scopedConversationState.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { RuntimeSendMessageInput } from '../../../platform/runtime/client.js';
 import type { CatImageTurnResolution } from '../../../platform/multimedia/catImageTools.js';
@@ -145,7 +146,7 @@ export function createCompanionPublications(dependencies: Dependencies) {
     if (meta?.supervisionBoundary !== RUNTIME_SUPERVISION_BOUNDARY || meta.supervisionProduct !== 'cats-chat'
       || !['runtime-dispatch', 'companion-heartbeat'].includes(String(meta.supervisionSurface))
       || meta.supervisionToolName !== 'cats.runtime.message.send' || typeof meta.supervisionActionId !== 'string') return null;
-    const state = await dependencies.chatStore.read();
+    const state = await readConversationCatalog(dependencies.chatStore);
     const lane = state.channels.find(row => (row.id === meta.supervisionRunId || `chat:${row.id}` === meta.supervisionRunId)
       && row.status === 'active' && resolveLeadParticipantLease(row)?.sessionId === sessionId);
     const cat = lane && state.cats.find(row => row.status === 'active' && findCompanionDirectLane(state, row.id)?.id === lane.id);

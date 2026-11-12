@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readConversationCatalog } from './scopedConversationState.js';
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -188,7 +189,7 @@ export function createChatCatImages(dependencies: Dependencies) {
         || !['runtime-dispatch', 'companion-heartbeat'].includes(String(meta.supervisionSurface))
         || meta.supervisionToolName !== 'cats.runtime.message.send' || typeof meta.supervisionRunId !== 'string'
         || typeof meta.supervisionActionId !== 'string') return null;
-      const { channels, cats } = await dependencies.chatStore.read();
+      const { channels, cats } = await readConversationCatalog(dependencies.chatStore);
       const lane = channels.find(row => (row.id === meta.supervisionRunId || `chat:${row.id}` === meta.supervisionRunId)
         && resolveLeadParticipantLease(row)?.sessionId === sessionId);
       if (!lane || lane.status !== 'active') return null;

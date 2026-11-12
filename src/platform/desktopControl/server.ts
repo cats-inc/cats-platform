@@ -11,6 +11,8 @@ export const DESKTOP_CONTROL_ENTRY_KEY = 'desktopControlEntry';
 
 interface ChatStoreLike {
   read(): Promise<{ channels: Array<{ id: string; messages: Array<{ id: string; senderKind: string; metadata: Record<string, unknown> }> }> }>;
+  readChannelStates?(ids: readonly string[]): ReturnType<ChatStoreLike['read']>;
+  readChannelState?(id: string): ReturnType<ChatStoreLike['read']>;
 }
 
 /**
@@ -23,7 +25,9 @@ export async function resolveDesktopControlTurn(chatStore: ChatStoreLike, input:
   const meta = input.context?.metadata;
   if (meta?.supervisionProduct !== 'cats-chat' || typeof meta.supervisionRunId !== 'string') return null;
   const runId = meta.supervisionRunId;
-  const state = await chatStore.read();
+  const id = runId.startsWith('chat:') ? runId.slice(5) : runId;
+  const state = chatStore.readChannelStates ? await chatStore.readChannelStates([runId, id])
+    : chatStore.readChannelState ? await chatStore.readChannelState(id) : await chatStore.read();
   const channel = state.channels.find((row) => row.id === runId || `chat:${row.id}` === runId);
   if (!channel) return null;
   const sourceId = meta.sourceMessageId;

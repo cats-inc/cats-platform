@@ -10,8 +10,8 @@ import { hasSubstantiveCoreChange, type CoreStoreListener } from '../../../core/
 import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelState, ChatState } from '../api/contracts.js';
 import { buildPersistedChatSnapshot, extractCoreState, type PersistedChatSnapshot } from './core-snapshot/index.js';
-import { prepareChatSnapshot, type ChatStore, type ChatSnapshotMutator, type ChatChannelMutator, type ChatMetadata } from './store.js';
-import { mergeScopedCoreProjection } from './core-projection/scoped.js';
+import { prepareChatSnapshot, type ChatStore, type ChatSnapshotMutator, type ChatChannelMutator, type ChatChannelsMutator, type ChatChannelsMutationOptions, type ChatMetadata } from './store.js';
+import { mergeScopedCoreProjection, mergeScopedCoreProjections } from './core-projection/scoped.js';
 import { openProfile, type OpenProfile } from './database/openProfile.js';
 import { assertProfileOffline } from './database/profileLease.js';
 import { logicalDatabaseSnapshot } from './database/logicalExport.js';
@@ -22,6 +22,8 @@ import {
 } from './database/profileFormat.js';
 import type { MessagePage, MessageSearchHit } from './database/conversationStore.js';
 import { StateDatabaseError } from '../../../platform/persistence/state-db/stateDatabase.js';
+import { upsertCoreSegment, type CoreSegmentWriteInput } from '../../../core/model/index.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import { closeStateMaintenanceWorkers } from '../../../platform/persistence/state-db/stateMaintenance.js';
 import { prepareTranscriptState } from './transcriptRepairs.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
@@ -251,14 +253,20 @@ export class DatabaseChatStore implements ChatStore {
     return this.readChannelStates([id]);
   }
 
-  async readChannelStates(ids: readonly string[], options: { metadataOnly?: boolean } = {}): Promise<ChatState> {
+  async readChannelStates(ids: readonly string[], options: {
+    metadataOnly?: boolean; excludeArchived?: boolean; archivedMetadataOnly?: boolean;
+  } = {}): Promise<ChatState> {
     return this.run(async (session, envelope) => {
       const selected = [...new Set(ids)].map(id => ({ id, position: session.conversations.position(id) }))
         .filter((entry): entry is { id: string; position: number } => entry.position !== null)
+        .filter(({ id }) => !options.excludeArchived || session.conversations.header(id)!.status !== 'archived')
         .sort((left, right) => left.position - right.position);
       const channels = selected.map(({ id }) => {
-        if (!options.metadataOnly) return session.conversations.channel(id)!;
-        return { ...session.conversations.header(id)!, messages: [] };
+        const header = options.metadataOnly || options.archivedMetadataOnly ? session.conversations.header(id)! : null;
+        if (options.metadataOnly || (options.archivedMetadataOnly && header?.status === 'archived')) {
+          return { ...header!, messages: [] };
+        }
+        return session.conversations.channel(id)!;
       });
       return { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups(),
         channels };
@@ -313,6 +321,95 @@ export class DatabaseChatStore implements ChatStore {
         }
       });
       return structuredClone(channel);
+    });
+  }
+
+  async updateChannels(ids: readonly string[], mutator: ChatChannelsMutator,
+    options: ChatChannelsMutationOptions = {}): Promise<ChatState> {
+    return this.run(async (session, envelope) => {
+      const requested = [...new Set(ids)].map(id => ({ id, position: session.conversations.position(id) }))
+        .filter((entry): entry is { id: string; position: number } => entry.position !== null)
+        .sort((left, right) => left.position - right.position);
+      const { channels: _channels, ...chatMetadata } = structuredClone(envelope.chat);
+      const metadata = { ...chatMetadata, parallelChatGroups: session.conversations.groups() };
+      if (options.preflight) {
+        try {
+          const checked: unknown = options.preflight({ ...structuredClone(metadata), channels: requested.map(({ id }) =>
+            ({ ...session.conversations.header(id)!, messages: [] })) });
+          if (checked && typeof (checked as unknown as { then?: unknown }).then === 'function') {
+            void Promise.resolve(checked).catch(() => {});
+            throw new TypeError('Channel batch admission must be synchronous');
+          }
+        } catch (error) { throw new MutationFailure(error); }
+      }
+      const selected = requested.filter(({ id }) => !options.excludeArchived || session.conversations.header(id)!.status !== 'archived');
+      const stored = { ...metadata, channels: selected.map(({ id }) => session.conversations.channel(id)!) };
+      if (!selected.length) return stored;
+      const core = envelopeCore(envelope), catalog = session.conversations.projectionMetadata();
+      const context = { chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
+      let incoming: ChatState;
+      try { incoming = mutator(structuredClone(stored), context); }
+      catch (error) { throw new MutationFailure(error); }
+      if (incoming && typeof (incoming as unknown as { then?: unknown }).then === 'function') {
+        void Promise.resolve(incoming).catch(() => {});
+        throw new TypeError('A channel batch mutation must be synchronous');
+      }
+      if (!isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
+        || !isDeepStrictEqual(context.channelCatalog, catalog)) {
+        throw new TypeError('A channel batch mutation cannot edit global Chat or Core state');
+      }
+      if (!incoming || !Array.isArray(incoming.channels) || incoming.channels.length !== selected.length
+        || incoming.channels.some((channel, index) => !channel || channel.id !== selected[index]!.id
+          || !Array.isArray(channel.messages)
+          || channel.messages.some(message => !message || !message.id || message.channelId !== channel.id))) {
+        throw new TypeError('A channel batch mutation must keep its channel order and message identities');
+      }
+      const { channels, ...nextMetadata } = incoming;
+      validateScopedBatchMetadata(metadata, nextMetadata, channels);
+      if (isDeepStrictEqual(stored, incoming)) return structuredClone(stored);
+      const now = new Date();
+      const before = prepareChatSnapshot(stored, stored, core, this.filePath, now);
+      const repaired = prepareTranscriptState(incoming, { core, runtimeDataDir: this.options.runtimeDataDir, now });
+      const after = prepareChatSnapshot(stored, repaired, core, this.filePath, now);
+      const nextCore = mergeScopedCoreProjections(core, extractCoreState(before), extractCoreState(after),
+        stored, catalog, after.chat.channels);
+      this.prepareSearch(session);
+      const target = makeEnvelope(buildPersistedChatSnapshot(after.chat, nextCore), this.filePath,
+        envelope.storage.installationId);
+      await this.commit(session, envelope, target, nextCore, () => {
+        for (let index = 0; index < selected.length; index++) {
+          if (!isDeepStrictEqual(stored.channels[index], after.chat.channels[index])) {
+            session.conversations.putChannel(after.chat.channels[index]!, selected[index]!.position);
+          }
+        }
+        if (!isDeepStrictEqual(metadata.parallelChatGroups, nextMetadata.parallelChatGroups)) {
+          session.conversations.putGroups(nextMetadata.parallelChatGroups);
+        }
+      });
+      return structuredClone(after.chat);
+    });
+  }
+
+  async writeConversationPresentation(id: string, segment: CoreSegmentWriteInput, now: Date): Promise<void> {
+    await this.run(async (session, envelope) => {
+      const header = session.conversations.header(id);
+      if (!header) return; // A late presentation never resurrects a deleted conversation.
+      if (header.status === 'archived') throw new ProfileStorageError('conversation_archived',
+        'Restore this archived conversation before changing its presentation.');
+      const core = envelopeCore(envelope), conversationId = buildChatConversationId(id);
+      const previous = core.segments.find(record => record.id === segment.id);
+      if (typeof segment.id !== 'string' || !segment.id || segment.id.trim() !== segment.id
+        || segment.kind !== 'status' || segment.conversationId !== conversationId
+        || segment.metadata?.event !== 'conversation_presentation' || segment.metadata?.channelId !== id
+        || (previous && (previous.conversationId !== conversationId
+          || previous.metadata?.event !== 'conversation_presentation' || previous.metadata?.channelId !== id))) {
+        throw new TypeError('A conversation presentation must retain its target identity');
+      }
+      const nextCore = upsertCoreSegment(core, structuredClone(segment), now).core;
+      if (isDeepStrictEqual(nextCore, core)) return;
+      const chat = { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() };
+      const target = makeEnvelope(buildPersistedChatSnapshot(chat, nextCore), this.filePath, envelope.storage.installationId);
+      await this.commit(session, envelope, target, nextCore, () => {});
     });
   }
 
@@ -731,6 +828,29 @@ function validateScopedMetadata(previous: ChatMetadata, next: ChatMetadata, chan
     }),
   };
   if (!isDeepStrictEqual(expected, next)) throw new TypeError('A scoped channel mutation may only update derived shared memory or its related group name');
+}
+
+/** A batch can touch a related group's activity, but cannot change its audience or title. */
+function validateScopedBatchMetadata(previous: ChatMetadata, next: ChatMetadata, channels: ChatChannelState[]): void {
+  const ids = new Set(channels.map(channel => channel.id));
+  const activeCats = new Set(channels.flatMap(channel => channel.catAssignments
+    .filter(assignment => assignment.status === 'active').map(assignment => assignment.catId)));
+  const expected = { ...previous,
+    selectedChannelId: ids.has(next.selectedChannelId) ? next.selectedChannelId : previous.selectedChannelId,
+    parallelChatGroups: previous.parallelChatGroups.map(group => {
+      const candidate = next.parallelChatGroups.find(value => value.id === group.id);
+      if (!candidate || isDeepStrictEqual(candidate, group) || !group.memberChannelIds.some(id => ids.has(id))) return group;
+      return { ...group, updatedAt: candidate.updatedAt, lastMessageAt: candidate.lastMessageAt };
+    }),
+    globalOrchestrator: { ...previous.globalOrchestrator,
+      memory: next.globalOrchestrator.memory, updatedAt: next.globalOrchestrator.updatedAt },
+    cats: previous.cats.map(cat => {
+      const candidate = next.cats.find(value => value.id === cat.id);
+      return activeCats.has(cat.id) && candidate
+        ? { ...cat, memory: candidate.memory, updatedAt: candidate.updatedAt } : cat;
+    }),
+  };
+  if (!isDeepStrictEqual(expected, next)) throw new TypeError('A scoped channel batch may only update derived memory, target selection or related-group activity');
 }
 
 /** Keep SQLite/OS diagnostics and stored JSON out of public errors. Busy locks and

@@ -71,7 +71,7 @@ export async function withLockedParallelChatGroup<T>(
     const metadata = await readConversationMetadata(context.dependencies.chatStore, []);
     const ids = requireParallelChatGroup(metadata, groupId).memberChannelIds;
     const result = await runLockedChannels(context, ids, async () => {
-      const state = await readConversationsState(context.dependencies.chatStore, ids);
+      const state = await readConversationsState(context.dependencies.chatStore, ids, { archivedMetadataOnly: true });
       const group = requireParallelChatGroup(state, groupId);
       const locked = new Set(ids);
       if (locked.size !== new Set(group.memberChannelIds).size

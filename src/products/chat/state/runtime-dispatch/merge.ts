@@ -17,7 +17,7 @@ interface MutationGateLike {
 
 const MERGED_DISPATCH_WRITE_GATE_KEY = '__chat:merged-dispatch-write__';
 type DispatchBackingStore = Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'
-  | 'updateSnapshot' | 'updateChannel' | 'readChannelState'>;
+  | 'updateSnapshot' | 'updateChannel' | 'readChannelState' | 'writeConversationPresentation'>;
 
 function scopedDispatchState(state: ChatState, channelId: string): ChatState {
   const { channels, ...metadata } = state;
@@ -448,7 +448,7 @@ export function createMergedDispatchChatStore(options: {
     dispatchState: ChatState;
     channelId: string;
   }) => void;
-}): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'> {
+}): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore' | 'writeConversationPresentation'> {
   let previousState = options.chatStore.updateChannel
     ? scopedDispatchState(options.baselineState, options.channelId) : structuredClone(options.baselineState);
   // Runs before the writer releases the channel gate, so a wake cannot resume
@@ -471,6 +471,9 @@ export function createMergedDispatchChatStore(options: {
     readCore: options.chatStore.readCore.bind(options.chatStore),
     writeCore: options.chatStore.writeCore.bind(options.chatStore),
     updateCore: options.chatStore.updateCore.bind(options.chatStore),
+    ...(options.chatStore.writeConversationPresentation ? {
+      writeConversationPresentation: options.chatStore.writeConversationPresentation.bind(options.chatStore),
+    } : {}),
     async write(dispatchState: ChatState): Promise<ChatState> {
       return options.mutationGate.run(options.channelId, async () => {
         return options.mutationGate.run(MERGED_DISPATCH_WRITE_GATE_KEY, async () => {

@@ -51,7 +51,15 @@ function updateRecord(current: Entity, before: Entity | undefined, after: Entity
 export function mergeScopedCoreProjection(core: CatsCoreState, before: CatsCoreState,
   after: CatsCoreState, metadata: ChatState, channels: ChannelProjectionMetadata[],
   nextChannel: ChatChannelState): CatsCoreState {
-  const nextChannels = channels.map(channel => channel.id === nextChannel.id ? nextChannel : channel);
+  return mergeScopedCoreProjections(core, before, after, metadata, channels, [nextChannel]);
+}
+
+/** All members of a scoped batch contribute to shared root/actor projections together. */
+export function mergeScopedCoreProjections(core: CatsCoreState, before: CatsCoreState,
+  after: CatsCoreState, metadata: ChatState, channels: ChannelProjectionMetadata[],
+  changedChannels: ChatChannelState[]): CatsCoreState {
+  const replacements = new Map(changedChannels.map(channel => [channel.id, channel]));
+  const nextChannels = channels.map(channel => replacements.get(channel.id) ?? channel);
   before.containers = before.containers.map(container => container.kind === 'chat_root'
     ? createChatRootContainer({ ...metadata, channels }) : container);
   after.containers = after.containers.map(container => container.kind === 'chat_root'

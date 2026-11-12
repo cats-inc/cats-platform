@@ -27,6 +27,7 @@ import { createCodeAgentToolsProvider } from '../../products/code/agentTools/ser
 import { createConversationRecordToolsProvider } from '../../products/shared/conversationRecordTools.js';
 import { ConversationProposalKindRegistry } from '../../platform/proposals/contracts.js';
 import { createConversationProposalService } from '../../products/chat/api/conversationProposals.js';
+import { readConversationState } from '../../products/chat/api/scopedConversationState.js';
 import { applyChannelWorkProject } from '../../products/chat/api/conversationWorkProject.js';
 import { createConversationWorkProjectProposalKind } from '../../products/chat/api/conversationWorkProjectProposal.js';
 import { createWorkProposalKinds } from '../../products/work/agentTools/workConversationProposals.js';
@@ -145,7 +146,7 @@ export function createServer(dependencies: ServerDependencies) {
       if (meta?.supervisionProduct !== 'cats-chat' || meta.supervisionSurface !== 'runtime-dispatch'
         || meta.supervisionToolName !== 'cats.runtime.message.send'
         || typeof meta.supervisionRunId !== 'string' || typeof meta.sourceMessageId !== 'string') return null;
-      const state = await dependencies.chat.chatStore.read();
+      const state = await readConversationState(dependencies.chat.chatStore, meta.supervisionRunId);
       const channel = state.channels.find(row => row.id === meta.supervisionRunId);
       if (!channel || channel.status !== 'active' || !channel.messages.some(row => row.id === meta.sourceMessageId)) return null;
       return `Agent contribution: conversation ${channel.id}; session ${sessionId}`.slice(0, 190);

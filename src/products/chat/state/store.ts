@@ -24,6 +24,7 @@ import {
 } from '../../../core/store.js';
 import { createDefaultChatState } from './defaults.js';
 import { createDefaultCoreState } from '../../../core/model/index.js';
+import type { CoreSegmentWriteInput } from '../../../core/model/index.js';
 import { syncCoreStateWithChatState } from './core-projection/index.js';
 import { normalizePersistedChatSnapshot } from './chat-snapshot/index.js';
 import type { PersistedChatSnapshot } from './core-snapshot/index.js';
@@ -86,7 +87,9 @@ export interface ChatStore extends CoreStore {
   /** A dispatch-local view: metadata plus only the requested channel's transcript. */
   readChannelState?(id: string): Promise<ChatState>;
   /** One consistent target set. Metadata-only views must never reach a snapshot writer. */
-  readChannelStates?(ids: readonly string[], options?: { metadataOnly?: boolean }): Promise<ChatState>;
+  readChannelStates?(ids: readonly string[], options?: {
+    metadataOnly?: boolean; excludeArchived?: boolean; archivedMetadataOnly?: boolean;
+  }): Promise<ChatState>;
   readChannelHeader?(id: string): Promise<Omit<ChatChannelState, 'messages'> | null>;
   readMessagePage?(id: string, limit?: number, before?: string): Promise<MessagePage>;
   searchMessages?(query: string, options?: MessageSearchOptions): Promise<MessageSearchHit[]>;
@@ -100,6 +103,11 @@ export interface ChatStore extends CoreStore {
   readMessageWindow?(id: string, limit?: number, before?: string): Promise<ChatMessageWindow>;
   /** Existing-channel mutation; metadata permits derived memory and a related group rename. */
   updateChannel?(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null>;
+  /** Atomic existing-target set in database order; missing IDs are skipped, never created. */
+  updateChannels?(ids: readonly string[], mutator: ChatChannelsMutator,
+    options?: ChatChannelsMutationOptions): Promise<ChatState>;
+  /** One target's streaming presentation; no global Chat projection or transcript hydration. */
+  writeConversationPresentation?(id: string, segment: CoreSegmentWriteInput, now: Date): Promise<void>;
   /** Explicit product maintenance. Production performs compression/index preparation off-thread. */
   archiveConversation?(id: string, action: 'archive' | 'restore', options?: { signal?: AbortSignal }): Promise<ConversationArchiveResult>;
 }
@@ -112,6 +120,13 @@ export interface ChatChannelMutationContext {
 }
 export type ChatChannelMutator = (channel: ChatChannelState,
   context: ChatChannelMutationContext) => { channel: ChatChannelState; metadata?: ChatMetadata };
+export type ChatChannelsMutator = (state: ChatState, context: ChatChannelMutationContext) => ChatState;
+export interface ChatChannelsMutationOptions {
+  /** Finalization skips cold targets before decoding them; deleted targets are already absent. */
+  excludeArchived?: boolean;
+  /** Pure synchronous admission on headers before any selected transcript is decoded. */
+  preflight?: (state: ChatState) => void;
+}
 
 export type ChatSnapshotMutator = (snapshot: { chat: ChatState; core: CatsCoreState })
   => { chat: ChatState; core: CatsCoreState };

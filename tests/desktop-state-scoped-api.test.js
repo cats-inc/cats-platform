@@ -7,16 +7,20 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { loadConfig } from '../build/server/config.js';
 import { DatabaseChatStore } from '../build/server/products/chat/state/databaseStore.js';
-import { normalizeImportedChatSnapshot } from '../build/server/products/chat/state/store.js';
+import { MemoryChatStore, normalizeImportedChatSnapshot } from '../build/server/products/chat/state/store.js';
 import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
 import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
 import { archiveDirectory } from '../build/server/products/chat/state/database/archiveAssets.js';
 import { createChannel, removeChannelParticipant, updateChannelParticipant } from '../build/server/products/chat/state/model/index.js';
-import { mergePreparedParticipantMutation, updateConversationState } from '../build/server/products/chat/api/scopedConversationState.js';
+import { mergePreparedParticipantMutation, updateConversationState, updateConversationsState } from '../build/server/products/chat/api/scopedConversationState.js';
+import { assertConversationWritable } from '../build/server/products/chat/shared/conversationArchive.js';
 import { maybeAutoResumeRecoveredCatContinuation } from '../build/server/products/chat/api/routeContinuationRecovery.js';
 import { buildWorkflowContinuationReplayRequest, readWorkflowContinuationReplay } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 import { createWorkflowEvent, createWorkflowTurn } from '../build/server/products/chat/state/room-routing/workflow.js';
 import { withLockedParallelChatGroup } from '../build/server/products/chat/api/resources/parallelChatGroupSupport.js';
+import { finalizeParallelChatBodies } from '../build/server/products/chat/api/resources/parallelChatGroupDispatch.js';
+import { createChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
+import { beginChannelMessageDispatch } from '../build/server/products/chat/state/runtimeActions.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
@@ -56,8 +60,9 @@ async function fixture(t, { grouped = false, temporary = false, runtimeSessions 
     async sendMessage() { runtimeCalls.push('send'); throw Error('Unexpected Runtime send'); },
     async closeSession(id) { runtimeCalls.push(['close', id]); },
   };
+  const eventHub = createChatEventHub();
   const server = createServer({ shared: { config, authStore: auth.authStore, now: () => now, runtimeClient },
-    chat: { chatStore: store, startCompanionLifeLoop: false } });
+    chat: { chatStore: store, eventHub, startCompanionLifeLoop: false } });
   t.after(async () => {
     await server.closeAppHosting(); await new Promise(resolve => server.close(resolve));
     await store.close(); await rm(root, { recursive: true, force: true, maxRetries: 10 });
@@ -73,7 +78,7 @@ async function fixture(t, { grouped = false, temporary = false, runtimeSessions 
     store.read = async () => { throw Error('Scoped API read all transcripts'); };
     store.updateSnapshot = async () => { throw Error('Scoped API wrote a global snapshot'); };
   };
-  return { root, config, source, store, id, other, request, noGlobal, runtimeCalls, runtimeClient, setCheckpoint(value) { checkpoint = value; } };
+  return { root, config, source, store, id, other, request, noGlobal, runtimeCalls, runtimeClient, eventHub, setCheckpoint(value) { checkpoint = value; } };
 }
 
 async function ok(response, status = 200) {
@@ -484,4 +489,199 @@ test('an open idle Runtime stream observes another store archive without an even
     assert.match(output, /Idle synthetic stream/); assert.match(output, /session_closed/);
     assert.equal(released, 1); assert.equal(controller.signal.aborted, false);
   } finally { clearTimeout(timer); controller.abort(); await competitor.close(); }
+});
+
+test('parallel acknowledgement and completion remain scoped with a malformed unrelated conversation', async t => {
+  const f = await fixture(t, { grouped: true });
+  let third;
+  await f.store.updateSnapshot(({ chat, core }) => {
+    const next = createChannel(chat, { originSurface: 'work', title: 'Unrelated', topic: '',
+      temporaryParticipants: [{ name: 'Unrelated', provider: 'codex' }], skipBossCatGreeting: true });
+    third = next.selectedChannelId; return { chat: next, core };
+  });
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{malformed unrelated', third); db.close();
+  const sessions = new Map(); let sequence = 0;
+  f.runtimeClient.getHealth = async () => ({ reachable: true, status: 'ok' });
+  f.runtimeClient.createSession = async input => {
+    const session = { id: `parallel-session-${++sequence}`, provider: input.provider, model: input.model ?? null,
+      status: 'ready', cwd: path.join(f.root, `parallel-session-${sequence}`) };
+    sessions.set(session.id, session); f.runtimeCalls.push(['create', session.id]); return session;
+  };
+  f.runtimeClient.getSession = async id => sessions.get(id);
+  f.runtimeClient.sendMessage = async id => {
+    f.runtimeCalls.push(['send', id]);
+    return { segments: [{ kind: 'text', text: `Scoped parallel reply ${id}`, toolName: null, toolId: null }],
+      inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
+  };
+  f.noGlobal();
+  const globalReads = [];
+  f.store.read = async () => { globalReads.push(new Error('Unexpected full read').stack); throw Error('Scoped API read all transcripts'); };
+  for (const name of ['writeCore', 'updateCore']) {
+    const original = f.store[name].bind(f.store);
+    f.store[name] = async (...args) => {
+      try { return await original(...args); }
+      catch (error) { globalReads.push(new Error(`${name}: ${error.message}`).stack); throw error; }
+    };
+  }
+  let publications = 0, finalBatchPublished = false, finish;
+  const finished = new Promise(resolve => { finish = resolve; });
+  const updateBatch = f.store.updateChannels.bind(f.store);
+  f.store.updateChannels = async (...args) => {
+    const result = await updateBatch(...args);
+    if (++publications === 2) finalBatchPublished = true;
+    return result;
+  };
+  const unsubscribe = f.eventHub.subscribe(event => {
+    if (finalBatchPublished && event.kind === 'recents_changed') finish();
+  });
+  const group = f.source.chat.parallelChatGroups[0];
+  const acknowledged = await ok(await f.request(`/api/parallel-chat-groups/${group.id}/messages`, 'POST', {
+    activeChannelId: f.id, body: 'Scoped parallel request',
+  }));
+  assert.equal(acknowledged.phase, 'acknowledged'); assert.equal(acknowledged.results.length, 2);
+  let timer;
+  try { await Promise.race([finished, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Parallel finalize timed out')), 10_000); })]); }
+  finally { clearTimeout(timer); unsubscribe(); }
+  const current = await f.store.readChannelStates(group.memberChannelIds);
+  for (const channel of current.channels) {
+    assert.ok(channel.messages.some(message => message.body.startsWith('Scoped parallel reply')),
+      `${globalReads.join('\n')}\n${JSON.stringify(channel.messages.map(({ body, metadata }) => ({ body, event: metadata.event })))}\n${JSON.stringify(f.runtimeCalls)}`);
+    assert.equal(channel.messages.filter(message => message.body === 'Scoped parallel request').length, 1);
+  }
+  assert.equal(f.runtimeCalls.filter(call => Array.isArray(call) && call[0] === 'send').length, 2);
+  assert.deepEqual(globalReads, []);
+});
+
+for (const change of ['archive', 'participant', 'membership', 'active turn']) {
+  test(`parallel publication rejects concurrent ${change} before committing any acknowledged member`, async t => {
+    const f = await fixture(t, { grouped: true });
+    const original = f.store.updateChannels.bind(f.store), update = f.store.updateSnapshot.bind(f.store);
+    let injected = false;
+    f.store.updateChannels = async (...args) => {
+      if (!injected) {
+        injected = true;
+        if (change === 'archive') await f.store.archiveConversation(f.other, 'archive');
+        else if (change === 'participant') await updateConversationState(f.store, f.other, state =>
+          updateChannelParticipant(state, f.other, state.channels[0].catAssignments[0].participantId, { model: 'Concurrent owner model' }));
+        else if (change === 'active turn') {
+          const state = await f.store.readChannelState(f.other), channel = state.channels[0];
+          const newer = await beginChannelMessageDispatch(state, f.other, { body: 'Newer owner turn', messageMetadata: {
+            recipientParticipantIds: [channel.catAssignments[0].participantId] } }, f.runtimeClient);
+          assert.ok(newer.preparedTurn);
+          await f.store.updateChannel(f.other, () => ({ channel: newer.state.channels[0] }));
+        }
+        else await update(({ chat, core }) => {
+          chat.parallelChatGroups[0].memberChannelIds.reverse(); return { chat, core };
+        });
+      }
+      return original(...args);
+    };
+    f.noGlobal();
+    const group = f.source.chat.parallelChatGroups[0];
+    const response = await f.request(`/api/parallel-chat-groups/${group.id}/messages`, 'POST', {
+      activeChannelId: f.id, body: 'Must never be acknowledged',
+    });
+    assert.equal(response.status, 409, await response.clone().text());
+    assert.equal((await response.json()).error.code, change === 'archive' ? 'conversation_archived'
+      : change === 'participant' || change === 'active turn' ? 'conversation_changed' : 'parallel_group_changed');
+    for (const id of group.memberChannelIds) {
+      assert.equal((await f.store.readChannel(id)).messages.some(message => message.body === 'Must never be acknowledged'), false);
+    }
+    assert.deepEqual(f.runtimeCalls, []);
+  });
+}
+
+test('parallel failure settlement ignores damaged cold siblings and settles the surviving hot turn', async t => {
+  const f = await fixture(t, { grouped: true }), now = new Date('2026-11-13T00:00:00Z');
+  await f.store.updateChannels([f.other], state => { state.selectedChannelId = f.other; return state; });
+  const baseline = await f.store.readChannelState(f.other);
+  const begun = await beginChannelMessageDispatch(baseline, f.other, { body: 'Settle healthy member', messageMetadata: {
+    recipientParticipantIds: [baseline.channels[0].catAssignments[0].participantId] } }, f.runtimeClient, now);
+  assert.ok(begun.preparedTurn);
+  await f.store.updateChannel(f.other, () => ({ channel: begun.state.channels[0] }));
+  const archive = await f.store.archiveConversation(f.id, 'archive');
+  const assets = archiveDirectory(databasePath(f.config.chatStatePath));
+  const manifest = JSON.parse(await readFile(path.join(assets, `${archive.archiveId}.manifest.json`), 'utf8'));
+  const payload = path.join(assets, manifest.file), bytes = await readFile(payload);
+  await writeFile(payload, bytes.subarray(0, bytes.length - 1));
+  f.noGlobal();
+  f.store.updateChannel = async () => { throw Error('Injected continuation write failure'); };
+  const group = f.source.chat.parallelChatGroups[0];
+  const response = await finalizeParallelChatBodies({ dependencies: {
+    config: f.config, chatStore: f.store, runtimeClient: f.runtimeClient, now: () => now,
+    mutationGate: { run: (_id, operation) => operation() },
+  } }, {
+    groupId: group.id, now, nowIso: now.toISOString(), lockedChannelIds: group.memberChannelIds,
+    acknowledgedState: begun.state,
+    begunDispatches: [{ channelId: f.id, begun: null, status: 'skipped' },
+      { channelId: f.other, begun, status: 'sent' }],
+  });
+  assert.equal(response.phase, 'completed');
+  const current = await f.store.readChannel(f.other);
+  assert.ok(current.messages.some(message => message.metadata.event === 'runtime_error' && message.metadata.phase === 'dispatch_continue'));
+  assert.equal(current.roomRouting.workflow.activeTurn, null);
+  assert.ok(current.roomRouting.workflow.turnHistory.some(turn => turn.id === begun.preparedTurn.activeTurn.id && turn.status === 'failed'));
+  assert.equal((await f.request(`/api/channels/${f.id}/messages`)).status, 422);
+});
+
+test('parallel cold admission and a skipped cold member do not decode damaged archive evidence', async t => {
+  const f = await fixture(t, { grouped: true });
+  const archive = await f.store.archiveConversation(f.other, 'archive');
+  const assets = archiveDirectory(databasePath(f.config.chatStatePath));
+  const manifest = JSON.parse(await readFile(path.join(assets, `${archive.archiveId}.manifest.json`), 'utf8'));
+  const payload = path.join(assets, manifest.file), bytes = await readFile(payload);
+  await writeFile(payload, bytes.subarray(0, bytes.length - 1));
+  f.noGlobal();
+  const route = `/api/parallel-chat-groups/${f.source.chat.parallelChatGroups[0].id}/messages`;
+  const refused = await f.request(route, 'POST', { activeChannelId: f.id, body: 'Cold required recipient' });
+  assert.equal(refused.status, 409, await refused.clone().text());
+  assert.equal((await refused.json()).error.code, 'conversation_archived');
+  assert.deepEqual(f.runtimeCalls, []);
+  const acknowledged = await ok(await f.request(route, 'POST', { activeChannelId: f.id, body: '', channelInputs: [
+    { channelId: f.id, body: '' }, { channelId: f.other, body: '' },
+  ] }));
+  assert.ok(acknowledged.results.every(result => result.status === 'skipped'));
+  assert.equal((await f.store.readChannelHeader(f.other)).status, 'archived');
+  assert.deepEqual(f.runtimeCalls, []);
+});
+
+test('parallel acknowledgement retains a newer concurrent title and channel/group timestamps', async t => {
+  const f = await fixture(t, { grouped: true });
+  const original = f.store.updateChannels.bind(f.store); let injected = false;
+  const future = '2026-11-14T00:00:00.000Z';
+  f.store.updateChannels = async (...args) => {
+    if (!injected) {
+      injected = true;
+      await f.store.updateChannel(f.id, (channel, context) => {
+        channel.title = 'Newer owner title'; channel.updatedAt = future;
+        const metadata = structuredClone(context.chat);
+        metadata.parallelChatGroups[0].title = channel.title; metadata.parallelChatGroups[0].updatedAt = future;
+        return { channel, metadata };
+      });
+    }
+    return original(...args);
+  };
+  f.noGlobal();
+  const group = f.source.chat.parallelChatGroups[0];
+  await ok(await f.request(`/api/parallel-chat-groups/${group.id}/messages`, 'POST', { activeChannelId: f.id, body: '' }));
+  const current = await f.store.readChannelHeader(f.id), catalog = await f.store.readCatalog();
+  assert.equal(current.title, 'Newer owner title'); assert.equal(current.updatedAt, future);
+  assert.equal(catalog.metadata.parallelChatGroups[0].title, current.title);
+  assert.equal(catalog.metadata.parallelChatGroups[0].updatedAt, future);
+  assert.deepEqual(f.runtimeCalls, []);
+});
+
+test('fallback batch admission sees only requested headers and preserves unrelated archived messages', async () => {
+  const source = snapshot(), ids = source.chat.channels.map(channel => channel.id);
+  const chat = createChannel(source.chat, { originSurface: 'work', title: 'Unrelated archived', topic: '',
+    temporaryParticipants: [{ name: 'Unrelated', provider: 'codex' }], skipBossCatGreeting: true });
+  const third = chat.channels.find(channel => !ids.includes(channel.id)); third.status = 'archived';
+  const store = new MemoryChatStore(chat), before = await store.read();
+  await updateConversationsState(store, ids, state => state, { excludeArchived: true, preflight: headers => {
+    assert.deepEqual(new Set(headers.channels.map(channel => channel.id)), new Set(ids));
+    for (const channel of headers.channels) { assert.deepEqual(channel.messages, []); assertConversationWritable(channel); }
+  } });
+  assert.deepEqual((await store.read()).channels.find(channel => channel.id === third.id).messages,
+    before.channels.find(channel => channel.id === third.id).messages);
 });

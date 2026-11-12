@@ -156,7 +156,7 @@ verifies the recovered current header before closing a newly created unreference
 attachment setup failures also track sessions created before their lease was recorded.
 Recovered participant continuations keep their actual replay reads/writes on the target
 channel. Transport fanout reads only that channel and uses catalog metadata for bindings.
-Generic Core writes and final multi-conversation mutations still retain complete projections;
+Generic Core writes and global operations still retain complete projections;
 remaining consumers and post-port measurements are open validation.
 
 Session activation/sleep now read and publish through the target-scoped store. Stream
@@ -166,8 +166,28 @@ collection order is retained. These read models never reach a snapshot writer. C
 owner-presence decisions still use the complete header catalog to preserve canonical
 direct-lane selection. Exports explicitly hydrate only the selected transcript.
 Parallel audience capture acquires every current member gate; a changed set releases the
-old gates and retries up to three times before `parallel_group_changed` (409). Final
-multi-member mutations remain to be moved off the complete snapshot path.
+old gates and retries up to three times before `parallel_group_changed` (409). Cold members
+are captured as read-only headers. A required cold member refuses before decoding its
+transcript; a skipped cold member does not need its evidence to be readable.
+
+Parallel acknowledgement and finalization now publish each selected existing target set
+in one database/metadata transaction. Header admission precedes transcript decoding and
+checks the exact audience, required target existence/read-only status and prepared owner
+execution/turn identity. Missing, replaced or archived required targets refuse the whole
+acknowledgement. Core projection computes one before/after delta for all selected members,
+with the complete compact catalog for root/shared actors. Unchanged rows are not rewritten.
+Group activity changes preserve current title/extensions and take maximum timestamps.
+Finalization skips deleted/cold members before decoding and rechecks under the writer lock;
+healthy failed turns can settle even if another member's cold evidence is damaged.
+
+Runtime-created sessions are tracked through preparation and continuation. Cleanup checks
+recovering current headers before closing only unreferenced new IDs. Ordinary dispatch's
+desktop-control and knowledge qualification read the target transcript; image/publication
+qualification uses the complete header catalog for canonical direct-lane selection. The
+streaming presentation recorder uses a narrow target/segment-identity-checked Core write
+which commits through the same journal and history invalidation without a global Chat
+projection. Rich Runtime effects and other generic Core mutations retain their explicit
+global cost; this checkpoint does not declare the remaining consumer audit complete.
 
 Activation tracks Runtime creations independently of returned leases, including failures
 before attachment setup or publication. Cleanup checks the recovering current header and
@@ -200,8 +220,9 @@ participant and memory projections. A scoped writer must not parse unrelated wor
 It applies known projection-field deltas to existing Core records, retaining passive fields
 and unrelated active turns. Runtime dispatch views contain only their target conversation;
 global snapshot APIs keep their complete-state contract. Derived participant/orchestrator
-memory may commit alongside the target, while preferences, groups and arbitrary Core edits
-require the global operation.
+memory may commit alongside the target. A single-member rename and related group activity
+have exact scoped admission; preferences, group membership and arbitrary Core edits require
+the global operation.
 
 An explicit, restartable application preparation pass runs the existing session/startup/
 completed-turn repairs once before bounded views become ready. It is separate from the

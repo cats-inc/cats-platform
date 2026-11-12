@@ -5,7 +5,7 @@ import { ConversationPresentationReducer } from '../../../../shared/conversation
 import type { DispatchRequest } from '../room-routing/runtime.js';
 
 /** Presentation-only Core status segment: never evidence that an execution completed. */
-export function createDispatchPresentationRecorder(store: Pick<ChatStore, 'updateCore'> | undefined,
+export function createDispatchPresentationRecorder(store: Pick<ChatStore, 'updateCore' | 'writeConversationPresentation'> | undefined,
   channelId: string, request: DispatchRequest, startedAt: Date) {
   const reducer = new ConversationPresentationReducer(`presentation:${request.dispatchId}`);
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -17,7 +17,7 @@ export function createDispatchPresentationRecorder(store: Pick<ChatStore, 'updat
     if (!store || !presentation.blocks.length) return writes;
     const currentRevision = ++revision;
     writes = writes.then(async () => {
-      await store.updateCore(core => upsertCoreSegment(core, {
+      const segment: Parameters<typeof upsertCoreSegment>[1] = {
         id: presentation.id, kind: 'status', status: presentation.phase === 'sealed' ? 'complete' : 'streaming', content: null,
         conversationId: buildChatConversationId(channelId), turnId: request.turnId,
         laneId: request.target.laneId ?? buildChatLaneId(request.turnId, request.targetStateId, request.target.participantId),
@@ -25,7 +25,9 @@ export function createDispatchPresentationRecorder(store: Pick<ChatStore, 'updat
         metadata: { event: 'conversation_presentation', channelId, sourceMessageId: request.sourceMessage.id,
           targetStateId: request.targetStateId, targetId: request.target.participantId,
           speakerLabel: request.target.participantName, presentation, presentationRevision: currentRevision },
-      }, startedAt).core);
+      };
+      if (store.writeConversationPresentation) await store.writeConversationPresentation(channelId, segment, startedAt);
+      else await store.updateCore(core => upsertCoreSegment(core, segment, startedAt).core);
       writeError = null;
     }).catch(error => { writeError = error; });
     return writes;
