@@ -8,10 +8,13 @@ import {
 
 test('required transcript preparation rejects embedder readiness before best-effort recovery', async () => {
   let prepared = false;
+  let maintenance = false;
   await assert.rejects(runServerStartupRecoveryPasses({ chat: { chatStore: {
     async prepareTranscriptReads() { prepared = true; throw new Error('preparation-failed'); },
+    startMaintenance() { maintenance = true; },
   } } }), /preparation-failed/);
   assert.equal(prepared, true);
+  assert.equal(maintenance, false);
 });
 
 test('runStartupRecoveryPasses executes startup recovery in order', async () => {
@@ -71,6 +74,7 @@ test('runStartupRecoveryPasses continues after a failed startup recovery pass', 
 test('runServerStartupRecoveryPasses reconciles commands and pending golden-path deliveries', async () => {
   const calls = [];
   const chatStore = {
+    startMaintenance() { calls.push('background-maintenance'); },
     async read() {
       return {
         cats: [],
@@ -137,5 +141,5 @@ test('runServerStartupRecoveryPasses reconciles commands and pending golden-path
     code: {},
   });
 
-  assert.deepEqual(calls, ['telegram-command-surface', 'golden-path-deliveries']);
+  assert.deepEqual(calls, ['telegram-command-surface', 'golden-path-deliveries', 'background-maintenance']);
 });

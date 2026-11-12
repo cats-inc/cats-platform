@@ -189,8 +189,16 @@ Schema-1 database admission creates a verified recoverable backup before transac
 including exact JSON/receipt, installation/revision/digest binding and interrupted-upgrade
 recovery. Native check/VACUUM runs behind a nonblocking reaper so parent death can terminate
 SQLite even while its own event loop is blocked. Both worker entrypoints ship in split and
-bundled artifacts. Daily snapshot publication/retention and the offline command surface remain
-implementation tasks, not acceptance claims for this checkpoint.
+bundled artifacts. Daily paired snapshots now start after application recovery, with a first
+check after 30 seconds and hourly checks thereafter. Metadata capture uses only the short
+profile lock; native check/VACUUM, asynchronous file proofs and retention use a separate
+cross-process maintenance lock. The worker's consistent copy must match the captured
+installation/revision/digest and contain no pending handoff. A concurrent revision defers
+publication. An atomic directory rename publishes the verified DB/JSON/receipt/manifest pair.
+Seven verified non-future pairs are kept; retention revalidates before deletion, ignores
+damaged/future candidates, and resumes after interrupted publication/pruning. Close/reset
+cancels queued capture/native work, and reopening resumes scheduling. Offline command routing
+and paired-snapshot restore still remain implementation tasks.
 
 ## Dependencies and open validation
 

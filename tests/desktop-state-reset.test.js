@@ -7,6 +7,8 @@ import { DatabaseChatStore } from '../build/server/products/chat/state/databaseS
 import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
 import { preparePlatformOwnedDataReset, removePlatformOwnedData, PlatformResetBusyError } from '../build/server/shared/platformDataReset.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
+import { maintainProfileSnapshot, profileSnapshotDirectory } from '../build/server/products/chat/state/database/profileSnapshots.js';
+import { withProfileLock } from '../build/server/platform/persistence/state-db/profileLock.js';
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-db-reset-'));
@@ -29,6 +31,21 @@ test('a second connection rejects reset before any callback, journal or metadata
   assert.equal(invoked, false);
   assert.deepEqual(await readFile(file), before);
   await assert.rejects(readFile(path.join(path.dirname(file), 'platform-data-reset.pending.json')), { code: 'ENOENT' });
+});
+
+test('an authorized data reset removes completed paired snapshots before deleting its primary', async t => {
+  const { file, store } = await fixture(t);
+  const pair = await maintainProfileSnapshot(file, signal => withProfileLock(file, () => readFile(file), { signal }));
+  assert.equal(pair.status, 'published');
+  const removed = [];
+  await store.withDataReset(async () => {
+    await preparePlatformOwnedDataReset(file, {});
+    await store.removeOwnedState(() => removePlatformOwnedData(file, { report() {}, remove: async (entry, options) => {
+      await rm(entry, options); removed.push(entry);
+    } }));
+  });
+  await assert.rejects(readdir(profileSnapshotDirectory(file)), { code: 'ENOENT' });
+  assert.ok(removed.indexOf(profileSnapshotDirectory(file)) < removed.indexOf(file));
 });
 
 for (const removed of ['database', 'receipt']) {

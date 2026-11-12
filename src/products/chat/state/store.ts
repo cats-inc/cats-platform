@@ -88,6 +88,8 @@ export interface ChatStore extends CoreStore {
   searchMessages?(query: string, options?: MessageSearchOptions): Promise<MessageSearchHit[]>;
   /** Explicit startup/write invariant preparation, separate from import equality. */
   prepareTranscriptReads?(): Promise<void>;
+  /** Start nonblocking profile maintenance after application recovery. */
+  startMaintenance?(): void;
   readPresentation?(channelId?: string): Promise<ChatPresentationSnapshot>;
   readMessageWindow?(id: string, limit?: number, before?: string): Promise<ChatMessageWindow>;
   /** Synchronous existing-channel mutation; optional metadata is limited to derived memory. */

@@ -18,7 +18,7 @@ import { logicalDatabaseSnapshot } from './database/logicalExport.js';
 import { type StorageHooks } from './database/metadataCommit.js';
 import {
   bytesDigest, databasePath, envelopeCore, makeEnvelope, ProfileStorageError,
-  serializeEnvelope, type StorageEnvelope,
+  readOptionalFile, serializeEnvelope, type StorageEnvelope,
 } from './database/profileFormat.js';
 import type { MessagePage, MessageSearchHit } from './database/conversationStore.js';
 import { StateDatabaseError } from '../../../platform/persistence/state-db/stateDatabase.js';
@@ -26,11 +26,14 @@ import { closeStateMaintenanceWorkers } from '../../../platform/persistence/stat
 import { prepareTranscriptState } from './transcriptRepairs.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
 import { DEFAULT_MESSAGE_PAGE_SIZE } from '../shared/transcript.js';
+import { ProfileSnapshotMaintenance } from './database/profileSnapshots.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
   onFatal?(error: ProfileStorageError): void;
   runtimeDataDir?: string | null;
+  /** Private timing seam for isolated lifecycle checks. */
+  snapshotMaintenance?: { initialDelayMs?: number; intervalMs?: number };
 }
 
 class MutationFailure extends Error {
@@ -51,6 +54,8 @@ export class DatabaseChatStore implements ChatStore {
   private resetContext = new AsyncLocalStorage<ResetContext>();
   private maintenanceAbort = new AbortController();
   private readonly maintenanceSignal: AbortSignal;
+  private snapshots?: ProfileSnapshotMaintenance;
+  private maintenanceRequested = false;
 
   constructor(filePath: string, private readonly options: DatabaseStoreOptions = {}) {
     this.filePath = path.resolve(filePath);
@@ -60,6 +65,34 @@ export class DatabaseChatStore implements ChatStore {
   }
 
   async initialize(): Promise<void> { await this.run(async session => this.prepareSearch(session)); }
+
+  /** Background only: startup readiness never waits for native check/VACUUM. */
+  startMaintenance(): void {
+    if (this.closing || this.closed || this.maintenanceSignal.aborted) return;
+    this.maintenanceRequested = true;
+    this.resumeSnapshotMaintenance();
+  }
+
+  private resumeSnapshotMaintenance(): void {
+    if (!this.maintenanceRequested || this.snapshots || !this.session || this.closing || this.closed || this.maintenanceSignal.aborted) return;
+    this.snapshots = new ProfileSnapshotMaintenance(this.filePath, signal => this.resetContext.exit(() =>
+      this.run(async session => {
+        signal.throwIfAborted();
+        const metadata = await readOptionalFile(this.filePath);
+        if (!metadata || bytesDigest(metadata) !== session.database.meta('metadata_digest')) throw new ProfileStorageError('metadata_mismatch',
+          'The database and metadata do not belong to the same committed state. Preserve both and restore a verified pair.');
+        signal.throwIfAborted();
+        return metadata;
+      }, signal)), { ...this.options.snapshotMaintenance, signal: this.maintenanceSignal,
+      onError: code => process.stderr.write(`[cats-platform-store] ${code}\n`) });
+    this.snapshots.start();
+  }
+
+  private async stopSnapshotMaintenance(): Promise<void> {
+    const snapshots = this.snapshots;
+    this.snapshots = undefined;
+    await snapshots?.stop();
+  }
 
   /** One explicit full-history preparation per repair form, before serving windows.
    * Import/export proofs remain separate from application recovery changes.
@@ -268,6 +301,7 @@ export class DatabaseChatStore implements ChatStore {
     if (this.closed) return;
     this.closing = true;
     this.maintenanceAbort.abort();
+    await this.stopSnapshotMaintenance();
     await closeStateMaintenanceWorkers(databasePath(this.filePath));
     if (!this.session && this.pending === 0) { this.closed = true; return; }
     await withProfileLock(this.filePath, async () => {
@@ -287,6 +321,7 @@ export class DatabaseChatStore implements ChatStore {
     await this.run(async session => {
       // The profile lock keeps other writers out while connections close and the
       // reset removes the old identity. The next request can initialize fresh state.
+      await this.stopSnapshotMaintenance();
       await closeStateMaintenanceWorkers(databasePath(this.filePath));
       session.database.close();
       await session.releaseLease();
@@ -396,7 +431,7 @@ export class DatabaseChatStore implements ChatStore {
     }
   }
 
-  private async run<T>(work: (session: OpenProfile, envelope: StorageEnvelope) => Promise<T>): Promise<T> {
+  private async run<T>(work: (session: OpenProfile, envelope: StorageEnvelope) => Promise<T>, signal?: AbortSignal): Promise<T> {
     if (this.closing || this.closed) throw new ProfileStorageError('closed', 'The state store is closed.');
     this.pending++;
     let phase: 'lock' | 'opening' | 'recovering' | 'operation' = 'lock';
@@ -410,6 +445,7 @@ export class DatabaseChatStore implements ChatStore {
         phase = 'recovering';
         const envelope = await this.session.metadata.recover();
         this.session.envelope = envelope;
+        this.resumeSnapshotMaintenance();
         phase = 'operation';
         return work(this.session, envelope);
       };
@@ -419,7 +455,7 @@ export class DatabaseChatStore implements ChatStore {
         context.tail = result.catch(() => {});
         return await result;
       }
-      return await withProfileLock(this.filePath, perform, { timeoutMs: this.options.lockTimeoutMs });
+      return await withProfileLock(this.filePath, perform, { timeoutMs: this.options.lockTimeoutMs, signal });
     } catch (error) {
       if (error instanceof MutationFailure) throw error.original;
       const failure = classifyStorageFailure(error, phase);

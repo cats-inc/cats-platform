@@ -69,7 +69,9 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
 - [x] Killable native check/snapshot with a nonblocking reaper, including parent-kill cleanup.
-- [ ] Daily paired metadata snapshots and valid completed-snapshot retention.
+- [x] Daily paired metadata snapshots and valid completed-snapshot retention.
+  Starts after application recovery, checks after 30 seconds and hourly, keeps seven
+  verified non-future pairs; mismatched concurrent revisions defer without blocking writers.
 - [x] Initialize before readiness; migration progress/deadline and fatal-state restart behavior.
 - [x] Close connections/workers during shutdown/reset; prevent after-close maintenance spawns.
 - [ ] Offline command routing/help and read-only behavior.
@@ -131,6 +133,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | History invalidation checks passed **14/14 Node and 14/14 Electron**, including old body edits, old/new Core anchors, lane-only termination, tail rejection/terminal topology, timestamp-only edits, backdated appends and a new maximum time whose former maximum lay in old non-monotonic history. Ordinary monotonic append/body streaming keeps its token. The prior checkpoint's **24/24** Node presentation/scoped cases preceded the final two timestamp/fast-path cases; counts overlap and are not additive. Independent backend and renderer slice reviews have no remaining blocking P1/P2; they did not run tests or approve the entire port. |
 | 2026-11-12 | Actual isolated Windows Desktop candidate built Runtime, Platform server, host and web renderer and manually verified latest-50 entry, older-page prepend with a stable visible anchor, retained reading position through direct/group navigation, CJK search for an unloaded old message, all-conversation search and opening a group result. Also inspected default/group/parallel draft chips (including the secondary Claude branch), direct avatar, ongoing group stack, bubble copy controls and sidebar overflow placement. No provider/model execution was requested. Full live/provider, active parallel-history and cross-product navigation acceptance remains pending. |
 | 2026-11-12 | Candidate receipt: private root `cats-inc/.desktop-candidates/state-db-renderer-20261112-c`, launch `93378897dd97dd966bde94c5a815c48259f455e985407b44fc4b4d575183a2d6`, instance `39fbda38534885982d38f571e4f02175`; Platform HEAD `ea4b53857` plus this dirty slice, source digest `e7de129c147b0df61ffec2abbcc5225f81b61567bbca16e70ab9c9f58169ecde`; Runtime `77d3e861aff5a8871e138e3be5ed28ce96c2ab09`. Four synthetic channels/500 messages and first Admin existed only in that private profile. Normal stop returned `drained`, both owned services stopped, exit 0; a subsequent OS query found none of its three PIDs. Installed Desktop/profile were untouched and no CDP port was opened. Earlier roots `a`/`b` failed before launch (per-process Git ownership admission, then missing main's UI dependency); worktree-only dependency links plus the exact extracted vendor package fixed setup. |
+| 2026-11-12 | Daily paired snapshots now capture exact JSON under the short serving lock, then run native check/VACUUM, async bounded-memory file proofs and retention under a separate cross-process maintenance lock. A mismatched installation/revision/digest or pending handoff defers publication. Atomic directory rename publishes DB/JSON/receipt/manifest together. Only verified non-future pairs count toward seven; invalid/future/unfinished data cannot displace good backups. Interrupted publication/pruning retries safely; reset/close aborts queued captures and native work before removal. No owner profile was written. |
+| 2026-11-12 | Snapshot integration checkpoint passed **39/39 Node** (17 snapshot, 14 reset, four startup and four shutdown cases) and **21/21 Electron** (17 snapshot plus four startup); the final diagnostic-sink retry regression passed in the expanded **18/18 Node and 18/18 Electron** snapshot suites. **2/2** actual bundled worker/coordinator checks passed, each running real Node and Electron child probes; server build and fixture typecheck passed. Counts overlap. Earlier **34/34** Node maintenance/reset/snapshot cases include five native timeout/cancel/parent-death checks. Hosted macOS/Linux and full-candidate CI remain pending. |
+| 2026-11-12 | Independent snapshot/retention and lifecycle reviews have no blocking finding in this implemented slice. Fixed review findings: revalidate retained pairs immediately before deleting any good old pair, Windows filename aliases in cleanup, and deterministic retention of the newly returned same-timestamp forced snapshot. Fault regressions corrupt both discovered/newly published candidates before pruning. These reviews do not approve archive/offline CLI/performance work that is still unimplemented. |
 
 *Created and last updated: 2026-11-12*
 
@@ -145,7 +150,7 @@ state progress event extends it once to ten minutes, and subsequent events canno
 Next work: finish isolated live/active-parallel/cross-product paging/search acceptance;
 remaining scoped REST consumers, and the still-unexplained Electron multi-process startup
 failure (retain the new safe diagnostic evidence); explicit compressed
-archives; daily paired snapshot publication/retention and offline CLI commands; then post-port
+archives; offline CLI commands and paired-snapshot restore routing; then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:

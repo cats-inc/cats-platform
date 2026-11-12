@@ -19,11 +19,35 @@ Before upgrading an existing local workspace, review
 [release-notes.md](./release-notes.md) for behavior changes and migration
 notes.
 
+## Conversation database snapshots (implementation candidate)
+
+The ADR-152 / SPEC-144 database port is still under implementation and has not
+been released. In that candidate, the Platform server starts background snapshot
+checks after startup recovery: first after 30 seconds, then hourly. A verified
+snapshot is due when the last eligible complete pair is at least 24 hours old.
+
+Snapshots live in `<configured-profile>.state-db-snapshots/`. Each completed
+directory contains the standalone SQLite database, exact JSON metadata, installation
+receipt and a manifest with file digests. JSON is captured under the short profile
+lock; native integrity checks and `VACUUM INTO` run in killable child processes
+without holding that lock. A changed revision defers publication until a later
+check. Only a matching verified pair is atomically published.
+
+Retention keeps seven verified pairs for the current installation. Damaged,
+unfinished and future-dated candidates cannot displace good backups; a clock
+rollback preserves previously good future-dated pairs. Interrupted maintenance
+resumes cleanup and retention on a later check. Backup failures emit only a safe
+failure code and leave ordinary conversation work available. Shutdown/reset stops
+the scheduler and its workers before profile removal. Offline command routing and
+paired-snapshot restore are still being implemented; do not replace live profile
+files manually while Cats is running.
+
 ## Reset Platform data
 
 Settings > Data erases Platform-owned conversation/account/setup data using the
 explicit file/directory inventory in `src/shared/platformDataReset.ts`. This
-includes all rotating and migration `.bak` entries directly in `state/`, abandoned
+includes all rotating and migration `.bak` entries directly in `state/`, paired
+conversation-database snapshots, abandoned
 state-write temporary files, canonical/companion memory and sources, local
 knowledge, evidence, transport delivery state, schedules, Platform attachments
 and history caches. Referenced attachment/evidence directories are erased only

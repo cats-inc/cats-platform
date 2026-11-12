@@ -41,6 +41,7 @@ export async function runServerStartupRecoveryPasses(
     // before supervised work starts moving again.
     () => resumeGoldenPathRunsOnStartup(dependencies),
   ]);
+  dependencies.chat.chatStore.startMaintenance?.();
 }
 
 export async function reconcileAuthRepairOnStartup(
