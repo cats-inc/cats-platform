@@ -99,7 +99,14 @@ async function acquire(file: string, deadline: number, options: LockOptions): Pr
       let existing: Owner;
       try { existing = await readOwner(file); }
       catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') continue;
+        // Windows can deny a read while another process retires the public link.
+        // Unknown ownership is contention, never evidence that its owner is dead.
+        if (['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '')) {
+          await pause(deadline, options.signal);
+          continue;
+        }
         throw error;
       }
       if (existing.host !== host) throw new Error('Profile is locked by another host; preserve its lock for recovery.');

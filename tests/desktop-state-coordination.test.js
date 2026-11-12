@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { once } from 'node:events';
 import { link, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -228,3 +230,26 @@ test('query-backed export arrays have byte-identical output to materialized JSON
   assert.deepEqual([...canonicalJson(streamed)], [...canonicalJson(logical)]);
   assert.equal(canonicalDigest(streamed), canonicalDigest(logical));
 });
+
+
+for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
+  test(`an unreadable contended owner retries ${code} within its deadline without reclaiming a live lock`, async t => {
+    const { file } = await scratch(t), held = await holder(t, file);
+    const lock = `${file}.operation-lock`, originalRead = fs.readFile;
+    const bytes = await originalRead(lock, 'utf8'); let attempts = 0, entered = false;
+    fs.readFile = async (name, ...args) => {
+      if (String(name) === lock) { attempts++; throw Object.assign(Error('simulated sharing conflict'), { code }); }
+      return originalRead(name, ...args);
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(withProfileLock(file, async () => { entered = true; }, { timeoutMs: 100 }), { code: 'profile_lock_timeout' });
+      assert.ok(attempts > 1, 'the real owner reader must encounter and retry the sharing conflict');
+      assert.equal(entered, false);
+    } finally { fs.readFile = originalRead; syncBuiltinESMExports(); }
+    assert.equal(await readFile(lock, 'utf8'), bytes, 'unknown ownership never authorizes takeover');
+    assert.equal(held.child.exitCode, null);
+    held.child.kill(); await held.done;
+    assert.equal(await withProfileLock(file, async () => 'recovered'), 'recovered');
+  });
+}
