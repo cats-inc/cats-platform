@@ -36,7 +36,7 @@ see Compatibility and recovery.
   the composer still offers a Video format and MP4 uploads, Runtime refuses
   them, and the composer then reports them unavailable or the upload as
   failed. Runtime now starts without FFmpeg. (cats-platform#443,
-  cats-platform#456, cats-runtime#221, cats-runtime#222)
+  cats-platform#456, cats-platform#457, cats-runtime#221, cats-runtime#222)
 - **Plugins.** Agency is optional and installable from Settings in previews; a
   Cat can select an Agency skill only after it is installed. Runtime supports
   the preview installation and restores cleanly after a restart.
@@ -49,8 +49,11 @@ see Compatibility and recovery.
 - **Source selection:** cats-runtime@77d3e861aff5a8871e138e3be5ed28ce96c2ab09; main@77d3e861aff5a8871e138e3be5ed28ce96c2ab09.
 - **Exact modules.** Runtime package version **0.6.2** uses the full source SHA
   above, with no changes left out. Platform main at selection is
-  `339a28a3d9bc3077377668abbfd6264774e88357`; the workflow records the completed
-  bump commit as the frozen Desktop source. Shared conversation UI **0.1.0** is
+  `519d5228c9c18eab7117c16cfb7c7d03c43f66bc`; the workflow records the completed
+  bump commit as the frozen Desktop source. The selection was reopened once:
+  the first build, from `876c38417ae49b44f257afa2f0ef7f37e2dca667` (Actions run
+  43139248513), failed the macOS universal merge on an npm `.bin` link nested
+  in sharp, which cats-platform#457 leaves out. Shared conversation UI **0.1.0** is
   unchanged: content digest
   `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`,
   tarball SHA-256
@@ -124,9 +127,11 @@ see Compatibility and recovery.
     pass staging's version and binary checks. The sidecar `node_modules` laid
     out as staging lays it out and passed through electron-builder's own
     resource filter keeps sharp whole, and on Windows x64 it loads the server
-    and resizes a PNG with sharp (cats-platform#456). The macOS universal
-    merge rule for sharp's single-architecture natives is covered by a test
-    and review; this release's macOS build is its first run.
+    and resizes a PNG with sharp (cats-platform#456). That filter now drops
+    npm `.bin` links at every depth, checked by a test that fails with the old
+    pattern (cats-platform#457). The macOS universal merge rule for sharp's
+    single-architecture natives is covered by a test and review; this
+    release's macOS build is the first to merge them.
   - Each change passed its own review and CI. Live Claude Code and Codex
     acceptance of the conversation tools did not run (PLAN-134 Phase 7,
     PLAN-135 Phase 6).
