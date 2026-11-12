@@ -49,7 +49,7 @@ see Compatibility and recovery.
 - **Source selection:** cats-runtime@77d3e861aff5a8871e138e3be5ed28ce96c2ab09; main@77d3e861aff5a8871e138e3be5ed28ce96c2ab09.
 - **Exact modules.** Runtime package version **0.6.2** uses the full source SHA
   above, with no changes left out. Platform main at selection is
-  `080beb076d86b817488295cc4ce0c69a93571826`; the workflow records the completed
+  `339a28a3d9bc3077377668abbfd6264774e88357`; the workflow records the completed
   bump commit as the frozen Desktop source. Shared conversation UI **0.1.0** is
   unchanged: content digest
   `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`,
