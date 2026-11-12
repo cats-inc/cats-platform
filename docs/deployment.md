@@ -278,6 +278,19 @@ automatically change this lock or update an installed Desktop.
 Check both the App's [host and SDK requirements](app-packages.md#host-and-sdk-compatibility);
 the App version itself does not specify a compatible Desktop version.
 
+Native packages ship for every architecture an OS's installers cover. The installer
+wrapper runs `scripts/prepare-app-ingress.mjs`, which installs the exact versions
+from each owner's `optionalDependencies` into the build and leaves the lockfile
+alone: ngrok's natives for App ingress, and sharp's `@img` packages for companion
+images. macOS needs both architectures for its universal app; Windows and Linux
+stage one set per OS, and each package loads the native for `process.arch`. sharp's
+`@img` packages carry libvips (LGPL-3.0-or-later) unmodified, with its license.
+Staging refuses a missing native or a version that differs from its owner's
+manifest. sharp ships only in the sidecar: `build.files` keeps it, `@img` and
+`detect-libc` out of the main app, and `build.mac.x64ArchFiles` lets the universal
+merge keep the sidecar's single-architecture sharp natives, which are identical in
+the x64 and arm64 bundles.
+
 Confirm the complete workflow and the published release assets before reporting
 completion. Dispatching a workflow or uploading CI artifacts alone is not a
 published Desktop release.

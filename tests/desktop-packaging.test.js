@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -33,6 +34,7 @@ import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
   appIngressNativePackages,
+  imageNativePackages,
 } from '../build/desktop/packaging.js';
 
 async function seedFile(path, contents = '') {
@@ -176,17 +178,24 @@ async function seedAppSidecarRuntimeDependencies(packageRoot) {
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
   const natives = appIngressNativePackages(['windows', 'macos', 'linux']);
-  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web', ...natives]) {
+  const images = imageNativePackages(['windows', 'macos', 'linux']);
+  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web',
+    'sharp', '@img/colour', 'detect-libc', ...natives, ...images]) {
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'package.json'),
       JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js',
-        ...(dependency === '@ngrok/ngrok' ? { optionalDependencies: Object.fromEntries(natives.map(name => [name, '0.0.0-test'])) } : {}) }, null, 2),
+        ...(dependency === '@ngrok/ngrok' ? { optionalDependencies: Object.fromEntries(natives.map(name => [name, '0.0.0-test'])) } : {}),
+        ...(dependency === 'sharp' ? { optionalDependencies: Object.fromEntries(images.map(name => [name, '0.0.0-test'])) } : {}) }, null, 2),
     );
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'index.js'),
       'module.exports = {};\n',
     );
     if (natives.includes(dependency)) await seedFile(join(packageRoot, 'node_modules', dependency, 'fixture.node'));
+    if (images.includes(dependency)) {
+      await seedFile(join(packageRoot, 'node_modules', dependency, 'lib',
+        dependency.includes('libvips') ? 'libvips-fixture.so' : 'fixture.node'));
+    }
   }
 }
 
@@ -779,6 +788,24 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     '!node_modules/@ngrok/ngrok-darwin-x64/**',
     '!node_modules/@ngrok/ngrok-darwin-arm64/**',
   ]);
+  // sharp ships only in the sidecar, with one single-arch native package per macOS architecture
+  // that is identical in both bundles, so the merge must keep those files as they are. Check the
+  // rule with the minimatch @electron/universal itself uses.
+  const universalRequire = createRequire(join(process.cwd(), 'node_modules/@electron/universal/dist/cjs/index.js'));
+  const { minimatch } = universalRequire('minimatch');
+  const coveredByX64ArchFiles = (file) => minimatch(file, packageJson.build.mac.x64ArchFiles, { matchBase: true });
+  for (const name of imageNativePackages(['macos'])) {
+    const binary = name.includes('libvips') ? 'libvips-cpp.8.17.3.dylib' : `${name.slice('@img/'.length)}.node`;
+    const file = `Contents/Resources/app-sidecar/node_modules/${name}/lib/${binary}`;
+    assert.equal(coveredByX64ArchFiles(file), true, file);
+  }
+  assert.equal(coveredByX64ArchFiles('Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework'), false);
+  assert.equal(coveredByX64ArchFiles('Contents/Resources/native/cats-voice-helper'), false);
+  // The Electron main process never loads sharp, so its packages stay out of app.asar on every OS;
+  // otherwise the host-arch natives npm installed would also break the macOS merge.
+  for (const pattern of ['!node_modules/sharp/**', '!node_modules/@img/**', '!node_modules/detect-libc/**']) {
+    assert.equal(packageJson.build.files.includes(pattern), true, pattern);
+  }
   assert.deepEqual(
     packageJson.build.linux.target,
     [{ target: 'deb', arch: ['x64', 'arm64'] }],
@@ -820,6 +847,11 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     (entry) => entry.from === 'build/native'
       && entry.to === 'native',
   ), true);
+  // build/native ships as resources/native, so the native dependency install prefix must stay
+  // outside it; a copy there would put single-arch sharp natives where the macOS merge refuses them.
+  const prepareNatives = await readFile(join(process.cwd(), 'scripts/prepare-app-ingress.mjs'), 'utf8');
+  assert.match(prepareNatives, /const prefix = path\.join\(root, 'build', 'native-deps'\);/);
+  assert.doesNotMatch(prepareNatives, /'build', 'native',/);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/mobile'
       && entry.to === 'mobile'
@@ -1484,6 +1516,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'js-yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'argparse', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'fflate', 'package.json'));
+  // Companion images: sharp, its runtime dependencies and the natives for each staged OS.
+  for (const dependency of ['sharp', '@img/colour', 'detect-libc', ...imageNativePackages(plan.targets.map((target) => target.platform))]) {
+    await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', dependency, 'package.json'));
+  }
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'));
