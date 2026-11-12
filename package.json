@@ -100,6 +100,7 @@
   "license": "MIT",
   "dependencies": {
     "@cats-inc/platform-ui-web": "file:vendor/platform-ui-web-0.1.0-957e4717942c.tgz",
+    "builder-util-runtime": "9.7.0",
     "@ngrok/ngrok": "1.7.0",
     "@tanstack/react-query": "^5.100.6",
     "electron-updater": "^6.8.9",

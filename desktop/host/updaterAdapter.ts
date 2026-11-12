@@ -5,15 +5,15 @@ import type {
 } from './contracts.js';
 import { DesktopInstallHandoffTimeoutError } from './updateInstallHandoff.js';
 import type { DesktopUpdaterAdapter, DesktopUpdaterCheckResult } from './updateManager.js';
+import { VersionedGithubProvider } from './versionedGithubProvider.js';
 
 /**
  * Translation layer between `electron-updater` and the host-owned update
  * manager.
  *
- * This module deliberately does not import `electron-updater` or `electron`.
- * The caller passes the updater in, which keeps the translation testable in a
- * plain node process and matches how the rest of desktop/host isolates
- * electron-only code.
+ * The caller passes the native updater in. The custom provider uses only
+ * electron-updater's plain-Node provider modules, so translation and discovery
+ * remain testable without importing Electron or constructing a native updater.
  */
 
 export interface ElectronUpdaterProgressInfo {
@@ -30,9 +30,10 @@ export interface ElectronUpdaterInfo {
 }
 
 export interface ElectronUpdaterFeedOptions {
-  provider: 'github';
+  provider: 'github' | 'custom';
   owner: string;
   repo: string;
+  updateProvider?: typeof VersionedGithubProvider;
 }
 
 export interface ElectronAutoUpdaterLike {
@@ -219,16 +220,17 @@ export function configureElectronUpdater(
   // allowPrerelease off the provider resolves updates through /releases/latest,
   // which excludes prereleases -- so a preview could never find its successor.
   //
-  // Leaving the channel unset matters just as much: with a channel set, the
-  // provider only accepts a release whose tag carries that channel as a semver
-  // prerelease component, and these tags are plain versions. Unset, it takes the
-  // newest entry from the releases feed, which is the preview we just published.
-  // The metadata file is unchanged either way -- electron-updater defaults to
-  // `latest.yml`, which is what the workflow uploads.
+  // Preview discovery uses versioned candidates backed by valid platform
+  // metadata. GitHub's Atom feed includes bare milestone tags, so its first
+  // entry alone cannot identify an installable release. Native downloads and
+  // installation still use electron-updater's GitHub implementation.
   const preview = input.distribution === 'preview_packaged';
   autoUpdater.allowPrerelease = preview;
   autoUpdater.channel = preview ? null : resolveElectronUpdaterChannel(input.channel);
-  autoUpdater.setFeedURL(resolveGithubFeedOptions(input.repository));
+  const feed = resolveGithubFeedOptions(input.repository);
+  autoUpdater.setFeedURL(preview
+    ? { ...feed, provider: 'custom', updateProvider: VersionedGithubProvider }
+    : feed);
   // Order matters. electron-updater's channel setter assigns
   // allowDowngrade = true as a side effect and its own documentation says to
   // set the flag again afterwards. Downgrade is a SPEC-111 non-goal, so this
