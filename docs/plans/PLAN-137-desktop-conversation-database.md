@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress |
+| Status | Implemented; functional acceptance complete; performance comparison owner-deferred |
 | Owner | Product owner |
 | Spec | [SPEC-144](../specs/SPEC-144-desktop-conversation-database.md) |
 | Decision | [ADR-152](../decisions/152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md) |
@@ -35,14 +35,14 @@ transaction, migration/recovery and affected-consumer checks still apply.
 - [x] Port lazy driver, transaction adapter and Unicode search rewriting with attribution.
 - [x] Define Platform-specific tables/application ID and metadata handoff.
 - [x] Validate drivers/transactions in local Windows Node and Electron, including foreign/newer files.
-  Three-OS hosted acceptance is prepared and remains pending.
+  Exact-source three-OS hosted Node/Electron acceptance passed; see final CI receipt below.
 - [x] Implement query-layer row-delta writes, cached-count indexed pages with order-generation
   cursors, SQL-batched chronological import and bounded multilingual FTS. Unicode-version
   changes require rebuilding; unchanged synchronization never marks a stale index current.
 - [x] Expose scoped transactional mutation/read views through the live store; integrate runtime
   intake/stream/finalization writers without loading sibling transcripts. Derived shared memory
   uses a separately persisted compact channel catalog, not JSON extraction from workflow bodies.
-- [ ] Tests: real SQLite, multilingual/scoped queries,
+- [x] Tests: real SQLite, multilingual/scoped queries,
   cursor/order edits, rollback, durable commit and multi-process contention.
   Million-entry capacity testing is owner-deferred for this delivery.
 
@@ -61,13 +61,15 @@ transaction, migration/recovery and affected-consumer checks still apply.
 
 ## Phase 3 — Product consumers and cold storage (FR-8, FR-9, FR-15)
 
-- [ ] Connect indexed paging to message API and renderer while retaining live behavior.
+- [x] Connect indexed paging to message API and renderer while retaining live behavior.
   The indexed message API/client and bounded app-shell/channel/entity-subscription read
   models and mounted transcript paging/retained history are implemented. Focused scroll,
-  cancellation, reconnect and optimistic rollback checks pass; manual acceptance remains pending.
-- [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
+  cancellation, reconnect and optimistic rollback checks pass. Isolated Desktop paging/anchor
+  evidence and final Chat/Code/Work window readback are recorded below.
+- [x] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
   The authenticated/redacted query endpoint, client and scoped/global Desktop dialog are
-  implemented. Focused controls/cancellation checks pass; manual acceptance remains pending.
+  implemented. Focused controls/cancellation checks pass; isolated Desktop search found an
+  older message outside the retained window, with explicit current/global scope controls.
 - [x] Finish scoped conversation write consumers, preserving group and parallel semantics.
   Runtime dispatch writers and REST send/retry, rename, coordinator, participant and product
   scope changes use target-only state. Metadata list/scope/Project readers and transport
@@ -87,7 +89,7 @@ transaction, migration/recovery and affected-consumer checks still apply.
   rich Runtime effects, generic Core/replay and Cat role changes retain their global atomic
   contract; the life/peer-board read model intentionally reads related histories. These costs
   are explicit rather than a claim that all snapshot APIs became constant-time.
-- [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
+- [x] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
   bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
   guards and self-contained asset snapshots/paired restore are implemented. Schema 5 adds
@@ -97,9 +99,9 @@ transaction, migration/recovery and affected-consumer checks still apply.
   presentation now preserve current-Core placement/privacy and recover commit/transport races.
   Shared Chat/Work/Code archive/restore controls, race-aware selected-window reconciliation
   and read-only interaction guards are implemented. Actual isolated Windows Desktop
-  archive/restore passed in Chat/Work/Code. Pending: the remaining group/parallel/live audit.
-  Do not mark FR-15 complete on
-  backend/CLI/API/renderer tests alone.
+  archive/restore passed in Chat/Work/Code. Controlled Runtime/native API checks preserve
+  active group/parallel admission and atomic settlement; final Desktop group/parallel history
+  selection and intact raw-state verification are recorded below.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -117,14 +119,16 @@ transaction, migration/recovery and affected-consumer checks still apply.
 
 ## Phase 5 — Acceptance and independent review (FR-18, FR-20)
 
-- [ ] Affected builds/typechecks and Core/Chat/Work/Code/lifecycle/startup/packaging suites.
+- [x] Affected builds/typechecks and Core/Chat/Work/Code/lifecycle/startup/packaging suites.
 - [ ] Node and Electron measurements after port, compared with Phase 0 under the same workload.
   **Owner-deferred; not a gate for this delivery.**
-- [ ] Independent review; resolve findings and rerun checks affected by fixes.
+- [x] Independent review; resolve findings and rerun checks affected by fixes.
 - [x] Real-data export equality on an isolated copy, with exact source-byte preservation and rollback readback.
-- [ ] Three-platform CI on exact candidate.
-- [ ] Isolated Desktop candidate and manual acceptance of paging/search/live/group/parallel.
-- [ ] Requirement-by-requirement audit; document release boundary and restore instructions.
+- [x] Three-platform CI on exact candidate.
+- [x] Isolated Desktop candidate and manual acceptance of paging/search/group/parallel,
+  plus controlled Runtime/native HTTP/SSE live intake and settlement. No credentialed
+  provider/network execution is claimed; this persistence port does not change that boundary.
+- [x] Requirement-by-requirement audit; document release boundary and restore instructions.
 
 ## Testing strategy
 
@@ -219,6 +223,33 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 
 | 2026-11-13 | The second fixed-source Windows CI run exposed a real transient sharing race: a contender's `readOwner` received `EPERM` while another process retired the public lock link. Contended owner reads now retry `EPERM`/`EACCES`/`EBUSY` through the existing deadline/cancellation wait; unknown ownership never permits dead-owner takeover. The full coordination suite passed **19/19 Node and 19/19 actual Electron**, including three deterministic live-holder sharing faults, unchanged owner bytes, bounded refusal, subsequent dead-owner recovery and the real multiprocess counter. Narrow independent review reports no blocking P1/P2. Fresh exact-source hosted verification remains pending. |
 
+| 2026-11-13 | Final isolated Desktop receipt: clean Platform `b26a12f9c`, source digest `9ac52a13c5c22315be92c429d61c581f888cf3b4d14dfa29b7be40fbbb0f6f86`, Runtime `512c074713cbe563124f21c4ed9218e0b408c33f`, private root `state-db-final-20261113`. Actual renderer inspection confirmed `desktopBridge: true`. Native input/capture attempts were initially inconclusive; explicit renderer navigation then showed the expected group window. Chat group paging expanded **50 (76–125) -> 100 (26–125)**; scoped search found message **4** outside that retained range. Code and Work each displayed the latest **50/125**, product switching preserved scope, and both parallel-member IDs opened their own **50/125** window. The fixture's labels Final Chat/Final Code are reversed relative to their origin surfaces; validation followed actual surface/ID, not the label. Later source changes are the reviewed shared-module relocation and offline CLI/lock retry fixes; renderer behavior and query DTO shapes are unchanged. Earlier Chat/Code/Work archive/restore/anchor evidence is reused on that basis. No model execution occurred. |
+| 2026-11-13 | After graceful final stop, exact readback verified **750** synthetic message IDs, bodies, timestamps, opaque metadata, mentions/usage, six conversation IDs and parallel member order. All **three owned PIDs** exited. The first process-exit observation raced the host's final quit after its drain receipt; a bounded observation confirmed actual exit. The private CDP listener ended with this owned process; installed Desktop/profile remain untouched. Actual mutation/live/group/parallel correctness is covered by controlled Runtime and native HTTP/SSE fixtures, separate from this UI readback. The final hosted functional CI receipt follows. |
+
+## Final hosted functional acceptance
+
+[CI run 43318993933](https://github.com/cats-inc/cats-platform/actions/runs/43318993933)
+completed successfully on exact source `b9c19b94d100aafc87eab5994df97e1795559f54`.
+The final closure changes documentation only; executable source and workflow inputs remain
+identical to that tested commit. Earlier failed/inconclusive checkpoints above are historical,
+not the final acceptance result. No benchmark or million-entry test was run for this gate.
+
+| Check | Final result |
+| --- | --- |
+| Changes / validate | Passed |
+| Complete Node 24 suite | 7,228 tests: 7,067 passed, 161 skipped, zero failed/cancelled |
+| Windows Node / shipped Electron state suites | Each 386/386 passed, zero skipped/failed/cancelled |
+| Ubuntu Node / shipped Electron state suites | Each 377 passed, 9 platform-specific skips, zero failed/cancelled |
+| macOS Node / shipped Electron state suites | Each 377 passed, 9 platform-specific skips, zero failed/cancelled |
+| Startup/reset/host integration, each OS | 61/61 passed |
+| Bundled worker/CLI/staging integration, each OS | 34/34 passed |
+
+These are separate suite receipts with overlapping coverage, not additive test totals.
+This closes the functional CI gate, including the previously inconclusive local bundled CLI
+check and actual three-OS filesystem/directory durability coverage. Independent reviews and
+isolated Desktop acceptance are complete. The earlier intermittent Electron startup event's
+root cause remains unestablished; fresh native contention/startup checks pass on all three OSes.
+
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
 ## Final requirement audit
@@ -226,7 +257,7 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | Requirement | Implementation and evidence |
 | --- | --- |
 | FR-1 | Original Node/Electron baseline and counts-only owner evidence retained. Post-port comparison/million-entry runs are owner-deferred. |
-| FR-2 | Lazy isolated SQLite adapter; local Node/Electron capability, Unicode/space paths and foreign-file refusal pass. Exact-candidate three-OS CI pending. |
+| FR-2 | Lazy isolated SQLite adapter; Node/Electron capability, Unicode/space paths and foreign-file refusal pass, including exact-source three-OS CI. |
 | FR-3 | Complete JSON records and collection order; Platform application ID; schema 6 with backed-up transactional upgrades from 1–5 and unknown/newer refusal. |
 | FR-4 | Version-8 metadata envelope; in-memory Core remains 7; cats/settings/Core retained; messages/groups live in SQLite. |
 | FR-5 | Cross-process operation lock, synchronous transactions, durable metadata handoff, fault recovery and unique domain revisions. |
@@ -236,7 +267,7 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | FR-9 | Bounded multilingual FTS, authenticated/redacted API and Desktop search with cancellation/scopes/cold-exclusion explanation. |
 | FR-10 | Validated old-profile admission; unknown policy/lifecycle/future/malformed refusal and exact original backups. |
 | FR-11 | Staged bounded import, canonical equality, import marker, durable publication and concurrent/restart recovery. |
-| FR-12 | Failure/restart/concurrent-start tests and manifest/digest-bound resumable restores; safe diagnostics for the earlier Electron startup failure, with final cross-platform result pending. |
+| FR-12 | Failure/restart/concurrent-start tests and manifest/digest-bound resumable restores; safe diagnostics retained for the earlier Electron startup event. Final native contention/startup/recovery checks pass on all three OSes. |
 | FR-13 | Deterministic rich-state export; isolated real-copy equality and source-byte preservation passed. |
 | FR-14 | Killable background check/snapshot/reaper, exact JSON/DB pairing, bounded valid-snapshot retention and backward-clock handling. |
 | FR-15 | Verified compressed JSONL, native staging/CAS/recovery, readback/export, self-contained assets and deletion distinction; Chat/Code/Work archive/restore Desktop evidence passed. |
@@ -244,7 +275,7 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | FR-17 | Offline CLI help/check/snapshot/export/legacy+paired restore; configured profile selection, nonzero failures and no read-only initialization. |
 | FR-18 | All fixtures/candidates isolated; restart/multiple stores/processes and product consumers covered; installed Desktop and owner profile untouched. |
 | FR-19 | Lazy driver and licensing, split/bundled workers and native entrypoints; actual Node/Electron bundled maintenance/coordinator/CLI/cold-page acceptance passed. |
-| FR-20 | Independent reviews closed concrete P1/P2. Focused local Node/Electron evidence recorded; exact-candidate three-OS CI and final Desktop receipt pending. |
+| FR-20 | Independent reviews closed concrete P1/P2. Focused local evidence, exact-source full CI/three-OS Node/Electron acceptance and final isolated Desktop receipt are complete. Performance comparison is owner-deferred. |
 
 The first authorized release containing this persisted-format/message-list contract change
 requires **0.17.0**. Main's existing 0.16.1 preparation belongs to its previously selected
@@ -253,20 +284,20 @@ SSE/streaming, group and parallel mutations are validated with controlled Runtim
 additional credentialed provider/network execution is not claimed. Keep final UI and CI
 receipts distinct from provider execution and from the owner-deferred performance work.
 
-## Next integration checkpoint
+## Delivery and retained implementation constraints
 
-The active goal is the entire SPEC-144 port; the live-store checkpoint is not completion.
-Live startup now constructs `DatabaseChatStore`; nothing has been deployed or written to the
-owner's actual profile. Keep the worktree and continue product consumers, maintenance/archive,
-host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
-state progress event extends it once to ten minutes, and subsequent events cannot renew it.
+The complete SPEC-144 implementation constructs `DatabaseChatStore` at live startup.
+No test has deployed to or written the owner's actual profile. The ordinary startup
+deadline is 75 seconds; the first validated state progress event extends it once to
+ten minutes, and subsequent events cannot renew it.
 
-Next work: isolated live/active-parallel/group and cross-product paging/search acceptance, and the
-still-unexplained Electron multi-process startup failure (retain the
-new safe diagnostic evidence); then hosted CI and isolated Desktop acceptance.
+Implementation and functional acceptance are complete. Delivery follows the owner's
+authorized normal direct push to main, then removal of this worktree and the merged branch.
+Retain the earlier intermittent Electron startup diagnostic as historical evidence; do not
+claim its root cause is established by the separately proven Windows sharing-read defect.
 Post-port performance and million-entry runs remain owner-deferred.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
-as meeting the final performance goal. Preserve these implementation constraints as work continues:
+as meeting the deferred performance goal. Retain these implementation constraints:
 
 - Proposal mutations keep complete Project header counts, including archived siblings,
   and header-only cold admission. Re-read current status/expiry/binding under the writer;
@@ -296,8 +327,8 @@ as meeting the final performance goal. Preserve these implementation constraints
   merges `displayMessages` (falling back to raw `messages` for fixture responses). Retained
   pages refresh on `historyRevision`, including old edits and moved/rejected Core output;
   monotonic tail streaming keeps the ordinary fast path. Do not write presentation-only header/window
-  state through a global snapshot mutator. Audit Work/Code shell/navigation callers and remaining
-  scoped REST actions before claiming the end-to-end performance goal.
+  state through a global snapshot mutator. Work/Code shell/navigation and scoped REST consumers
+  are audited; no post-port timing or end-to-end performance claim is made.
 - Index-backed placement proof makes display-only Core presentations unique across pages.
   Raw API `messages` remain limit-bounded; `displayMessages` is a separate view projection.
   Core stays complete in JSON under FR-4, so do not advertise generic Core work as constant-time.
@@ -330,7 +361,7 @@ as meeting the final performance goal. Preserve these implementation constraints
   capture JSON then VACUUM, accepting the pair only if snapshot identity/revision/digest match;
   mismatches defer/retry without holding the operation lock during long SQLite work.
 - The host acceptance workflow is callable from manual CI on the exact candidate, including
-  three-OS Node/Electron functional checks. No hosted run is evidenced yet.
+  three-OS Node/Electron functional checks. Exact-source final results are recorded above.
   Current local dependency setup extracted the exact vendor UI tarball into worktree node_modules;
   other local dependencies resolve from the parent checkout. A worktree-owned mobile node_modules
   junction points to the matching-lockfile main installation; remove that junction during final

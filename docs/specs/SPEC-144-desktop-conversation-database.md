@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Approved scope; implementation in progress |
+| Status | Implemented; functional acceptance complete; performance comparison owner-deferred |
 | Owner | Product owner |
 | Authorization | 2026-11-12: prepare SPEC/PLAN and complete the Desktop port from ADR-152 |
 | Related decision | [ADR-152](../decisions/152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md) |
@@ -161,8 +161,8 @@ verifies the recovered current header before closing a newly created unreference
 attachment setup failures also track sessions created before their lease was recorded.
 Recovered participant continuations keep their actual replay reads/writes on the target
 channel. Transport fanout reads only that channel and uses catalog metadata for bindings.
-Generic Core writes and global operations still retain complete projections;
-remaining consumers and post-port measurements are open validation.
+Generic Core writes and global operations retain complete projections. The consumer audit
+is complete; these global costs remain explicit. Post-port measurements are owner-deferred.
 
 Session activation/sleep now read and publish through the target-scoped store. Stream
 readiness, cancellation polling and attachment paths use metadata-only target sets: empty
@@ -192,7 +192,8 @@ qualification uses the complete header catalog for canonical direct-lane selecti
 streaming presentation recorder uses a narrow target/segment-identity-checked Core write
 which commits through the same journal and history invalidation without a global Chat
 projection. Rich Runtime effects and other generic Core mutations retain their explicit
-global cost; this checkpoint does not declare the remaining consumer audit complete.
+global cost. The completed consumer audit classifies these operations separately from
+target-scoped transcript work.
 
 Native Code session inspection reads Core and headers from one catalog capture; activation
 uses target state and the same recovering new-session cleanup as ordinary activation.
@@ -251,8 +252,8 @@ display pages after edits or Core placement changes outside the newest window;
 `windowCount` records the raw window size independently of display-only rows. The mounted
 Desktop now retains scoped pages across navigation, loads older windows, merges live and
 optimistic updates, and exposes scoped/global plain-text search. Scroll restoration uses
-visible message anchors. Focused renderer checks pass; isolated Desktop/manual acceptance
-and the remaining consumer/performance audit are still required for full FR-8/FR-9 acceptance.
+visible message anchors. Focused renderer checks and isolated Desktop paging/search,
+cross-product and parallel-member acceptance pass. Performance comparison is owner-deferred.
 
 The implementation keeps schema 2's separate compact channel catalog for shared root,
 participant and memory projections. A scoped writer must not parse unrelated workflow JSON.
@@ -361,8 +362,9 @@ existing auth/CSRF and channel mutation gates. Already-disconnected/queued-abort
 never start an action. A cancellation after the exact durable target revision/digest committed
 recovers its handoff and Core notifications; terminal attempts notify other channel subscribers
 even when the initiating transport disappears. Send/retry/activation/wake reject archived
-channels before Runtime access. Desktop controls are implemented; full product acceptance
-remains pending. Backend/CLI/API checks alone do not satisfy FR-15.
+channels before Runtime access. Desktop controls and isolated Chat/Code/Work archive,
+read-only transcript, restore and scroll-anchor acceptance pass; PLAN-137 records the
+separate backend/CLI/API and actual Desktop evidence.
 
 Parallel broadcast preflights the active channel and every nonempty recipient before any
 Runtime work or attachment copy. Relay checks its active/source/target channels before adding
@@ -398,10 +400,14 @@ Dirty participant fields are discarded when permission changes to read-only; ord
 close retains its existing save behavior. Restoring reloads the accepted hot window before
 editing resumes. Search explains that cold history must be restored to become searchable.
 
-## Dependencies and open validation
+## Dependencies and acceptance
 
 - Attribution: Cats Bot `state-db-p1`; no Bot dependency or changes.
 - Platform's Electron 41 and the actual Platform Node process; existing auth and routing.
-- Three-platform CI and isolated real-data byte comparison must be evidenced before release.
+- Exact-source [three-platform CI](https://github.com/cats-inc/cats-platform/actions/runs/43318993933),
+  isolated real-data byte comparison and Desktop functional acceptance passed; PLAN-137
+  records source identities, counts, earlier failures and the owner-deferred measurements.
+- Implementation authorization includes no version bump or publication. The first release
+  containing the changed persisted format/message-list contract requires 0.17.0.
 
 *Created: 2026-11-12. Last updated: 2026-11-13.*
