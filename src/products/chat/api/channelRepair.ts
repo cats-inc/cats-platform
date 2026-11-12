@@ -2,11 +2,8 @@ import type { ChatState } from './contracts.js';
 import type { ChatStore } from '../state/store.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import type { CatsCoreState } from '../../../core/types.js';
-import {
-  repairMissingSessionStartedMessages,
-  repairMissingStartupRecoveryNotice,
-  repairOrphanedCompletedDispatchTurn,
-} from '../state/runtime-dispatch/repair.js';
+import { applyChannelReadRepairs } from '../state/transcriptRepairs.js';
+export { applyChannelReadRepairs } from '../state/transcriptRepairs.js';
 
 interface ChannelReadRepairDependencies {
   chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'updateSnapshot'>;
@@ -17,52 +14,6 @@ interface ChannelReadRepairDependencies {
 
 function resolveRepairNow(dependencies: ChannelReadRepairDependencies): Date {
   return dependencies.now?.() ?? new Date();
-}
-
-export function applyChannelReadRepairs(
-  state: ChatState,
-  channelId: string,
-  options: {
-    core?: CatsCoreState;
-    runtimeDataDir?: string | null;
-    now?: Date;
-  } = {},
-): {
-  repaired: boolean;
-  state: ChatState;
-} {
-  const now = options.now ?? new Date();
-  const repairedTurn = repairOrphanedCompletedDispatchTurn(
-    state,
-    channelId,
-    now,
-    options.core,
-  );
-  const repairedSessionMetadata = repairMissingSessionStartedMessages(
-    repairedTurn.state,
-    channelId,
-    {
-      core: options.core,
-      runtimeDataDir: options.runtimeDataDir,
-      now,
-    },
-  );
-  const repairedStartupNotice = repairMissingStartupRecoveryNotice(
-    repairedSessionMetadata.state,
-    channelId,
-    {
-      core: options.core,
-      now,
-    },
-  );
-
-  return {
-    repaired:
-      repairedTurn.repaired
-      || repairedSessionMetadata.repaired
-      || repairedStartupNotice.repaired,
-    state: repairedStartupNotice.state,
-  };
 }
 
 export async function repairChannelReadState(

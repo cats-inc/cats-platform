@@ -30,7 +30,8 @@ version bump under this implementation authorization.
 
 - Moving evidence JSONL, the image ledger, Runtime state or layered memory into this database.
 - Automatic history deletion, a Bot database, or a shared storage package before Bot adopts one.
-- Publishing a release. This persisted-format change requires the next minor when authorized.
+- Publishing a release. This persisted-format change and bounded message-list API require
+  the next minor when authorized; do not ship them as a compatible patch in the existing minor.
 
 ## Requirements
 
@@ -152,16 +153,32 @@ failures 503 with no raw diagnostic content. Search uses authenticated
 at most 12 distinct words, 100 results). Both routes redact proposal-card records.
 DTOs and renderer fetch/error helpers live in browser-safe modules. The Memory fixture
 store tracks its own order generation; production never falls back to JSON/materialized
-queries. App-shell/entity subscription windows and the Desktop controls remain pending;
-query endpoints alone do not satisfy the renderer or end-to-end performance requirements.
+queries. App-shell/channel/entity-subscription read models now use indexed latest windows.
+The raw page's `messages` stay within `limit`; optional `displayMessages` carries the
+display-only Core projection for that window. `orderRevision` is an equality token for
+invalidating retained history after order changes. Mounted Desktop controls remain pending;
+query/read-model endpoints alone do not satisfy renderer or end-to-end performance requirements.
 
-The implementation's schema 2 keeps a separate compact channel catalog for shared root,
+The implementation keeps schema 2's separate compact channel catalog for shared root,
 participant and memory projections. A scoped writer must not parse unrelated workflow JSON.
 It applies known projection-field deltas to existing Core records, retaining passive fields
 and unrelated active turns. Runtime dispatch views contain only their target conversation;
 global snapshot APIs keep their complete-state contract. Derived participant/orchestrator
 memory may commit alongside the target, while preferences, groups and arbitrary Core edits
 require the global operation.
+
+An explicit, restartable application preparation pass runs the existing session/startup/
+completed-turn repairs once before bounded views become ready. It is separate from the
+logical import proof, and subsequent writes maintain those invariants. Required preparation
+failures reject embedder readiness. Compact unresolved-choice facts preserve Guide Cat's
+read model without scanning sibling transcripts.
+
+Schema 3 adds guarded JSON-expression indexes for global response/rejection placement and
+timestamp anchors. A page never treats a response in another window as missing. Segmented
+Core presentations render at their terminal/latest response placement; a genuinely Core-only
+live presentation anchors to the newest window, and other Core-only snapshots use their time
+anchor. Rejections in another page suppress synthetic output. The original Core records stay
+intact. Schema-1 and schema-2 profiles receive verified paired backups before upgrading.
 
 Schema-1 database admission creates a verified recoverable backup before transactional DDL,
 including exact JSON/receipt, installation/revision/digest binding and interrupted-upgrade

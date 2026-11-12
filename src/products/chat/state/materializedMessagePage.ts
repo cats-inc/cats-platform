@@ -12,6 +12,6 @@ export function materializedMessagePage(channel: ChatChannelState, order: number
     end = Math.min(cursor.before, channel.messages.length);
   }
   const start = Math.max(0, end - limit);
-  return { messages: structuredClone(channel.messages.slice(start, end)), total: channel.messages.length,
+  return { messages: structuredClone(channel.messages.slice(start, end)), total: channel.messages.length, orderRevision: String(order),
     nextCursor: start ? encodeMessageCursor(channel.id, order, start) : null };
 }

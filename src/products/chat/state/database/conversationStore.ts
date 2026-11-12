@@ -4,6 +4,11 @@ import type { ChannelProjectionMetadata } from '../core-projection/scoped.js';
 import { MessageCursorExpiredError, type MessagePage, type MessageSearchHit } from '../../shared/transcript.js';
 export { MessageCursorExpiredError, type MessagePage, type MessageSearchHit } from '../../shared/transcript.js';
 import { decodeMessageCursor, encodeMessageCursor } from '../messageCursor.js';
+import { hasUnresolvedCatlasChoice } from '../../shared/catlasConversation.js';
+import { presentationTargetKey, type MessagePresentationPlacement } from '../../shared/transcript.js';
+import { MESSAGE_TURN, MESSAGE_TARGET_STATE, MESSAGE_TARGET, MESSAGE_EVENT, MESSAGE_TERMINAL } from '../../../../platform/persistence/state-db/messageIndex.js';
+import type { CatsCoreState } from '../../../../core/types.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
   buildSearchQuery, conversationTerm, indexText, INDEX_FORM,
 } from '../../../../platform/persistence/state-db/searchText.js';
@@ -37,6 +42,69 @@ export class ConversationDatabase {
       const row = this.database.get('select json from channels where id = ?', id);
       return row ? { ...JSON.parse(String(row.json)) as ChatChannelState, messages: this.messages(id) } : null;
     });
+  }
+
+  headers(): Omit<ChatChannelState, 'messages'>[] {
+    return this.database.all('select json from channels order by position')
+      .map(row => JSON.parse(String(row.json)) as Omit<ChatChannelState, 'messages'>);
+  }
+
+  header(id: string): Omit<ChatChannelState, 'messages'> | null {
+    const row = this.database.get('select json from channels where id = ?', id);
+    return row ? JSON.parse(String(row.json)) as Omit<ChatChannelState, 'messages'> : null;
+  }
+
+  putPresentationFacts(channel: ChatChannelState): void {
+    this.database.setMeta(`channel_choice:${channel.id}`, hasUnresolvedCatlasChoice(channel) ? '1' : '0');
+  }
+
+  presentationFacts(): Map<string, boolean> {
+    return new Map(this.database.all('select key, value from meta where key >= ? and key < ?', 'channel_choice:', 'channel_choice;')
+      .map(row => [String(row.key).slice('channel_choice:'.length), row.value === '1']));
+  }
+
+  /** Only candidate targets in this window reach indexed global-placement probes. */
+  presentationPlacements(core: CatsCoreState, channelId: string, page: MessagePage, newest: boolean): MessagePresentationPlacement[] {
+    const ids = new Set(page.messages.map(message => message.id));
+    const targets = new Set(page.messages.map(message => presentationTargetKey(message.metadata?.turnId, message.metadata?.targetStateId)));
+    const times = page.messages.map(message => message.createdAt).sort();
+    const nextTime = !newest && times.length ? this.database.get(
+      'select created_at from messages where channel_id = ? and created_at > ? order by created_at, position limit 1',
+      channelId, times.at(-1)!) : null;
+    const snapshots = new Map<string, CatsCoreState['segments'][number]>();
+    for (const segment of core.segments) {
+      if (segment.conversationId !== buildChatConversationId(channelId) || segment.metadata?.event !== 'conversation_presentation'
+        || segment.metadata.channelId !== channelId) continue;
+      const key = presentationTargetKey(segment.turnId, segment.metadata.targetStateId);
+      const previous = snapshots.get(key);
+      if (!previous || previous.createdAt <= segment.createdAt) snapshots.set(key, segment);
+    }
+    const proofs: MessagePresentationPlacement[] = [];
+    for (const [key, segment] of snapshots) {
+      const value = segment.metadata.presentation as { phase?: unknown } | null;
+      const lane = core.lanes.find(candidate => candidate.id === segment.laneId);
+      const live = value?.phase === 'streaming' && (!lane || !['failed', 'cancelled', 'completed'].includes(lane.status));
+      const withinTime = times.length > 0 && (segment.createdAt >= times[0]! || page.nextCursor === null)
+        && (newest || !nextTime || segment.createdAt < String(nextTime.created_at));
+      if (!targets.has(key) && !ids.has(String(segment.metadata.sourceMessageId)) && !withinTime
+        && !(live && newest) && !(newest && page.total === 0)) continue;
+      const turn = segment.turnId;
+      const target = typeof segment.metadata.targetStateId === 'string' ? segment.metadata.targetStateId : null;
+      const readResponse = (terminal: number) => this.database.get(`select message_id from messages where channel_id = ?
+        and (${MESSAGE_TURN}) is ? and (${MESSAGE_TARGET_STATE}) is ? and (${MESSAGE_EVENT}) = ?
+        and (${MESSAGE_TERMINAL}) = ? order by position desc limit 1`, channelId, turn, target, 'assistant_turn_segment', terminal);
+      const response = readResponse(1) ?? readResponse(0);
+      const rejected = this.database.get(`select id from messages where channel_id = ? and (${MESSAGE_TURN}) is ?
+        and (${MESSAGE_TARGET}) is ? and (${MESSAGE_EVENT}) = ? limit 1`, channelId, turn,
+      typeof segment.metadata.targetId === 'string' ? segment.metadata.targetId : null, 'assistant_finalization_rejected');
+      const anchor = response ? null : live
+        ? this.database.get('select message_id from messages where channel_id = ? order by position desc limit 1', channelId)
+        : this.database.get('select message_id from messages where channel_id = ? and created_at <= ? order by created_at desc, position desc limit 1', channelId, segment.createdAt)
+          ?? this.database.get('select message_id from messages where channel_id = ? order by position limit 1', channelId);
+      proofs.push({ key, responseMessageId: response ? String(response.message_id) : null,
+        anchorMessageId: anchor ? String(anchor.message_id) : null, rejected: Boolean(rejected), newestEmpty: newest && page.total === 0 });
+    }
+    return proofs;
   }
 
   projectionMetadata(): ChannelProjectionMetadata[] {
@@ -78,6 +146,7 @@ export class ConversationDatabase {
       return {
         messages: selected.map(row => JSON.parse(String(row.json)) as ChatMessage),
         total: Number(channel.message_count),
+        orderRevision: String(order),
         nextCursor: hasMore ? encodeMessageCursor(channelId, order, Number(selected[0]!.position)) : null,
       };
     });
@@ -185,6 +254,7 @@ export class ConversationDatabase {
   }
 
   private putCatalog(channel: ChatChannelState, position: number): void {
+    this.putPresentationFacts(channel);
     this.database.run(`insert into channel_catalog(channel_id, position, title, created_at, updated_at, cat_assignments, participant_assignments)
       values (?, ?, ?, ?, ?, ?, ?) on conflict(channel_id) do update set position = excluded.position,
       title = excluded.title, created_at = excluded.created_at, updated_at = excluded.updated_at,
@@ -241,6 +311,7 @@ export class ConversationDatabase {
       this.database.run('delete from message_search where rowid in (select id from messages where channel_id = ?)', id);
       this.database.run('delete from messages where channel_id = ?', id);
       this.database.run('delete from channel_catalog where channel_id = ?', id);
+      this.database.run('delete from meta where key = ?', `channel_choice:${id}`);
       this.database.run('delete from channels where id = ?', id);
     });
   }

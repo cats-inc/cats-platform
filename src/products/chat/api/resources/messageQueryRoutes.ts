@@ -3,6 +3,7 @@ import { redactConversationProposalCards } from '../../state/conversationProposa
 import { DEFAULT_MESSAGE_PAGE_SIZE, MAX_MESSAGE_PAGE_SIZE, MAX_MESSAGE_SEARCH_RESULTS } from '../../shared/transcript.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
+import { presentedChannelWindow } from '../presentationReadModels.js';
 
 function parameter(context: ChatApiRouteContext, name: string): string | undefined {
   const values = context.url.searchParams.getAll(name);
@@ -25,8 +26,11 @@ export async function handleMessagePage(context: ChatApiRouteContext, channelId:
     const before = parameter(context, 'before');
     const store = context.dependencies.chatStore;
     if (!store.readMessagePage) throw new ChatApiError(501, 'transcript_query_unavailable', 'This store does not support transcript paging.');
-    const page = await store.readMessagePage(channelId, limit, before);
-    sendJson(context.response, 200, { ...page, messages: redactConversationProposalCards(page.messages) });
+    const window = store.readMessageWindow ? await store.readMessageWindow(channelId, limit, before) : null;
+    const page = window ? { ...window.page, displayMessages: presentedChannelWindow(window).messages }
+      : await store.readMessagePage(channelId, limit, before);
+    sendJson(context.response, 200, { ...page, messages: redactConversationProposalCards(page.messages),
+      ...(page.displayMessages ? { displayMessages: redactConversationProposalCards(page.displayMessages) } : {}) });
   } catch (error) { handleRestError(context, error); }
 }
 

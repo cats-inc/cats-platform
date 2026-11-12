@@ -102,6 +102,7 @@ export function catlasConversationHref(channel: ChatState['channels'][number]): 
 export async function resolveChatGuideCatAssistReadModel(input: {
   chatStatePath: string; guideCat: GuideCatRecord | null; ownerDisplayName?: string | null;
   runtimeReachable: boolean; now?: Date; core?: CatsCoreState; chat?: ChatState; locale?: MessageLocale;
+  awaitingReplyChannelIds?: ReadonlySet<string>;
 }): Promise<ChatGuideCatAssistReadModel> {
   const config = await readGuideCatAssistConfig(input.chatStatePath);
   // Validate recognized cache upgrades after preserving config, even though content is composed from catalog state.
@@ -110,7 +111,7 @@ export async function resolveChatGuideCatAssistReadModel(input: {
     readCatlasSignals(input.chatStatePath, input.now), input.locale ?? catlasAssistLocale(input.chatStatePath)]);
   const now = input.now ?? new Date();
   const snapshot = input.core && input.chat ? buildCatlasSnapshot({ core: input.core, chat: input.chat,
-    now, locale, cooldownIds: catlasCooldownIds(signals, now) }) : null;
+    now, locale, cooldownIds: catlasCooldownIds(signals, now), awaitingReplyChannelIds: input.awaitingReplyChannelIds }) : null;
   const attention = snapshot ? attentionHash(snapshot) : '';
   const hrefFor = (id: string, kind: string): string | undefined => {
     if (kind === 'conversation') {

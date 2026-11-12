@@ -6,6 +6,14 @@ import {
   runServerStartupRecoveryPasses,
 } from '../build/server/app/server/startupRecovery.js';
 
+test('required transcript preparation rejects embedder readiness before best-effort recovery', async () => {
+  let prepared = false;
+  await assert.rejects(runServerStartupRecoveryPasses({ chat: { chatStore: {
+    async prepareTranscriptReads() { prepared = true; throw new Error('preparation-failed'); },
+  } } }), /preparation-failed/);
+  assert.equal(prepared, true);
+});
+
 test('runStartupRecoveryPasses executes startup recovery in order', async () => {
   const order = [];
 

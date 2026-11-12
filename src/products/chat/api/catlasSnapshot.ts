@@ -2,7 +2,9 @@ import { resolveTaskExecutionProduct } from '../../../shared/taskExecutionBridge
 import { coreContentOrigins } from '../../../core/contentProvenance.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import { effectiveOwnerListing, ownerEntry } from '../../../core/ownerLifecycle.js';
-import type { ChatChannelState, ChatState, ChatMessage } from './contracts.js';
+import type { ChatChannelState, ChatState } from './contracts.js';
+import { hasUnresolvedCatlasChoice } from '../shared/catlasConversation.js';
+export { completedCatlasReplies, hasUnresolvedCatlasChoice } from '../shared/catlasConversation.js';
 import { resolveChannelProductScope } from '../shared/channelTopology.js';
 import type { GuideCatAssistProduct, GuideCatAssistTarget } from '../../../shared/guideCatAssist.js';
 
@@ -22,27 +24,6 @@ export interface CatlasSnapshot {
   recentConversations: CatlasSnapshotEntry[];
   context: { now: string; weekday: number; daypart: string; locale: string; ownerDisplayName: string };
 }
-export function completedCatlasReplies(channel: ChatChannelState): ChatMessage[][] {
-  const groups = new Map<string, ChatMessage[]>();
-  for (const message of channel.messages) {
-    if (message.senderKind !== 'agent' && message.senderKind !== 'orchestrator') continue;
-    const key = typeof message.metadata.assistantTurnId === 'string' ? message.metadata.assistantTurnId : message.id;
-    const group = groups.get(key) ?? [];
-    group.push(message); groups.set(key, group);
-  }
-  return [...groups.values()].filter(group => group.some(message => message.metadata.terminal === true)
-    || group.every(message => message.metadata.terminal === undefined));
-}
-export function hasUnresolvedCatlasChoice(channel: ChatChannelState): boolean {
-  if (channel.roomRouting?.workflow?.activeTurn) return false;
-  const replies = completedCatlasReplies(channel);
-  const latest = replies[replies.length - 1];
-  const choice = latest?.filter(message => message.choices?.length).at(-1);
-  if (!choice) return false;
-  const index = channel.messages.indexOf(choice);
-  return !channel.messages.some((message, position) => message.choiceResponse?.sourceMessageId === choice.id
-    || position > index && message.senderKind === 'user');
-}
 export function catlasSnapshotEntries(snapshot: CatlasSnapshot): CatlasSnapshotEntry[] {
   return [...snapshot.pendingApprovals, ...snapshot.stalledWork, ...snapshot.awaitingReply,
     ...snapshot.activeProjects, ...snapshot.recentConversations];
@@ -57,6 +38,7 @@ export function internalCatlasSnapshot(snapshot: CatlasSnapshot): CatlasSnapshot
 /** Missing origin is intentionally navigation-only. Ownership is not provenance. */
 export function buildCatlasSnapshot(input: {
   core: CatsCoreState; chat: ChatState; now: Date; locale: string; cooldownIds?: Set<string>;
+  awaitingReplyChannelIds?: ReadonlySet<string>;
 }): CatlasSnapshot {
   const { core, chat, now } = input;
   const idle = (updatedAt: string) => Math.max(0, Math.floor((now.getTime() - Date.parse(updatedAt)) / 86_400_000));
@@ -95,7 +77,7 @@ export function buildCatlasSnapshot(input: {
     stalledWork: capped(eligibleRecords.filter(record => record.kind === 'work_item'
       && (record.status === 'blocked' || record.status === 'in_progress' && idle(record.updatedAt) >= 2)).map(toEntry)),
     awaitingReply: capped(conversations.filter(channel => idle(channel.lastMessageAt ?? channel.updatedAt) <= 14
-      && hasUnresolvedCatlasChoice(channel)).map(conversationEntry)),
+      && (input.awaitingReplyChannelIds?.has(channel.id) ?? hasUnresolvedCatlasChoice(channel))).map(conversationEntry)),
     activeProjects: capped(eligibleRecords.filter(record => record.kind === 'project'
       && ['active', 'paused'].includes(record.status)).map(toEntry)),
     recentConversations: capped(conversations.slice(0, 10).map(conversationEntry)),

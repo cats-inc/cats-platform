@@ -11,11 +11,10 @@ import { selectChannel } from '../state/model/index.js';
 async function handleAppShell(
   context: ChatApiRouteContext,
 ): Promise<void> {
-  const state = await context.dependencies.chatStore.read();
   sendJson(
     context.response,
     200,
-    await buildAppShellPayload(context.dependencies, state),
+    await buildAppShellPayload(context.dependencies),
   );
 }
 

@@ -40,6 +40,7 @@ import {
   persistRenamedChannel,
   persistChannelParticipantRemoval,
   persistUpdatedChannelParticipant,
+  buildChannelSubscriptionView,
   resolveCreateOriginSurface,
   requireValidChatScopeId,
   type ChatApiRouteContext,
@@ -396,6 +397,11 @@ async function handleRestGetChannel(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
+    if (context.dependencies.chatStore.readPresentation) {
+      const view = await buildChannelSubscriptionView(context.dependencies, channelId);
+      sendJson(context.response, 200, { channel: view.selectedChannel });
+      return;
+    }
     let state = await context.dependencies.chatStore.read();
     state = await repairChannelReadState(
       {

@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../api/contracts.js';
+import type { ChatChannelView, ChatMessage } from '../api/contracts.js';
 
 /** Browser-safe query DTOs; complete channel/Core contracts remain unchanged. */
 export const DEFAULT_MESSAGE_PAGE_SIZE = 50;
@@ -10,6 +10,24 @@ export interface MessagePage {
   total: number;
   /** Opaque exclusive cursor. An order change requires reloading the newest page. */
   nextCursor: string | null;
+  /** Compare for equality only; tail appends/body edits preserve this generation. */
+  orderRevision: string;
+  /** Display-only Core projection for this window; raw messages stay limit-bounded. */
+  displayMessages?: ChatMessage[];
+}
+
+export type TranscriptChannelView = ChatChannelView & { messagePage?: Omit<MessagePage, 'messages' | 'displayMessages'> };
+
+export interface MessagePresentationPlacement {
+  key: string;
+  responseMessageId: string | null;
+  anchorMessageId: string | null;
+  rejected: boolean;
+  newestEmpty: boolean;
+}
+
+export function presentationTargetKey(turnId: unknown, targetStateId: unknown): string {
+  return JSON.stringify([turnId ?? null, targetStateId ?? null]);
 }
 
 export interface MessageSearchHit { channelId: string; message: ChatMessage; }

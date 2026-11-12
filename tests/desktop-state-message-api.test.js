@@ -12,6 +12,7 @@ import { CONVERSATION_PROPOSAL_METADATA_KEY } from '../build/server/products/cha
 import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
 import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
+import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
 async function fixture(t) {
@@ -126,6 +127,26 @@ test('a malformed target row returns a content-safe storage failure', async t =>
   assert.ok(!JSON.stringify(payload).includes('private-broken-record'));
 });
 
+test('shell, channel and subscription read models use only the newest window after startup preparation', async t => {
+  const { get, store, source, config, id } = await fixture(t);
+  const selectedId = source.chat.selectedChannelId;
+  const db = openStateDatabase({ file: databasePath(config.chatStatePath), mode: 'writer' });
+  try { db.run('update messages set json = ? where position < 20', '{old-history-must-not-be-read'); }
+  finally { db.close(); }
+  const response = await get('/api/app-shell'); assert.equal(response.status, 200);
+  const shell = await response.json();
+  assert.equal(shell.chat.selectedChannel.id, selectedId); assert.equal(shell.chat.selectedChannel.messages.length, 50);
+  assert.equal(shell.chat.selectedChannel.messagePage.total, 70);
+  assert.equal(typeof shell.chat.selectedChannel.messagePage.orderRevision, 'string');
+  const channel = await get(`/api/channels/${id}`); assert.equal(channel.status, 200);
+  assert.equal((await channel.json()).channel.messages.length, 50);
+  const { buildChannelSubscriptionView } = await import('../build/server/products/chat/api/routeSupport.js');
+  const subscription = await buildChannelSubscriptionView({ chatStore: store }, id);
+  assert.equal(subscription.selectedChannel.messages.length, 50);
+  assert.equal(subscription.parallelChatGroups[0].members.length, 2);
+  await store.prepareTranscriptReads(); // The durable stamp avoids another repair/history pass.
+});
+
 test('Memory fixture pages share append/edit and stale-order semantics without a production JSON fallback', async () => {
   const source = snapshot(); const channel = source.chat.channels[0];
   channel.messages = Array.from({ length: 5 }, (_, i) => ({ ...structuredClone(channel.messages[0]), id: `m${i}` }));
@@ -140,4 +161,32 @@ test('Memory fixture pages share append/edit and stale-order semantics without a
   const refreshed = await store.readMessagePage(channel.id, 2);
   await store.updateSnapshot(({ chat, core }) => { chat.channels[0].messages.shift(); return { chat, core }; });
   await assert.rejects(store.readMessagePage(channel.id, 2, refreshed.nextCursor), { code: 'stale_message_cursor' });
+});
+
+test('HTTP pages keep raw row limits and project a cross-page reply only at its global placement', async t => {
+  const { get, id, store } = await fixture(t);
+  await store.updateSnapshot(({ chat, core }) => {
+    const channel = chat.channels.find(value => value.id === id); const base = channel.messages[0];
+    const time = '2026-11-12T00:02:00.000Z';
+    channel.messages.push({ ...structuredClone(base), id: 'source-page', body: 'Question', createdAt: time, metadata: {} });
+    for (const [index, terminal] of [false, true].entries()) channel.messages.push({ ...structuredClone(base),
+      id: terminal ? 'terminal-page' : 'prefix-page', body: terminal ? 'reply' : 'One ', senderKind: 'agent',
+      createdAt: `2026-11-12T00:02:0${index + 1}.000Z`, metadata: { event: 'assistant_turn_segment',
+        turnId: 'page-turn', targetStateId: 'page-target', targetId: 'cat', terminal } });
+    core.turns.push({ id: 'page-turn', conversationId: buildChatConversationId(id), kind: 'user_message', status: 'completed',
+      sourceParticipantId: null, createdAt: time, startedAt: time, completedAt: time, updatedAt: time, metadata: {} });
+    core.segments.push({ id: 'presentation:page', conversationId: buildChatConversationId(id), turnId: 'page-turn',
+      laneId: 'page-lane', sessionId: null, kind: 'status', content: null, sequence: 0, status: 'complete', createdAt: time, completedAt: time,
+      metadata: { event: 'conversation_presentation', channelId: id, sourceMessageId: 'source-page', targetStateId: 'page-target', targetId: 'cat',
+        presentation: { version: 1, id: 'presentation:page', phase: 'sealed', blocks: [{ id: 'text', index: 0, kind: 'text',
+          text: 'One reply', status: 'complete', title: null, toolName: null, toolId: null }] } } });
+    return { chat, core };
+  });
+  const first = await (await get(`/api/channels/${id}/messages?limit=1`)).json();
+  assert.equal(first.messages.length, 1); assert.equal(first.messages[0].body, 'reply');
+  assert.equal(first.displayMessages.length, 1); assert.equal(first.displayMessages[0].body, 'One reply');
+  const prefix = await (await get(`/api/channels/${id}/messages?limit=1&before=${first.nextCursor}`)).json();
+  assert.equal(prefix.messages.length, 1); assert.deepEqual(prefix.displayMessages, []);
+  const source = await (await get(`/api/channels/${id}/messages?limit=1&before=${prefix.nextCursor}`)).json();
+  assert.deepEqual(source.displayMessages.map(message => message.id), ['source-page']);
 });

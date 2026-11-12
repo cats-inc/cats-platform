@@ -1,5 +1,6 @@
 /** SPEC-144: conversations and parallel groups; settings and Core remain JSON. */
-export const STATE_SCHEMA_VERSION = 2;
+import { MESSAGE_PRESENTATION_INDEXES } from './messageIndex.js';
+export const STATE_SCHEMA_VERSION = 3;
 /** "CPLT", deliberately different from the image ledger and Cats Bot. */
 export const STATE_APPLICATION_ID = 0x43504c54;
 const CHANNEL_CATALOG_SQL = `
@@ -19,7 +20,7 @@ insert into channel_catalog(channel_id, position, title, created_at, updated_at,
 select id, position, json_extract(json, '$.title'), json_extract(json, '$.createdAt'),
   json_extract(json, '$.updatedAt'), coalesce(json_extract(json, '$.catAssignments'), '[]'),
   coalesce(json_extract(json, '$.participantAssignments'), '[]') from channels;
-` };
+`, 2: MESSAGE_PRESENTATION_INDEXES };
 
 export const STATE_SCHEMA_SQL = `
 create table meta(key text primary key not null, value text not null) strict, without rowid;
@@ -42,6 +43,7 @@ create table messages(
   unique(channel_id, position)
 ) strict;
 create virtual table message_search using fts5(terms, content='', contentless_delete=1);
+${MESSAGE_PRESENTATION_INDEXES}
 -- Import batches are ordered here, rather than duplicated/sorted in JavaScript memory.
 create table message_import(
   channel_id text not null,

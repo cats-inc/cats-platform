@@ -108,6 +108,7 @@ export async function startApp(extension: {
   let fatalStorageError: Error | undefined;
   let stopForStorageFailure: (() => void) | undefined;
   const chatStore = new DatabaseChatStore(config.chatStatePath, {
+    runtimeDataDir: config.runtimeDataDir,
     lockTimeoutMs: 10 * 60_000,
     progress(stage, completed) {
       startupTrace.trace('chat.store.progress', { stage, completed });
@@ -124,6 +125,7 @@ export async function startApp(extension: {
   });
   try {
     await chatStore.initialize();
+    await chatStore.prepareTranscriptReads();
     const desktopAppsKey = process.env.CATS_DESKTOP_APPS_KEY;
     const desktopSecretChannel = process.env.CATS_DESKTOP_INGRESS_SECRETS === '1' && process.connected
       && /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '');

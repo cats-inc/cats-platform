@@ -12,8 +12,9 @@ import { sqliteDriver } from '../build/server/platform/persistence/state-db/sqli
 import { fileDigest } from '../build/server/platform/persistence/state-db/fileDigest.js';
 import { withProfileLock } from '../build/server/platform/persistence/state-db/profileLock.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
+import { STATE_SCHEMA_VERSION } from '../build/server/platform/persistence/state-db/stateSchema.js';
 
-async function fixture(t, pending = false) {
+async function fixture(t, pending = false, sourceSchema = 1) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-schema 升級 '));
   const file = path.join(root, 'profile.json'); const stores = [];
   await writeFile(file, JSON.stringify(snapshot()));
@@ -30,7 +31,9 @@ async function fixture(t, pending = false) {
   }
   await store.close();
   const raw = new (sqliteDriver().DatabaseSync)(databasePath(file));
-  raw.exec("drop table channel_catalog; update meta set value = '1' where key = 'schema_version'"); raw.close();
+  raw.exec('drop index messages_presentation; drop index messages_rejection; drop index messages_presentation_time');
+  if (sourceSchema === 1) raw.exec('drop table channel_catalog');
+  raw.prepare("update meta set value = ? where key = 'schema_version'").run(String(sourceSchema)); raw.close();
   const backups = async () => (await readdir(root)).filter(name => name.includes('.pre-state-db-schema-'));
   return { root, file, create, expected, backups };
 }
@@ -40,19 +43,19 @@ function version(file) {
   try { return database.meta('schema_version'); } finally { database.close(); }
 }
 
-test('schema 1 upgrades only after a paired verified backup and retains logical state', async t => {
-  const { file, create, expected, root, backups } = await fixture(t);
+for (const sourceSchema of [1, 2]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
+  const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema);
   const metadata = await readFile(file);
   const store = create(); await store.initialize();
-  assert.equal(version(file), '2');
+  assert.equal(version(file), String(STATE_SCHEMA_VERSION));
   assert.equal(await store.logicalDigest(), expected);
   const directory = path.join(root, (await backups())[0]);
   const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.kind, 'before-schema-upgrade'); assert.equal(manifest.sourceSchema, 1);
+  assert.equal(manifest.kind, 'before-schema-upgrade'); assert.equal(manifest.sourceSchema, sourceSchema);
   for (const entry of manifest.files) assert.equal(fileDigest(path.join(directory, entry.name)), entry.sha256);
   assert.deepEqual(await readFile(path.join(directory, path.basename(file))), metadata);
   const saved = openStateDatabase({ file: path.join(directory, path.basename(databasePath(file))), mode: 'reader' });
-  try { assert.equal(saved.meta('schema_version'), '1'); } finally { saved.close(); }
+  try { assert.equal(saved.meta('schema_version'), String(sourceSchema)); } finally { saved.close(); }
 });
 
 test('an interruption after backup leaves schema 1 and retry reuses the verified backup', async t => {
@@ -60,7 +63,7 @@ test('an interruption after backup leaves schema 1 and retry reuses the verified
   await assert.rejects(create({ checkpoint: stage => { if (stage === 'schema_backup_complete') throw Error('paused before upgrade'); } }).initialize(), /paused before upgrade/);
   assert.equal(version(file), '1'); assert.equal((await backups()).length, 1);
   const store = create(); await store.initialize();
-  assert.equal(version(file), '2'); assert.equal((await backups()).length, 1);
+  assert.equal(version(file), String(STATE_SCHEMA_VERSION)); assert.equal((await backups()).length, 1);
   assert.equal(await store.logicalDigest(), expected);
 });
 
@@ -81,7 +84,7 @@ test('an old-schema live connection lease rejects upgrade before any format muta
     await assert.rejects(create().initialize(), { code: 'profile_busy' });
     assert.equal(version(file), '1'); assert.deepEqual(await backups(), []);
   } finally { await withProfileLock(file, release); }
-  await create().initialize(); assert.equal(version(file), '2');
+  await create().initialize(); assert.equal(version(file), String(STATE_SCHEMA_VERSION));
 });
 
 test('future profile metadata is refused before old database schema changes', async t => {

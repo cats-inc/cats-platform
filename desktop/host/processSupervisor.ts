@@ -919,7 +919,7 @@ export class ManagedServiceSupervisor {
         if (spec.name === 'cats-platform' && lifecycle.event === 'app.state_progress'
           && lifecycle.phase === 'starting' && lifecycle.ready === false
           && ['admitting_legacy_state', 'backup_complete', 'importing_conversations', 'upgrading_database',
-            'database_published', 'rebuilding_search'].includes(lifecycle.stage ?? '')) {
+            'database_published', 'rebuilding_search', 'preparing_transcripts'].includes(lifecycle.stage ?? '')) {
           if (!stateProgressObserved) {
             stateProgressObserved = true;
             startupDeadline.extend(STATE_IMPORT_STARTUP_TIMEOUT_MS);

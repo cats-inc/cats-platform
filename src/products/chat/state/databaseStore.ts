@@ -23,10 +23,13 @@ import {
 import type { MessagePage, MessageSearchHit } from './database/conversationStore.js';
 import { StateDatabaseError } from '../../../platform/persistence/state-db/stateDatabase.js';
 import { closeStateMaintenanceWorkers } from '../../../platform/persistence/state-db/stateMaintenance.js';
+import { prepareTranscriptState } from './transcriptRepairs.js';
+import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
   onFatal?(error: ProfileStorageError): void;
+  runtimeDataDir?: string | null;
 }
 
 class MutationFailure extends Error {
@@ -56,6 +59,43 @@ export class DatabaseChatStore implements ChatStore {
   }
 
   async initialize(): Promise<void> { await this.run(async session => this.prepareSearch(session)); }
+
+  /** One explicit full-history preparation per repair form, before serving windows.
+   * Import/export proofs remain separate from application recovery changes.
+   */
+  async prepareTranscriptReads(): Promise<void> {
+    await this.run(async (session, envelope) => {
+      if (session.database.meta('transcript_repair_form') === '1') return;
+      this.options.progress?.('preparing_transcripts');
+      const chat = this.chat(session, envelope);
+      const repaired = prepareTranscriptState(chat, { core: envelopeCore(envelope), runtimeDataDir: this.options.runtimeDataDir });
+      const prepared = !isDeepStrictEqual(chat, repaired)
+        ? (await this.save(session, envelope, chat, repaired, envelopeCore(envelope))).chat : chat;
+      session.database.transaction(() => {
+        for (const channel of prepared.channels) session.conversations.putPresentationFacts(channel);
+        session.database.setMeta('transcript_repair_form', '1');
+      }, { durable: true });
+    });
+  }
+
+  async readPresentation(channelId?: string): Promise<ChatPresentationSnapshot> {
+    return this.run(async (session, envelope) => {
+      if (session.database.meta('transcript_repair_form') !== '1') throw new ProfileStorageError('presentation_pending',
+        'Conversation read models need startup preparation before they can be served.');
+      const headers = session.conversations.headers();
+      const facts = session.conversations.presentationFacts();
+      if (headers.some(header => !facts.has(header.id))) throw new ProfileStorageError('presentation_pending',
+        'Conversation read models need startup preparation before they can be served.');
+      const id = channelId ?? envelope.chat.selectedChannelId;
+      const header = headers.find(channel => channel.id === id);
+      const page = header ? session.conversations.page(id) : null;
+      return { metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() },
+        headers, selected: header && page ? { channel: { ...header, messages: page.messages }, page,
+          placements: session.conversations.presentationPlacements(envelopeCore(envelope), id, page, true) } : null,
+        core: structuredClone(envelopeCore(envelope)),
+        awaitingReplyChannelIds: [...facts].filter(([, awaiting]) => awaiting).map(([id]) => id) };
+    });
+  }
 
   async read(): Promise<ChatState> {
     return this.run(async (session, envelope) => this.chat(session, envelope));
@@ -108,7 +148,9 @@ export class DatabaseChatStore implements ChatStore {
       const now = new Date();
       const beforeChat = { ...metadata, channels: [stored] };
       const before = prepareChatSnapshot(beforeChat, beforeChat, core, this.filePath, now);
-      const after = prepareChatSnapshot(beforeChat, { ...nextMetadata, channels: [incoming] }, core, this.filePath, now);
+      const repaired = prepareTranscriptState({ ...nextMetadata, channels: [incoming] },
+        { core, runtimeDataDir: this.options.runtimeDataDir, now });
+      const after = prepareChatSnapshot(beforeChat, repaired, core, this.filePath, now);
       const channel = after.chat.channels[0]!;
       const nextCore = mergeScopedCoreProjection(core, extractCoreState(before), extractCoreState(after),
         beforeChat, catalog, channel);
@@ -123,6 +165,16 @@ export class DatabaseChatStore implements ChatStore {
 
   async readMessagePage(id: string, limit = 50, before?: string): Promise<MessagePage> {
     return this.run(async session => session.conversations.page(id, limit, before));
+  }
+
+  async readMessageWindow(id: string, limit = 50, before?: string): Promise<ChatMessageWindow> {
+    return this.run(async (session, envelope) => {
+      const page = session.conversations.page(id, limit, before);
+      const header = session.conversations.header(id)!;
+      return { page, channel: { ...header, messages: page.messages }, core: structuredClone(envelopeCore(envelope)),
+        placements: session.conversations.presentationPlacements(envelopeCore(envelope), id, page, before === undefined),
+        metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() } };
+    });
   }
 
   async searchMessages(query: string, options: { channelId?: string; limit?: number } = {}): Promise<MessageSearchHit[]> {
@@ -290,7 +342,8 @@ export class DatabaseChatStore implements ChatStore {
 
   private async save(session: OpenProfile, previous: StorageEnvelope, stored: ChatState,
     chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
-    const snapshot = prepareChatSnapshot(stored, chat, core, this.filePath);
+    const repaired = prepareTranscriptState(chat, { core, runtimeDataDir: this.options.runtimeDataDir });
+    const snapshot = prepareChatSnapshot(stored, repaired, core, this.filePath);
     this.prepareSearch(session);
     const envelope = makeEnvelope(snapshot, this.filePath, previous.storage.installationId);
     await this.commit(session, previous, envelope, extractCoreState(snapshot),

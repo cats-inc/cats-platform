@@ -508,7 +508,7 @@ export function createServer(dependencies: ServerDependencies) {
 
   // Resolution means all best-effort passes settled, not that every pass succeeded.
   // Callers with private state can await this before submitting work or cleaning up.
-  const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).finally(() => { startupSettled = true; });
+  const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).then(() => { startupSettled = true; });
   return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting,
     reconcileRemoteAccess: (event: 'suspend' | 'resume' | 'offline' | 'online') => ingress?.reconcile(event) ?? Promise.resolve() });
 }

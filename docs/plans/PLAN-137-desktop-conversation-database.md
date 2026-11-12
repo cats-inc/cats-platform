@@ -56,8 +56,8 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 ## Phase 3 — Product consumers and cold storage (FR-8, FR-9, FR-15)
 
 - [ ] Connect indexed paging to message API and renderer while retaining live behavior.
-  The indexed message API and browser-safe client are implemented; app-shell/entity
-  subscriptions and mounted transcript paging remain pending.
+  The indexed message API/client and bounded app-shell/channel/entity-subscription read
+  models are implemented; mounted transcript paging and scroll acceptance remain pending.
 - [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
   The authenticated/redacted query endpoint and client are implemented; Desktop controls remain pending.
 - [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
@@ -122,6 +122,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Independent scoped/worker reviews resolved all blocking P1/P2 in their slice: changed-record extension preservation, own `__proto__` JSON keys, hidden JSON workflow scans, native worker survival after parent death, backup-source admission races, receipt admission and close/spawn cancellation. The special-key test now starts with an existing empty metadata object to exercise the original recursive failure. Remaining product/maintenance/UI requirements are not approved by these slice reviews. |
 | 2026-11-12 | Indexed message paging/search now reach authenticated product routes with browser-safe typed clients. Actual server/database query checks passed **6/6 Node and 6/6 Electron**, including a malformed sibling, private-card redaction, unauthenticated rejection, cursor invalidation and safe storage failures. **84/84** affected query/REST/Memory-store regressions and **18/18** bundled client/auth checks passed. Memory fixture queries share the generation cursor protocol and mutation queue; no production materialized fallback was added. Independent API/client review found no blocking P1/P2. These checks do not cover mounted Desktop transcript/search controls, app-shell or entity-subscription windowing, which remain pending. |
 | 2026-11-12 | Query checkpoint builds passed: server, actual web renderer (`build:web`), typed test bundling and test-fixture typecheck. The web build retains its existing large-chunk notice; it did not fail. Final client cancellation regression and its independent review preserve AbortError when an error body is interrupted. Existing server-side query DTO/error re-exports remain available. This is local Windows evidence, not hosted three-OS acceptance. |
+| 2026-11-12 | Bounded initial read models now cover app-shell, channel GET and entity subscriptions without reading old/sibling transcripts. An explicit restartable application preparation pass maintains session/startup repairs before readiness and on subsequent writes, separate from import equality. Required embedder preparation failures reject readiness. Compact unresolved-choice facts preserve Catlas suggestions. Schema 3 adds guarded JSON-expression placement/rejection/time indexes; schema-1 and schema-2 paired-backup upgrades preserve logical state. |
+| 2026-11-12 | Final stable-output presentation checkpoint passed **154/154 Node and 154/154 Electron**, zero skipped, including cross-page source/segmented/rejection cases, displaced live output, sealed Core-only empty history and non-monotonic timestamps. Actual query plans show indexed searches with no message scan/temp sort for placement probes. **104/104** affected server/runtime/Core/REST/Catlas/lifecycle regressions and **53/53** bundled presentation/navigation/subscription/client tests passed. Server, host, actual web, test bundling and fixture typecheck passed. These are focused local checks, not a full application suite, three-OS CI or mounted Desktop acceptance. |
+| 2026-11-12 | Independent read-model review resolved required-readiness swallowing and cross-page enrichment findings (terminal/rejection proof, live tail placement, empty sealed output and persisted-position fallback for non-monotonic times). No blocking P1/P2 remains in that slice. One bundled Electron probe exceeded its existing 15-second child deadline during parallel validation (**30/31** overall); the specific actual Node/Electron bundled-worker test passed **1/1** in isolation in 1.6 seconds without code/timeout changes. Keep that timing event visible; an isolated rerun does not establish its root cause. |
 
 *Created and last updated: 2026-11-12*
 
@@ -133,13 +136,22 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: app-shell/entity-subscription windows and mounted Desktop paging/search,
+Next work: mounted Desktop paging/search, retained-history/live merging and scroll continuity;
 remaining scoped REST consumers, and the still-unexplained Electron multi-process startup
 failure (retain the new safe diagnostic evidence); explicit compressed
 archives; daily paired snapshot publication/retention and offline CLI commands; then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
+
+- Latest window read models are implemented, but the mounted transcript still needs to
+  consume `messagePage`/`orderRevision`, load older pages and merge `displayMessages` (falling
+  back to raw `messages` for fixture responses). Do not write presentation-only header/window
+  state through a global snapshot mutator. Audit Work/Code shell/navigation callers and remaining
+  scoped REST actions before claiming the end-to-end performance goal.
+- Index-backed placement proof makes display-only Core presentations unique across pages.
+  Raw API `messages` remain limit-bounded; `displayMessages` is a separate view projection.
+  Core stays complete in JSON under FR-4, so do not advertise generic Core work as constant-time.
 
 - Database location: derive a fixed sibling `.sqlite` path from the configured profile,
   never trust an arbitrary path supplied by envelope JSON. Give each installation a UUID.

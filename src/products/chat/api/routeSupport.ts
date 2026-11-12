@@ -1,5 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import { enrichConversationPresentation } from '../shared/conversationPresentationView.js';
+import { presentationChat, presentedChannelWindow } from './presentationReadModels.js';
 import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.js';
 import { updateChatState } from '../state/store.js';
 import { createCatActorId } from '../../../core/actors.js';
@@ -223,6 +224,13 @@ export async function buildChannelSubscriptionView(
   selectedChannel: ChatChannelView;
   parallelChatGroups: ParallelChatGroupSummary[];
 }> {
+  if (dependencies.chatStore.readPresentation) {
+    const snapshot = await dependencies.chatStore.readPresentation(channelId);
+    if (!snapshot.selected) throw new ChannelSubscriptionNotFoundError(`Channel not found: ${channelId}`);
+    return { selectedChannelId: channelId,
+      selectedChannel: presentedChannelWindow({ metadata: snapshot.metadata, ...snapshot.selected, core: snapshot.core }),
+      parallelChatGroups: summarizeParallelChatGroups(presentationChat(snapshot), channelId) };
+  }
   let state = await dependencies.chatStore.read();
   if (!state.channels.some((channel) => channel.id === channelId)) {
     throw new ChannelSubscriptionNotFoundError(`Channel not found: ${channelId}`);
@@ -326,10 +334,11 @@ export async function buildAppShellPayload(
   dependencies: ChatApiDependencies,
   state?: Awaited<ReturnType<ChatStore['read']>>,
 ): Promise<AppShellPayload> {
-  const core = await dependencies.chatStore.readCore();
-  let resolvedState = state ?? await dependencies.chatStore.read();
+  const presentation = await dependencies.chatStore.readPresentation?.();
+  const core = presentation?.core ?? await dependencies.chatStore.readCore();
+  let resolvedState = presentation ? presentationChat(presentation) : state ?? await dependencies.chatStore.read();
   const selectedChannelId = resolvedState.selectedChannelId?.trim();
-  if (selectedChannelId) {
+  if (selectedChannelId && !presentation) {
     resolvedState = await repairChannelReadState(
       {
         chatStore: dependencies.chatStore,
@@ -394,6 +403,7 @@ export async function buildAppShellPayload(
     ownerDisplayName: core.ownerProfile.displayName,
     runtimeReachable: runtime.reachable,
     core, chat: resolvedState, now: nowFrom(dependencies),
+    awaitingReplyChannelIds: presentation ? new Set(presentation.awaitingReplyChannelIds) : undefined,
   });
   queueGuideCatAssistRefresh({
     runtimeClient: dependencies.runtimeClient, coreStore: dependencies.chatStore, chatStore: dependencies.chatStore,
@@ -443,7 +453,9 @@ export async function buildAppShellPayload(
       products,
     },
   );
-  if (payload.chat.selectedChannel) payload.chat.selectedChannel = enrichConversationPresentation(payload.chat.selectedChannel, core);
+  if (presentation?.selected) payload.chat.selectedChannel = presentedChannelWindow({
+    metadata: presentation.metadata, ...presentation.selected, core });
+  else if (payload.chat.selectedChannel) payload.chat.selectedChannel = enrichConversationPresentation(payload.chat.selectedChannel, core);
   return payload;
 }
 

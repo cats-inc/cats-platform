@@ -27,6 +27,8 @@ export async function runStartupRecoveryPasses(
 export async function runServerStartupRecoveryPasses(
   dependencies: ResolvedServerDependencies,
 ): Promise<void> {
+  // Bounded product views require preparation. Embedders must observe rejection.
+  await dependencies.chat.chatStore.prepareTranscriptReads?.();
   await runStartupRecoveryPasses([
     () => reconcileAuthRepairOnStartup(dependencies),
     () => reconcilePollingOnStartup(dependencies),
