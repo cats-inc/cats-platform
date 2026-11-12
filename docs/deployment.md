@@ -116,6 +116,11 @@ file without them reads as no Project, so they need no upgrade of their own.
   again.
 - Opening the profile with the new build again later upgrades it again and keeps
   the newer version 6 bytes beside the earlier ones.
+- The same release upgrades companion data (`chat-state.local.companion-boxes.json`)
+  from version 1 to 2, keeping the version 1 bytes in `.v1-<digest>.bak` beside
+  it. 0.15.x reads version 2 but drops its publication fields when it writes, so
+  going back also copies that backup over the companion file while Desktop is
+  stopped.
 - Any build from `main` that opens a profile upgrades it, so do not point a
   development build at a profile that an installed 0.15.x Desktop still uses.
 

@@ -2,6 +2,114 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-12 — Desktop 0.16.0 standard preview: product scope, conversation tools and Projects
+
+Selected distribution: Desktop **0.16.0 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**, preview-only **Agency 0.1.0** installer. This
+is a new minor because two stored files gain a format that 0.15.x cannot keep;
+see Compatibility and recovery.
+
+- **A conversation's product scope.** Every conversation has a scope, Chat,
+  Code or Work, that decides which Cats tools its agents get and which product
+  lists it. The owner raises it from the conversation's chip; it is never
+  lowered. Recents and routes follow it, Work conversations get Code's tools,
+  canvas, previews and work areas, and the orchestrator knowledge and
+  collaboration tools reach Code and Work conversations too. (cats-platform#433
+  to cats-platform#436, cats-platform#444, cats-platform#446)
+- **Conversation tools and the owner's cards.** One host `cats` tool server
+  serves every conversation with its level's tools: reading its own Tasks and
+  Runs everywhere, and at Work its Work Items. Any write an agent asks for
+  becomes a card in the conversation that only the owner confirms. A Work
+  conversation can belong to a Project; a Project's folder, where supervised
+  runs start without asking, changes only through a card that shows it, or the
+  owner's own control. A Project its conversations have left can be deleted.
+  (cats-platform#447 to cats-platform#451, cats-platform#453, cats-platform#454)
+- **Boss Cat.** Settings, an on/off switch and a join card; a Boss Cat joins a
+  conversation under 「允許」, asks on a card under 「每次問我」, and can leave.
+  (cats-platform#427 to cats-platform#432)
+- **Companion profile feed.** AI media posts, share links and owner
+  notifications. Images and image references work in Desktop; video
+  generation and video sources are not offered, because Desktop does not ship
+  FFmpeg, and Runtime now starts without it. (cats-platform#443,
+  cats-runtime#221, cats-runtime#222)
+- **Plugins.** Agency is optional and installable from Settings in previews; a
+  Cat can select an Agency skill only after it is installed. Runtime supports
+  the preview installation and restores cleanly after a restart.
+  (cats-platform#437, cats-platform#439, cats-runtime#219)
+- **Fixes.** Provider-agent decision sessions run in a read-only sandbox;
+  durable decision jobs stop and duplicate session recovery is prevented; a
+  conversation's execution policy decides whether a preview may run; Codex
+  turn instructions arrive as native developer items. (cats-platform#438,
+  cats-platform#441, cats-platform#442, cats-runtime#220)
+- **Source selection:** cats-runtime@77d3e861aff5a8871e138e3be5ed28ce96c2ab09; main@77d3e861aff5a8871e138e3be5ed28ce96c2ab09.
+- **Exact modules.** Runtime package version **0.6.2** uses the full source SHA
+  above, with no changes left out. Platform main at selection is
+  `080beb076d86b817488295cc4ce0c69a93571826`; the workflow records the completed
+  bump commit as the frozen Desktop source. Shared conversation UI **0.1.0** is
+  unchanged: content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`,
+  tarball SHA-256
+  `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  The nine shared-tool file pins still select cats-one main
+  `f8b0d8a6e566b44d788ffc77912665ef46b738d3`. The bundled Catlas and
+  orchestrator knowledge move to revision `2026-11-12.1` for `0.16.x`.
+- **Bundled App and Plugin.** Usage **0.5.4** remains the latest Usage artifact
+  at Apps main `015448936e3685091b09f7d9966104cdd952e68c`:
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`; its `catsPlatform` floor
+  is met by 0.16.0. Preview content also carries the Agency **0.1.0** installer
+  pinned by `config/desktop-plugins.lock.json` (40,832 bytes, SHA-256
+  `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`, producer
+  cats-inc/cats-plugins, upstream msitarzewski/agency-agents at
+  `479193dcce1cf6432ce0f5aa230ab8cc739a8c6b`); a profile stays uninstalled until
+  Settings → Plugins → Install. Platform npm, Runtime npm, Apps, Plugins and
+  cats-one are separate publication targets.
+- **Compatibility and recovery.**
+  - Chat state upgrades from version 6 to 7 on the first start, once. The
+    version 6 bytes are kept in `chat-state.local.json.pre-product-scope.bak`,
+    or beside it as `.pre-product-scope.<digest>.bak` when that name holds
+    other bytes. 0.15.x refuses a version 7 file and leaves it alone.
+  - Companion data (`chat-state.local.companion-boxes.json`) upgrades from
+    version 1 to 2 atomically, with a readback and a restore on failure; the
+    version 1 bytes are kept in `.v1-<digest>.bak`. 0.15.x reads version 2 but
+    drops the new publication fields when it writes.
+  - Stop processes using the data roots before backing up `~/.cats`,
+    configured overrides and workspace attachment directories.
+  - Going back to 0.15.x: stop Desktop; copy the newest
+    `chat-state.local.json.pre-product-scope*.bak` over both
+    `chat-state.local.json` and `chat-state.local.json.bak`, and the
+    companion `.v1-<digest>.bak` over `chat-state.local.companion-boxes.json`.
+    Changes made after the upgrade are lost. Runtime media receipts gain an
+    additive contract 3 and existing receipts are not rewritten; let running
+    media work finish before going back.
+- **Signing and updates.** Freeze the bump at `release/v0.16.0`; run exact-source
+  CI there, then dispatch desktop-release.yml from that same source with
+  `tag=v0.16.0`, the Runtime SHA above and `unsigned=false`. Standard expected
+  trust is macOS **signed + notarized**, Windows **unsigned: no certificate**,
+  Linux **n/a**. Same-team signed macOS, Windows NSIS and Linux DEB retain their
+  update paths; unsigned macOS installs require manual replacement. Native
+  signing checks and per-platform receipts establish actual trust.
+- **Validation boundary.**
+  - Upgrade, on isolated copies of a real 0.15.1 profile (chat state version
+    6, companion version 1) with this source's server: both files upgrade with
+    byte-identical backups; a repeat start changes nothing; a blocked backup
+    path leaves each file untouched and a retry succeeds; the installed 0.15.1
+    sidecar leaves the upgraded files alone; the restore above returns the
+    original bytes and 0.15.1 runs on them. The copies were deleted.
+  - Runtime's bundle starts laid out as Desktop ships it, without FFmpeg
+    (cats-runtime#222).
+  - Each change passed its own review and CI. Live Claude Code and Codex
+    acceptance of the conversation tools did not run (PLAN-134 Phase 7,
+    PLAN-135 Phase 6).
+  - Release gates enforce full CI on the frozen source, exact module pins,
+    complete sources, packaged sidecar and Runtime startup, signing, updater
+    metadata, checksums and provenance. This does not claim live native
+    interaction on every OS.
+
+Publication results: the `v0.16.0` GitHub Standard Preview, its complete source
+assets, platform receipts and Actions run.
+
 ## 2026-11-11 — Desktop 0.15.1 standard preview: conversation recovery and Boss Cat coordination
 
 Selected distribution: Desktop **0.15.1 standard-profile preview**, App SDK
