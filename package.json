@@ -233,7 +233,7 @@
         "to": "app-sidecar/node_modules",
         "filter": [
           "**/*",
-          "!.bin{,/**/*}"
+          "!**/.bin{,/**/*}"
         ]
       },
       {
@@ -249,7 +249,7 @@
         "to": "cats-runtime/node_modules",
         "filter": [
           "**/*",
-          "!.bin{,/**/*}"
+          "!**/.bin{,/**/*}"
         ]
       },
       {

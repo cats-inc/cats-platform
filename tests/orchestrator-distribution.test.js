@@ -152,11 +152,11 @@ async function stageDesktop(packageRoot, root, layout) {
     const prefix = 'build/desktop-packaging/';
     assert.ok(mapping.from.startsWith(prefix), mapping.from);
     // Fail if electron-builder filtering evolves beyond these actual mappings.
-    assert.ok(!mapping.filter || mapping.filter.every((filter) => ['**/*', '!.bin{,/**/*}'].includes(filter)));
+    assert.ok(!mapping.filter || mapping.filter.every((filter) => ['**/*', '!**/.bin{,/**/*}'].includes(filter)));
     const from = childPath(stagingRoot, join(stagingRoot, mapping.from.slice(prefix.length)));
     const to = childPath(resources, join(resources, mapping.to));
     await mkdir(dirname(to), { recursive: true });
-    await cp(from, to, { recursive: true, filter: (file) => !mapping.filter?.includes('!.bin{,/**/*}')
+    await cp(from, to, { recursive: true, filter: (file) => !mapping.filter?.includes('!**/.bin{,/**/*}')
       || !relative(from, file).split(sep).includes('.bin') });
   }
   return join(resources, 'app-sidecar');
