@@ -33,6 +33,7 @@ export function TranscriptSearch({ channelId, titles, onClose, onSelect }: {
     onCancel={event => { event.preventDefault(); onClose(); }}>
     <header><h2 id={titleId}>{t(messageKeys.transcriptSearch)}</h2>
       <button type="button" onClick={onClose} aria-label={t(messageKeys.transcriptSearchClose)}>×</button></header>
+    <p>{t(messageKeys.conversationArchiveSearchNote)}</p>
     <form onSubmit={submit}>
       <label>{t(messageKeys.transcriptSearch)}<input ref={input} value={text} maxLength={200}
         onChange={event => { clear(); setText(event.target.value); }} type="search" /></label>

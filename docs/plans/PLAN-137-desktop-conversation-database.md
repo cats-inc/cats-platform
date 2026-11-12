@@ -72,7 +72,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   target/asset CAS, kill/restart recovery, owner-deletion cleanup/retry and live-profile CLI
   commands are implemented. Authenticated product actions and bounded native cold transcript
   presentation now preserve current-Core placement/privacy and recover commit/transport races.
-  Pending: Desktop controls/acceptance. Do not mark FR-15 complete on backend/CLI/API checks alone.
+  Shared Chat/Work/Code archive/restore controls, race-aware selected-window reconciliation
+  and read-only interaction guards are implemented. Actual isolated Windows Desktop
+  archive/restore passed in Chat/Work/Code. Pending: the remaining group/parallel/live audit.
+  Do not mark FR-15 complete on
+  backend/CLI/API/renderer tests alone.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -164,6 +168,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 
 | 2026-11-13 | Authenticated archive/unarchive and native cold readback implemented. The Node archive/page/query/presentation checkpoint passed **59/59** before the final disconnect/activation fixes. Final focused deltas passed **9/10**, with only a test's mistaken Core-active versus Chat-configured comparison; correcting it to the original Core status passed **1/1**. The final actual Electron matrix passed **68/68**, including three pre/queued-disconnect cases, zero Runtime access on archived activation/wake/send/retry, committed cancellation/Core notification, real HTTP disconnect with a second SSE client, bounded readers/queue cancellation, source/default-selection races, current-Core redaction/deletion and SQL metadata-type parity. Counts overlap and are not additive. |
 | 2026-11-13 | Server build and fixture typecheck passed; affected session lifecycle consumers passed **17/17** after targeted typed-test bundling. Actual bundled worker/coordinator/complete CLI/cold-read probes passed **4/4**, each under both Node and Electron. Cold pages with a cached placement proof continue reading an unaffected member after another member is deliberately damaged; the damaged requested member fails safely without disabling other conversations. Independent read-only API and cold-read reviews report no remaining blocking P1/P2 after concurrency, capture/default selection, SQL parity, pre-auth disconnect, Runtime activation and committed-notification fixes. These are local Windows focused checks, not full application acceptance or hosted three-OS CI. Desktop archive controls and remaining full-port gates stay open. |
+| 2026-11-13 | Shared archive/restore controls and selected-window reconciliation are implemented across Chat/Work/Code. Affected renderer tests passed **88/88** before the final participant draft guard; the final four affected bundles passed **61/61**, including **14/14** archive controller/DOM scenarios. Counts overlap. The final guard discards dirty participant edits on a read-only transition while preserving ordinary close-to-save behavior. Renderer and fixture typechecks and the actual source-candidate Runtime/server/host/web builds passed. Independent read-only UI review closed its permission-teardown finding and reports no remaining blocking P1/P2 in this delta. Real Desktop archive/restore acceptance and the remaining full-port gates are still pending. |
+| 2026-11-13 | Actual isolated Windows Desktop passed archive → read-only → restore → composer restoration in Chat, Code and Work. Cold paging prepended earlier messages while retaining the visible anchor, copy controls remained, search explained cold exclusion, Code restored its existing work-area tags and Work retained its scope/project inspection. No provider/model execution was requested. After normal stop, a readback verified all **720** synthetic messages' IDs, exact bodies/metadata/timestamps and the parallel group's member IDs; all three owned PIDs were absent. This does not establish live-provider or active parallel/group mutation acceptance. |
+| 2026-11-13 | Archive UI receipt: private root `cats-inc/.desktop-candidates/archive-ui-20261113-d`, launch `33d87c75d2fb86fc7aca42b99e739a0aea3a69abab89b68d3ffc55f3f6186642`, instance `0a20ead730df8e048440201a90e089f6`; Platform HEAD `24996398e` plus this UI delta, source digest `71f7e53f85d70b2e349a1d633f57b1b6b2eba72b6ca4e32bdd6d741ffe1278f1`; Runtime `77d3e861aff5a8871e138e3be5ed28ce96c2ab09`. Six synthetic conversations and one synthetic owner existed only in that profile. The earlier `c` fixture populated conversations before creating its owner, correctly reaching auth recovery; it was drained without archive acceptance. Native control was unavailable and guarded focus attempts sent no shortcut. The successful `d` fixture created the owner before first launch and signed in normally through the candidate tool. Installed Desktop/profile were untouched; no CDP port was opened. |
 
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
@@ -175,8 +182,8 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: Desktop archive/unarchive controls and read-only transcript acceptance;
-finish isolated live/active-parallel/cross-product paging/search acceptance, remaining scoped
+Next work: finish isolated live/active-parallel/group and cross-product paging/search
+acceptance, remaining scoped
 REST consumers, and the still-unexplained Electron multi-process startup failure (retain the
 new safe diagnostic evidence); then post-port
 measurements, hosted CI and isolated Desktop acceptance.

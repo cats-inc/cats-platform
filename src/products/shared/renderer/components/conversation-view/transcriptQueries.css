@@ -12,3 +12,7 @@
 .transcriptSearchResults li { padding: 14px 0; border-top: 1px solid var(--border, #ddd); }
 .transcriptSearchResults p, .transcriptSearchResults pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .transcriptSearchResults time { font-size: 12px; opacity: .7; }
+.transcriptSearchButton:disabled { opacity: .6; cursor: default; }
+.conversationArchiveNotice { padding: 8px 16px; margin: 0; color: var(--danger, #a31d28); font-size: 13px; }
+.conversationArchiveBanner { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px; border-top: 1px solid var(--border, #ddd); font-size: 13px; }
+.conversationArchiveBanner p { margin: 0; }

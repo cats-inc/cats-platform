@@ -48,6 +48,7 @@ const relayActions: Array<{
 ];
 
 export interface TranscriptMessageItemProps {
+  readOnly?: boolean;
   message: SelectedChannelView['messages'][number];
   stackClassName: string;
   cats: ChatCat[];
@@ -94,6 +95,7 @@ export interface TranscriptMessageItemProps {
 }
 
 export function TranscriptMessageItem({
+  readOnly = false,
   message,
   stackClassName,
   cats,
@@ -128,9 +130,9 @@ export function TranscriptMessageItem({
   const presentation = readConversationPresentation(message.metadata?.presentation);
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
-  const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
+  const resolvedExtraActions: TranscriptMessageActionDescriptor[] = readOnly ? [] : [...extraActions];
 
-  if (message.senderKind === 'user' && userTurnStatus === 'failed' && onRetryMessage) {
+  if (!readOnly && message.senderKind === 'user' && userTurnStatus === 'failed' && onRetryMessage) {
     resolvedExtraActions.push({
       key: `retry:${message.id}`,
       title: t(messageKeys.chatTranscriptMessageRetryResponseLabel),
@@ -142,7 +144,7 @@ export function TranscriptMessageItem({
     });
   }
 
-  if (isCompareGroup && message.senderKind !== 'user' && onRelayMessage) {
+  if (!readOnly && isCompareGroup && message.senderKind !== 'user' && onRelayMessage) {
     resolvedExtraActions.push({
       key: `relay:${message.id}`,
       kind: 'menu',
@@ -246,13 +248,13 @@ export function TranscriptMessageItem({
       afterBubble={last && message.choices && message.choices.length > 0 ? (
         <MessageChoices channelId={selectedChannelId} messageId={message.id}
           choices={message.choices} existingResponse={existingChoiceResponse}
-          busy={choiceBusy} onSubmit={onChoiceSubmit} />
+          busy={choiceBusy || readOnly} onSubmit={onChoiceSubmit} />
       ) : last && typeof bossCatJoinRequest?.id === 'string' ? (
-        <BossCatJoinRequestCard laneId={selectedChannelId} requestId={bossCatJoinRequest.id}
+        <BossCatJoinRequestCard readOnly={readOnly} laneId={selectedChannelId} requestId={bossCatJoinRequest.id}
           status={String(bossCatJoinRequest.status ?? '')}
           refusal={typeof bossCatJoinRequest.refusal === 'string' ? bossCatJoinRequest.refusal : null} />
       ) : last && typeof conversationProposal?.id === 'string' ? (
-        <ConversationProposalCard channelId={selectedChannelId} proposalId={conversationProposal.id}
+        <ConversationProposalCard readOnly={readOnly} channelId={selectedChannelId} proposalId={conversationProposal.id}
           status={String(conversationProposal.status ?? '')} />
       ) : null}
     >

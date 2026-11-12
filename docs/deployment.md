@@ -110,8 +110,12 @@ Terminal attempts notify subscriptions even when the initiating client disconnec
 durable commit. Controlled archive conflicts are 409, missing targets 404, damaged cold proofs
 422 and unavailable operations 503; cancellation is 408 when a response remains connected.
 Native readers have bounded per-profile concurrency and cancellable queue/deadlines.
-Desktop UI controls and complete acceptance are still pending; do not assume an older Desktop
-can display a cold transcript. Close/reset cancels and reaps workers before removing profile files.
+The candidate Desktop exposes Archive/Restore in Chat, Work and Code conversation headers.
+Cold conversations retain bounded history and copy while disabling editing and response actions.
+A failed reconciliation leaves Reload available and editing disabled until a current window is
+accepted; it does not repeat the mutation. Restore returns the transcript to hot storage and
+search. Complete product acceptance remains pending; do not assume an older Desktop can display
+a cold transcript. Close/reset cancels and reaps workers before removing profile files.
 
 Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
 failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native

@@ -48,6 +48,7 @@ export interface TranscriptMessageActionContext {
 }
 
 export interface ConversationTranscriptPanelProps {
+  readOnly?: boolean;
   hasConversationStarted: boolean;
   greeting: string;
   transcriptListRef: Ref<HTMLDivElement>;
@@ -110,6 +111,7 @@ export interface ConversationTranscriptPanelProps {
 }
 
 export function ConversationTranscriptPanel({
+  readOnly = false,
   hasConversationStarted,
   greeting,
   transcriptListRef,
@@ -201,6 +203,7 @@ export function ConversationTranscriptPanel({
   ): JSX.Element {
     return (
       <TranscriptMessageItem
+        readOnly={readOnly}
         key={String((message.metadata?.presentation as { id?: string } | undefined)?.id ?? message.id)}
         showProgressDetails={showLiveProgressDetails}
         message={message}

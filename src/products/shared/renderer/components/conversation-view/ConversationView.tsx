@@ -105,6 +105,8 @@ import {
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { usePagedTranscript } from '../../hooks/usePagedTranscript.js';
+import { useConversationArchive, type RefreshArchivedConversation } from '../../hooks/useConversationArchive.js';
+import { ConversationArchiveControls, ConversationArchiveFeedback } from './ConversationArchiveControls.js';
 import { useTranscriptHistoryReset } from '../../hooks/useTranscriptHistoryReset.js';
 import { TranscriptHistoryControls } from './TranscriptHistoryControls.js';
 import { TranscriptSearch } from './TranscriptSearch.js';
@@ -233,6 +235,7 @@ export interface ConversationViewProps {
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
   onRetryMessage?: (messageId: string) => Promise<void>;
+  refreshArchivedConversation?: RefreshArchivedConversation;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -327,6 +330,7 @@ export function ConversationView({
   onApprovalDecision,
   onChoiceSubmit,
   onRetryMessage,
+  refreshArchivedConversation,
   onOperatorAction,
   autoResize,
   onDirectLaneExecutionTargetChange,
@@ -365,6 +369,16 @@ export function ConversationView({
   // composer, participant chips and product action contracts remain independent.
   const transcript = usePagedTranscript(incomingSelectedChannel, payload.scopeId);
   const selectedChannel = transcript.channel;
+  const archive = useConversationArchive(selectedChannel, refreshArchivedConversation, payload.scopeId);
+  // Profile fields save on unmount. Retained callbacks must see a readonly
+  // transition before those fields disappear, while ordinary navigation keeps
+  // the departing conversation's own last permission.
+  const participantEditPermissionRef = useRef({ id: selectedChannel.id, scope: payload.scopeId, readOnly: archive.readOnly });
+  if (participantEditPermissionRef.current.id !== selectedChannel.id || participantEditPermissionRef.current.scope !== payload.scopeId) {
+    participantEditPermissionRef.current = { id: selectedChannel.id, scope: payload.scopeId, readOnly: archive.readOnly };
+  }
+  const participantEditPermission = participantEditPermissionRef.current;
+  participantEditPermission.readOnly = archive.readOnly;
   const [searchOpen, setSearchOpen] = useState(false);
   const resolvedSidePanelTitle = sidePanelTitle || t(messageKeys.chatNewChatDraftSidePanelTitle);
   const conversationBehavior = useMemo(
@@ -915,7 +929,7 @@ export function ConversationView({
       const inspection = hasConversationStarted
         ? buildParticipantInspectionAction?.(participantId, openSidePanelTo) : null;
       if (inspection) actions.push(inspection);
-      if (isDirectLane) {
+      if (isDirectLane || archive.readOnly) {
         return actions;
       }
       if (onSetChannelCoordinator) {
@@ -945,6 +959,7 @@ export function ConversationView({
     },
     [
       activeRoomParticipants.length,
+      archive.readOnly,
       buildParticipantInspectionAction,
       hasConversationStarted,
       sidePanelState,
@@ -960,15 +975,18 @@ export function ConversationView({
   // page.
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
-      return resolveConversationTargetEditor(participant, {
+      const editor = resolveConversationTargetEditor(participant, {
         activeRoomParticipants,
         defaultRecipientParticipant,
         directLaneCat,
         directLaneExecutionTarget,
         isDirectLane,
-        onDirectLaneExecutionTargetChange,
+        onDirectLaneExecutionTargetChange: onDirectLaneExecutionTargetChange ? (catId, value) => {
+          if (!participantEditPermission.readOnly) onDirectLaneExecutionTargetChange(catId, value);
+        } : undefined,
         onUpdateParticipantTarget: onUpdateChannelParticipant
           ? (participantId, value) => {
+              if (participantEditPermission.readOnly) return;
               void onUpdateChannelParticipant(participantId, {
                 provider: value.provider,
                 instance: value.instance,
@@ -979,15 +997,19 @@ export function ConversationView({
           : undefined,
         onUpdateParticipantProfile: onUpdateChannelParticipant
           ? (participantId, update) => {
+              if (participantEditPermission.readOnly) return;
               void onUpdateChannelParticipant(participantId, update);
             }
           : undefined,
         openCatSettings: (catId) => navigate(buildCatSettingsPath(catId)),
         resolveParticipantActions,
       });
+      return !editor || !archive.readOnly ? editor : { ...editor, onChange: undefined,
+        profile: editor.profile ? { ...editor.profile, onSave: undefined } : undefined };
     },
     [
       activeRoomParticipants,
+      archive.readOnly,
       defaultRecipientParticipant,
       directLaneCat,
       directLaneExecutionTarget,
@@ -996,6 +1018,7 @@ export function ConversationView({
       onDirectLaneExecutionTargetChange,
       onUpdateChannelParticipant,
       resolveParticipantActions,
+      participantEditPermission,
     ],
   );
 
@@ -1050,6 +1073,7 @@ export function ConversationView({
     />
   );
   const sidePanelSections = (buildSidePanelSections ?? buildConversationSidePanelSections)({
+    readOnly: archive.readOnly,
     selectedChannel,
     busy,
     operatorView,
@@ -1062,6 +1086,7 @@ export function ConversationView({
   });
 
   const topBarExtraActions = <>{renderTopBarExtraActions?.(viewContext) ?? null}
+    <ConversationArchiveControls control={archive} disabled={composerBusy || compareBusy} />
     {transcript.enabled ? <button type="button" className="transcriptSearchButton" onClick={() => setSearchOpen(true)}>
       {t(messageKeys.transcriptSearch)}</button> : null}</>;
   const statusRow = renderStatusRow?.(viewContext) ?? null;
@@ -1074,10 +1099,10 @@ export function ConversationView({
     group.status === 'active' && group.memberChannelIds.includes(selectedChannel.id));
   const composerSurfaceTag = (
     <>
-      <ConversationScopeChip channel={selectedChannel} parallelMember={parallelMember} control={productScopeRaise} />
+      <ConversationScopeChip channel={selectedChannel} parallelMember={parallelMember} control={archive.readOnly ? undefined : productScopeRaise} />
       {/* SPEC-142 FR-22, FR-23: the owner's control of a Work conversation's Project. */}
       {productScopeRaise && readProductScope(selectedChannel) === 'work' && !parallelMember ? (
-        <ConversationWorkProjectChip channel={selectedChannel} report={productScopeRaise.report} />
+        <ConversationWorkProjectChip readOnly={archive.readOnly} channel={selectedChannel} report={productScopeRaise.report} />
       ) : null}
     </>
   );
@@ -1136,7 +1161,7 @@ export function ConversationView({
           approvalCount={operatorView?.approvals.length ?? 0}
           extraActions={topBarExtraActions}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
-          onAddParticipant={showAddCatButton && onOpenAddCat && !isDirectLane
+          onAddParticipant={!archive.readOnly && showAddCatButton && onOpenAddCat && !isDirectLane
             ? onOpenAddCat
             : undefined}
           onOpenCatProfile={
@@ -1162,10 +1187,12 @@ export function ConversationView({
         />
       ) : null}
     >
+      <ConversationArchiveFeedback control={archive} />
       {searchOpen ? <TranscriptSearch channelId={selectedChannel.id}
         titles={new Map(payload.chat.channels.map(channel => [channel.id, channel.title]))}
         onClose={() => setSearchOpen(false)} onSelect={onSelect} /> : null}
       <ConversationTranscriptPanel
+        readOnly={archive.readOnly}
         historyControls={transcript.enabled ? <TranscriptHistoryControls history={transcript.history} state={transcript.state} /> : null}
         hasConversationStarted={hasConversationStarted}
         greeting={greeting}
@@ -1184,8 +1211,8 @@ export function ConversationView({
         onChoiceSubmit={onChoiceSubmit}
         latestUserTurnMessageId={latestUserTurnPresentation.messageId}
         latestUserTurnStatus={latestUserTurnPresentation.status}
-        onRetryMessage={onRetryMessage}
-        onRelayMessage={onRelayMessage}
+        onRetryMessage={archive.readOnly ? undefined : onRetryMessage}
+        onRelayMessage={archive.readOnly ? undefined : onRelayMessage}
         liveIndicator={(() => {
           if (isBrowserLiveTraceEnabled()) {
             const rawSignature = buildLiveTraceStateSignature(liveIndicator);
@@ -1230,7 +1257,7 @@ export function ConversationView({
               );
             }
           }
-          return visibleLiveIndicator ?? undefined;
+          return archive.readOnly ? undefined : visibleLiveIndicator ?? undefined;
         })()}
         liveSpeakerParticipant={liveSpeakerParticipant}
         liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
@@ -1244,9 +1271,14 @@ export function ConversationView({
         resolveParticipantDisplayName={resolveParticipantDisplayName}
         showLiveProgressDetails={conversationBehavior.showLiveProgressDetails}
         resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
-        buildConcurrentClusterActions={buildConcurrentClusterActions}
-        buildTranscriptMessageActions={buildTranscriptMessageActions}
+        buildConcurrentClusterActions={archive.readOnly ? undefined : buildConcurrentClusterActions}
+        buildTranscriptMessageActions={archive.readOnly ? undefined : buildTranscriptMessageActions}
       />
+      {archive.readOnly ? <div ref={composerCardRef} className="conversationArchiveBanner" role="status">
+        {composerSurfaceTag}
+        <p>{t(archive.busy === 'archive' ? messageKeys.conversationArchiving : archive.busy === 'restore' ? messageKeys.conversationRestoring
+          : archive.needsRefresh ? messageKeys.conversationArchiveRefreshFailed : messageKeys.conversationArchiveReadOnly)}</p>
+      </div> : <>
       <ProviderConversationControls key={selectedChannel.id} conversationId={buildChatConversationId(selectedChannel.id)} />
       <DesktopControlConversation key={`desktop-${selectedChannel.id}`} channelId={selectedChannel.id} />
       <ConversationComposerArea
@@ -1296,6 +1328,7 @@ export function ConversationView({
         onStopMessage={onStopMessage}
         autoResize={autoResize}
       />
+      </>}
       {compareMembers.length > 1 && onSelect ? (
         <ParallelFooterBar
           compareMembers={compareMembers}

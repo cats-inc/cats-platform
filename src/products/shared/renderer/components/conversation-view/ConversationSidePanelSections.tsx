@@ -14,6 +14,7 @@ import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface BuildConversationSidePanelSectionsOptions {
+  readOnly?: boolean;
   selectedChannel: SelectedChannelView;
   busy: WorkspaceBusyState;
   operatorView: ChatOperatorView | null;
@@ -32,6 +33,7 @@ export interface BuildConversationSidePanelSectionsOptions {
 }
 
 export function buildConversationSidePanelSections({
+  readOnly = false,
   selectedChannel,
   busy,
   operatorView,
@@ -96,6 +98,7 @@ export function buildConversationSidePanelSections({
           </section>
         ) : null}
         <ApprovalQueuePanel
+          readOnly={readOnly}
           approvals={operatorView?.approvals ?? []}
           actorNameById={operatorView?.actorNameById ?? {}}
           busy={busy}
@@ -104,12 +107,13 @@ export function buildConversationSidePanelSections({
         <ProgressSummaryPanel
           inspector={inspectedRun}
           effectivePolicy={operatorView?.effectivePolicy ?? null}
-          incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
+          incidentActions={(inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? [])
+            .map(action => readOnly ? { ...action, disabled: true } : action)}
           pendingApprovalCount={operatorView?.approvals.length ?? 0}
           guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
           cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
           onInspectRun={onInspectRun}
-          onOperatorAction={onOperatorAction}
+          onOperatorAction={input => { if (!readOnly) onOperatorAction(input); }}
         />
         <ActivityFeed items={operatorView?.activityFeed ?? []} />
         <RunInspector

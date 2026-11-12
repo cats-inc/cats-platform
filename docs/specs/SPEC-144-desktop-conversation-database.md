@@ -270,8 +270,8 @@ existing auth/CSRF and channel mutation gates. Already-disconnected/queued-abort
 never start an action. A cancellation after the exact durable target revision/digest committed
 recovers its handoff and Core notifications; terminal attempts notify other channel subscribers
 even when the initiating transport disappears. Send/retry/activation/wake reject archived
-channels before Runtime access. Desktop controls and full product acceptance remain pending;
-backend/CLI/API checks alone do not satisfy FR-15.
+channels before Runtime access. Desktop controls are implemented; full product acceptance
+remains pending. Backend/CLI/API checks alone do not satisfy FR-15.
 
 Cold transcript windows now use the same bounded page API/read models. A native reader
 verifies the manifest/header and requested gzip members outside the serving lock. Current
@@ -290,6 +290,17 @@ tokens. Per-profile readers share two worker slots across store instances, with 
 queued reads and bounded wait/native deadlines. Close/reset abort queued/native reads. Raw
 and enriched API pages retain the existing proposal redaction and expose only a browser-safe
 archive descriptor/action capability, not archive paths or frozen Core contents.
+
+Chat, Work and Code share explicit Archive/Restore controls in the conversation header.
+Actions reconcile the selected bounded window even after a failed/lost mutation response.
+Accepted SSE updates take precedence over an older HTTP refresh; repeated races or a failed
+refresh keep editing disabled and expose Reload rather than silently retrying a mutation.
+Navigation/scope changes abort the old request and discard its late results. Archived or
+unreconciled conversations retain history, copy and relationship inspection while disabling
+composer, participant edits, response cards, approval actions and session retry/activation.
+Dirty participant fields are discarded when permission changes to read-only; ordinary popover
+close retains its existing save behavior. Restoring reloads the accepted hot window before
+editing resumes. Search explains that cold history must be restored to become searchable.
 
 ## Dependencies and open validation
 

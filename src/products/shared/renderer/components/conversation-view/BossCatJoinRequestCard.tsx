@@ -19,6 +19,7 @@ const REFUSAL_LABELS: Record<string, MessageKey> = {
 };
 
 export interface BossCatJoinRequestCardProps {
+  readOnly?: boolean;
   laneId: string;
   requestId: string;
   /** The status the card's message carries. Only a pending card reads live details. */
@@ -36,7 +37,7 @@ const PERMISSION_LABELS: Record<string, MessageKey> = {
  * SPEC-139 FR-10: the owner's join card. Everything shown comes from live state through an
  * owner-only route; the model never sees any of it.
  */
-export function BossCatJoinRequestCard({ laneId, requestId, status, refusal = null }: BossCatJoinRequestCardProps) {
+export function BossCatJoinRequestCard({ laneId, requestId, status, refusal = null, readOnly = false }: BossCatJoinRequestCardProps) {
   const { t } = useI18n();
   const [request, setRequest] = useState<BossCatJoinRequestView | null | 'missing'>(null);
   const [answered, setAnswered] = useState<{ status: string; refusal: string | null } | null>(null);
@@ -53,13 +54,14 @@ export function BossCatJoinRequestCard({ laneId, requestId, status, refusal = nu
   }, [laneId, requestId]);
 
   useEffect(() => {
-    if (settled) return undefined;
+    if (settled || readOnly) return undefined;
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
-  }, [load, settled === null]);
+  }, [load, settled === null, readOnly]);
 
   async function answer(decision: 'approve' | 'decline'): Promise<void> {
+    if (busy || readOnly) return;
     setBusy(true);
     setFailed(false);
     try {
@@ -84,6 +86,7 @@ export function BossCatJoinRequestCard({ laneId, requestId, status, refusal = nu
   if (settled) {
     return <div className="messageChoices"><p className="messageChoiceResolved">{settledLine(settled)}</p></div>;
   }
+  if (readOnly) return <p className="messageChoiceResolved">{t(messageKeys.conversationRestoreToRespond)}</p>;
   if (request === null) return null;
   if (request === 'missing') {
     return <div className="messageChoices"><p className="messageChoiceResolved">{t(messageKeys.chatBossCatCardMissing)}</p></div>;

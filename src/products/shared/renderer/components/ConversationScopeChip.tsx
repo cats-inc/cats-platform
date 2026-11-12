@@ -31,6 +31,7 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
   const scope = readProductScope(channel);
   const product = productScopeLabel(scope, t);
   const levels = control ? productScopeRaiseMenuLevels({ channel, parallelMember }) : [];
+  const interactive = levels.length > 0;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dialog, setDialog] = useState<{ view: ProductScopeRaiseView; target: ProductScope } | null>(null);
@@ -47,7 +48,7 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
     setOpen(false);
     setLoading(false);
     setDialog(null);
-  }, [channel.id]);
+  }, [channel.id, interactive]);
 
   useEffect(() => {
     if (!open) return;

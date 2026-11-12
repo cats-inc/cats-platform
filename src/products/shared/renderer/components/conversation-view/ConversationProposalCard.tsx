@@ -9,6 +9,7 @@ import {
 } from '../../api/proposals.js';
 
 export interface ConversationProposalCardProps {
+  readOnly?: boolean;
   channelId: string;
   proposalId: string;
   /** The status the card's message carries. Only an open card reads live details. */
@@ -19,7 +20,7 @@ export interface ConversationProposalCardProps {
  * SPEC-142 FR-15, FR-16: the owner's card for a proposal. Everything shown comes from the
  * server's proposal store through an owner-only route; the model never sees any of it.
  */
-export function ConversationProposalCard({ channelId, proposalId, status }: ConversationProposalCardProps) {
+export function ConversationProposalCard({ channelId, proposalId, status, readOnly = false }: ConversationProposalCardProps) {
   const { t } = useI18n();
   const [proposal, setProposal] = useState<ConversationProposalCardView | null | 'missing'>(null);
   const [answered, setAnswered] = useState<{ status: string; refusal: string | null } | null>(null);
@@ -36,14 +37,14 @@ export function ConversationProposalCard({ channelId, proposalId, status }: Conv
   }, [channelId, proposalId]);
 
   useEffect(() => {
-    if (settled) return undefined;
+    if (settled || readOnly) return undefined;
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
-  }, [load, settled === null]);
+  }, [load, settled === null, readOnly]);
 
   async function answer(decision: 'confirm' | 'decline'): Promise<void> {
-    if (busy) return;
+    if (busy || readOnly) return;
     setBusy(true);
     setFailed(false);
     try {
@@ -69,6 +70,7 @@ export function ConversationProposalCard({ channelId, proposalId, status }: Conv
   if (settled) {
     return <div className="messageChoices"><p className="messageChoiceResolved">{settledLine(settled)}</p></div>;
   }
+  if (readOnly) return <p className="messageChoiceResolved">{t(messageKeys.conversationRestoreToRespond)}</p>;
   if (proposal === null) return null;
   if (proposal === 'missing') {
     return <div className="messageChoices"><p className="messageChoiceResolved">{t(messageKeys.chatConversationProposalMissing)}</p></div>;

@@ -4660,6 +4660,19 @@ export const messageKeys = {
   transcriptSearchConversation: 'transcript.searchConversation',
   transcriptSearchOpen: 'transcript.searchOpen',
   transcriptSearchReadMore: 'transcript.searchReadMore',
+  conversationArchive: 'conversationArchive.archive',
+  conversationRestore: 'conversationArchive.restore',
+  conversationArchiving: 'conversationArchive.archiving',
+  conversationRestoring: 'conversationArchive.restoring',
+  conversationArchiveReadOnly: 'conversationArchive.readOnly',
+  conversationArchiveRefresh: 'conversationArchive.refresh',
+  conversationArchiveRefreshFailed: 'conversationArchive.refreshFailed',
+  conversationArchiveActive: 'conversationArchive.active',
+  conversationArchiveChanged: 'conversationArchive.changed',
+  conversationArchiveInvalid: 'conversationArchive.invalid',
+  conversationArchiveFailed: 'conversationArchive.failed',
+  conversationRestoreToRespond: 'conversationArchive.restoreToRespond',
+  conversationArchiveSearchNote: 'conversationArchive.searchNote',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];

@@ -11,6 +11,7 @@ import {
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface ApprovalQueuePanelProps {
+  readOnly?: boolean;
   approvals: CoreApprovalQueueItem[];
   actorNameById: Record<string, string>;
   busy: WorkspaceBusyState;
@@ -18,6 +19,7 @@ export interface ApprovalQueuePanelProps {
 }
 
 export function ApprovalQueuePanel({
+  readOnly = false,
   approvals,
   actorNameById,
   busy,
@@ -70,13 +72,13 @@ export function ApprovalQueuePanel({
                         ? 'operatorActionButton operatorActionButtonPrimary'
                         : 'operatorActionButton'}
                       type="button"
-                      disabled={isBusy}
+                      disabled={isBusy || readOnly}
                       title={resolveApprovalActionDescription(
                         option.action,
                         option.description,
                         t,
                       )}
-                      onClick={() => onDecision(approval.taskId, option.action)}
+                      onClick={() => { if (!readOnly) onDecision(approval.taskId, option.action); }}
                     >
                       {resolveApprovalActionLabel(option.action, option.label, t)}
                     </button>

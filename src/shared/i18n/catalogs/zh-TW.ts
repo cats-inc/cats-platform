@@ -4527,6 +4527,19 @@ export const zhTWCatalog: MessageCatalog = {
   'transcript.searchConversation': '對話',
   'transcript.searchOpen': '開啟對話',
   'transcript.searchReadMore': '閱讀完整訊息',
+  'conversationArchive.archive': '封存對話',
+  'conversationArchive.restore': '還原對話',
+  'conversationArchive.archiving': '正在封存對話…',
+  'conversationArchive.restoring': '正在還原對話…',
+  'conversationArchive.readOnly': '這個對話目前為唯讀，仍可瀏覽歷史訊息；還原封存後即可回覆或搜尋訊息。',
+  'conversationArchive.refresh': '重新載入對話',
+  'conversationArchive.refreshFailed': '請重新載入對話，確認目前狀態後再繼續。',
+  'conversationArchive.active': '請等這個對話中的工作結束後再封存。',
+  'conversationArchive.changed': '這個對話已變更或正在處理其他操作，請確認目前狀態後再試。',
+  'conversationArchive.invalid': '封存資料驗證失敗，請保留檔案並使用已驗證的狀態備份還原。',
+  'conversationArchive.failed': '無法確認封存操作結果，請查看對話後再試。',
+  'conversationArchive.restoreToRespond': '還原這個對話後即可回應這張卡片。',
+  'conversationArchive.searchNote': '封存的訊息須先還原才能搜尋。',
 };
 
 export default zhTWCatalog;

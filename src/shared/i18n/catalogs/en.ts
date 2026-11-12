@@ -4624,6 +4624,19 @@ export const enCatalog: MessageCatalog = {
   'transcript.searchConversation': 'Conversation',
   'transcript.searchOpen': 'Open conversation',
   'transcript.searchReadMore': 'Read full message',
+  'conversationArchive.archive': 'Archive conversation',
+  'conversationArchive.restore': 'Restore conversation',
+  'conversationArchive.archiving': 'Archiving conversation…',
+  'conversationArchive.restoring': 'Restoring conversation…',
+  'conversationArchive.readOnly': 'This conversation is read-only. You can browse its history; restore the archive to reply or search its messages.',
+  'conversationArchive.refresh': 'Reload conversation',
+  'conversationArchive.refreshFailed': 'Reload this conversation to confirm its current state before continuing.',
+  'conversationArchive.active': 'Wait for active work in this conversation to finish before archiving.',
+  'conversationArchive.changed': 'This conversation changed or is busy. Check its current state and try again.',
+  'conversationArchive.invalid': 'The archive could not be verified. Keep its files and restore a verified state backup.',
+  'conversationArchive.failed': 'The archive action could not be confirmed. Check the conversation and try again.',
+  'conversationArchive.restoreToRespond': 'Restore this conversation to respond to this card.',
+  'conversationArchive.searchNote': 'Restore archived messages before searching them.',
 };
 
 export default enCatalog;

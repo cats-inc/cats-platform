@@ -107,6 +107,7 @@ import {
   type ChannelSubscriptionState,
 } from "./entitySubscriptionChannelDispatcher.js";
 import { useEntitySubscription } from "./entitySubscriptionHub.js";
+import { useArchiveChannelRefresh } from './hooks/useArchiveChannelRefresh.js';
 import { useConversationNavigationState } from './hooks/useConversationNavigationState.js';
 import { conversationScope } from './conversationNavigationCache.js';
 import { useConversationComposerState, writeConversationComposer } from './conversationViewMemory.js';
@@ -1316,6 +1317,9 @@ export function createWorkspaceProductApp({
       && readyPayload?.chat.channels.some((channel) => channel.id === navigationChannelId)
       ? navigationChannelId
       : null;
+    const { refreshArchivedConversation, observeArchiveChannel } = useArchiveChannelRefresh({
+      channelId: subscribedChannelId, scope: subscriptionScope, setState, refreshAppShell,
+    });
     useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
       kind: 'channel',
       id: subscribedChannelId,
@@ -1323,6 +1327,7 @@ export function createWorkspaceProductApp({
       enabled: state.status === 'ready' && Boolean(subscribedChannelId),
       onSnapshot: (snapshot) => {
         if (snapshot.id !== subscribedChannelId) return;
+        observeArchiveChannel();
         startTransition(() => {
           setState((current) =>
             applyChannelSubscriptionSnapshotToLoadState(current, snapshot));
@@ -1330,6 +1335,7 @@ export function createWorkspaceProductApp({
       },
       onPatch: (patch) => {
         if (patch.id !== subscribedChannelId) return;
+        observeArchiveChannel();
         startTransition(() => {
           setState((current) =>
             applyChannelSubscriptionPatchToLoadState(current, patch));
@@ -1871,6 +1877,7 @@ export function createWorkspaceProductApp({
                     onCancelPendingSend,
                     onStopMessage,
                     onRetryMessage,
+                    refreshArchivedConversation,
                     onToggleChannelPlusMenu: toggleChannelPlusMenu,
                     onChannelFileSelect: openChannelFilePicker,
                     onTakeScreenshot: captureAndAttachChannelScreenshot,

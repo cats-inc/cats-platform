@@ -55,6 +55,7 @@ export function buildWorkProjectConfirmation(
 }
 
 export interface ConversationWorkProjectChipProps {
+  readOnly?: boolean;
   channel: { id: string; workProjectId?: string | null };
   /** Shows a short notice, such as the outcome of a change. */
   report(message: string): void;
@@ -64,7 +65,7 @@ export interface ConversationWorkProjectChipProps {
  * SPEC-142 FR-23: the owner sets, changes or clears a Work conversation's Project here. The parent
  * mounts it only for a conversation at Work that is not a direct lane.
  */
-export function ConversationWorkProjectChip({ channel, report }: ConversationWorkProjectChipProps) {
+export function ConversationWorkProjectChip({ channel, report, readOnly = false }: ConversationWorkProjectChipProps) {
   const { t } = useI18n();
   const [view, setView] = useState<ConversationWorkProjectView | null>(null);
   const [open, setOpen] = useState(false);
@@ -84,7 +85,7 @@ export function ConversationWorkProjectChip({ channel, report }: ConversationWor
       .then((next) => { if (!controller.signal.aborted) setView(next); })
       .catch(() => { if (!controller.signal.aborted) setView(null); });
     return () => controller.abort();
-  }, [channel.id, channel.workProjectId, reload]);
+  }, [channel.id, channel.workProjectId, reload, readOnly]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,11 +104,12 @@ export function ConversationWorkProjectChip({ channel, report }: ConversationWor
   }, [open]);
 
   const label = view?.project?.title ?? t(messageKeys.sharedWorkProjectChipNone);
-  const fixedReason = view && !view.canChange ? describeWorkProjectRefusal(view.refusal, t) : null;
+  const fixedReason = readOnly ? t(messageKeys.sharedWorkProjectErrorArchived)
+    : view && !view.canChange ? describeWorkProjectRefusal(view.refusal, t) : null;
   const choices = view ? view.projects.filter((option) => option.id !== view.projectId) : [];
 
   async function confirm(): Promise<void> {
-    if (!dialog || savingRef.current) return;
+    if (!dialog || savingRef.current || readOnly) return;
     const { view: shown, target } = dialog;
     setDialog(null);
     savingRef.current = true;
@@ -132,10 +134,10 @@ export function ConversationWorkProjectChip({ channel, report }: ConversationWor
         ref={buttonRef}
         type="button"
         className="composerSurfaceChip conversationWorkProjectChip"
-        disabled={!view || !view.canChange || saving}
+        disabled={readOnly || !view || !view.canChange || saving}
         aria-busy={saving || undefined}
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={open && !readOnly}
         title={saving
           ? t(messageKeys.sharedWorkProjectPending)
           : fixedReason
@@ -153,7 +155,7 @@ export function ConversationWorkProjectChip({ channel, report }: ConversationWor
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
       </button>
-      {open && view && view.canChange && !saving ? (
+      {open && !readOnly && view && view.canChange && !saving ? (
         <div className="composerSelectChipMenu" role="menu" aria-label={t(messageKeys.sharedWorkProjectMenuAria)}>
           {view.projectId ? (
             <button type="button" role="menuitem" className="composerSelectChipMenuItem"
@@ -170,7 +172,7 @@ export function ConversationWorkProjectChip({ channel, report }: ConversationWor
           ))}
         </div>
       ) : null}
-      {dialog ? (
+      {dialog && !readOnly ? (
         <WorkProjectDialog
           content={buildWorkProjectConfirmation(dialog.view, dialog.target, t)}
           onCancel={() => setDialog(null)}
