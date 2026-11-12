@@ -21,6 +21,9 @@ import { withLockedParallelChatGroup } from '../build/server/products/chat/api/r
 import { finalizeParallelChatBodies } from '../build/server/products/chat/api/resources/parallelChatGroupDispatch.js';
 import { createChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
 import { beginChannelMessageDispatch } from '../build/server/products/chat/state/runtimeActions.js';
+import { createConversationSessionDelegate } from '../build/server/products/chat/state/conversationSessionDelegate.js';
+import { currentProviderBindings } from '../build/server/products/chat/api/providerInteractionBindings.js';
+import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
@@ -684,4 +687,98 @@ test('fallback batch admission sees only requested headers and preserves unrelat
   } });
   assert.deepEqual((await store.read()).channels.find(channel => channel.id === third.id).messages,
     before.channels.find(channel => channel.id === third.id).messages);
+});
+
+test('Code inspection and activation preserve malformed unrelated history through the scoped delegate', async t => {
+  const f = await fixture(t, { runtimeSessions: true }), workspace = path.join(f.root, 'code-workspace');
+  await mkdir(workspace);
+  await f.store.updateChannel(f.id, channel => { channel.repoPath = workspace; return { channel }; });
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{malformed unrelated', f.other);
+  const before = db.all('select id, json from messages where channel_id = ?', f.other); db.close();
+  f.noGlobal();
+  const delegate = createConversationSessionDelegate(f.store, f.config.runtimeDataDir);
+  assert.equal(await delegate.inspect(f.id, (core, channel) =>
+    channel?.id === f.id && channel.cwd === workspace && channel.sessionId === null
+    && core.conversations.some(row => row.id === buildChatConversationId(f.id))), true);
+  assert.equal(await delegate.inspect('missing', (_core, channel) => channel !== null), false);
+  await delegate.activate(f.id, f.runtimeClient);
+  assert.equal(await delegate.inspect(f.id, (_core, channel) => channel?.sessionId === 'fixture-new-session'), true);
+  assert.deepEqual(f.runtimeCalls, ['create']);
+  const check = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'reader' });
+  try { assert.deepEqual(check.all('select id, json from messages where channel_id = ?', f.other), before); }
+  finally { check.close(); }
+});
+
+for (const interruption of ['archive', 'durable commit']) {
+  test(`Code activation cleans only unattached new sessions after ${interruption}`, async t => {
+    const f = await fixture(t, { runtimeSessions: true }), workspace = path.join(f.root, 'code-workspace');
+    await mkdir(workspace);
+    await f.store.updateChannel(f.id, channel => { channel.repoPath = workspace; return { channel }; });
+    const competitor = new DatabaseChatStore(f.config.chatStatePath); await competitor.initialize();
+    try {
+      const create = f.runtimeClient.createSession.bind(f.runtimeClient);
+      if (interruption === 'archive') f.runtimeClient.createSession = async input => {
+        const session = await create(input); await competitor.archiveConversation(f.id, 'archive'); return session;
+      };
+      else { let armed = true; f.setCheckpoint(phase => {
+        if (armed && phase === 'database_committed') { armed = false; throw Error('Code publication interrupted'); }
+      }); }
+      f.noGlobal();
+      const delegate = createConversationSessionDelegate(f.store, f.config.runtimeDataDir);
+      await assert.rejects(delegate.activate(f.id, f.runtimeClient), interruption === 'archive'
+        ? { code: 'conversation_archived' } : /Code publication interrupted/);
+      const header = await f.store.readChannelHeader(f.id);
+      if (interruption === 'archive') {
+        assert.equal(header.status, 'archived');
+        assert.deepEqual(f.runtimeCalls, ['create', ['close', 'fixture-new-session']]);
+      } else {
+        assert.equal(header.catAssignments[0].execution.lease.sessionId, 'fixture-new-session');
+        assert.deepEqual(f.runtimeCalls, ['create']);
+      }
+    } finally { await competitor.close(); }
+  });
+}
+
+test('Code and provider metadata inspections avoid damaged hot and cold transcript evidence', async t => {
+  const f = await fixture(t);
+  await f.store.updateChannel(f.other, channel => {
+    channel.catAssignments[0].execution.lease = { ...channel.catAssignments[0].execution.lease,
+      sessionId: 'provider-control-session', status: 'ready', laneId: 'provider-control-lane' };
+    return { channel };
+  });
+  const archived = await f.store.archiveConversation(f.id, 'archive');
+  const assets = archiveDirectory(databasePath(f.config.chatStatePath));
+  const manifest = JSON.parse(await readFile(path.join(assets, `${archived.archiveId}.manifest.json`), 'utf8'));
+  const payload = path.join(assets, manifest.file), bytes = await readFile(payload);
+  await writeFile(payload, bytes.subarray(0, bytes.length - 1));
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{malformed hot messages', f.other); db.close();
+  f.noGlobal();
+  const delegate = createConversationSessionDelegate(f.store);
+  assert.equal(await delegate.inspect(f.id, (_core, channel) => channel?.archived === true), true);
+  await assert.rejects(delegate.activate(f.id, f.runtimeClient), { code: 'conversation_archived' });
+  await assert.rejects(currentProviderBindings(f.store, buildChatConversationId(f.id)), { code: 'provider_conversation_unavailable' });
+  const rows = await currentProviderBindings(f.store, buildChatConversationId(f.other));
+  assert.equal(rows.length, 1); assert.equal(rows[0].binding.sessionId, 'provider-control-session');
+  assert.equal(rows[0].canRespond, false);
+  const core = await f.store.readCore();
+  await assert.rejects(currentProviderBindings(f.store, buildChatConversationId(f.other), {
+    readCore: async () => ({ ...core, ownerProfile: { ...core.ownerProfile, actorId: 'different-owner' } }),
+  }), { code: 'provider_conversation_unavailable' });
+  assert.deepEqual(f.runtimeCalls, []);
+});
+
+test('orchestrator plan and execution-loop inspection read only the requested conversation', async t => {
+  const f = await fixture(t);
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  db.run('update messages set json = ? where channel_id = ?', '{malformed unrelated', f.other); db.close();
+  f.noGlobal();
+  await ok(await f.request('/api/orchestrator/plan', 'POST', { channelId: f.id, body: 'Inspect healthy target', senderName: 'Owner' }));
+  await ok(await f.request(`/api/orchestrator/channels/${f.id}/execution-loop`));
+  await f.store.archiveConversation(f.id, 'archive');
+  const response = await f.request('/api/orchestrator/dispatch', 'POST', { channelId: f.id, body: 'Refuse cold target', senderName: 'Owner' });
+  assert.equal(response.status, 409, await response.clone().text());
+  assert.equal((await response.json()).error.code, 'conversation_archived');
+  assert.deepEqual(f.runtimeCalls, []);
 });

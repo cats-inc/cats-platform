@@ -6,11 +6,12 @@ import type { CoreStore } from '../../../core/store.js';
 import { canControlProviderRun, providerRunSession } from '../../../platform/runtime/providerInteractionAdmission.js';
 
 export async function currentProviderBindings(store: ChatStore, conversationId: string, coreStore: CoreStore = store): Promise<ProviderBindingAccess[]> {
-  const state = await store.read();
-  const core = await coreStore.readCore();
+  const catalog = await store.readCatalog?.();
+  const channels = catalog?.headers ?? (await store.read()).channels;
+  const core = catalog && coreStore === store ? catalog.core : await coreStore.readCore();
   const owner = core.ownerProfile.actorId;
   const conversation = core.conversations.find(c => c.id === conversationId);
-  const channel = state.channels.find(c => buildChatConversationId(c.id) === conversationId || c.id === conversation?.sourceChannelId);
+  const channel = channels.find(c => buildChatConversationId(c.id) === conversationId || c.id === conversation?.sourceChannelId);
   if (!channel || channel.status === 'archived' || channel.ownerActorId !== owner || conversation?.status === 'archived') {
     throw new ProviderControlError(404, 'provider_conversation_unavailable');
   }

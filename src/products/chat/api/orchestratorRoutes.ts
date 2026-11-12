@@ -13,13 +13,14 @@ import type {
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError } from './routeSupport.js';
 import { createLockedDispatchChatStore } from '../state/runtime-dispatch/merge.js';
+import { readConversationState, readWritableConversationState } from './scopedConversationState.js';
 
 async function handlePlan(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
     const body = await readJsonBody<OrchestratorPlanRequest>(context.request);
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationState(context.dependencies.chatStore, body.channelId);
     const core = await context.dependencies.chatStore.readCore();
     context.dependencies.orchestratorPlannerSurface.buildChannelView(state, body.channelId);
     sendJson(
@@ -47,7 +48,8 @@ async function handleDispatch(
       async () => dispatchOrchestratorTurn({
         ...body,
         chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, body.channelId,
-          await context.dependencies.chatStore.read(), () => context.dependencies.now?.() ?? new Date(), context.dependencies.runtimeClient),
+          await readWritableConversationState(context.dependencies.chatStore, body.channelId),
+          () => context.dependencies.now?.() ?? new Date(), context.dependencies.runtimeClient),
         channelRouter: context.dependencies.orchestratorChannelRouter,
         plannerSurface: context.dependencies.orchestratorPlannerSurface,
         runtimeClient: context.dependencies.runtimeClient,
@@ -67,7 +69,7 @@ async function handleExecutionLoop(
   channelId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationState(context.dependencies.chatStore, channelId);
     context.dependencies.orchestratorPlannerSurface.buildChannelView(state, channelId);
     const core = await context.dependencies.chatStore.readCore();
     sendJson(

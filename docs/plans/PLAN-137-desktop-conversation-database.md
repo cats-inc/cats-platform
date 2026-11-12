@@ -72,7 +72,10 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   for cold members. Multi-member acknowledgement/finalization now use one scoped atomic
   transaction, with prepared execution/turn admission, recovering Runtime cleanup and
   cold/deleted-member exclusion. Ordinary presentation writes and dispatch qualification
-  avoid global history. The remaining consumer audit is open; generic Core/global projections
+  avoid global history. Native Code inspection/activation, provider binding metadata and
+  orchestrator plan/loop/initial dispatch reads now avoid unrelated history. Code creation
+  plus intent admission and generic Core writes keep their global contract.
+  The remaining consumer audit is open; generic Core/global projections
   retain their explicit cost.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
@@ -192,6 +195,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-13 | New batch cases prove rollback of the first member and its FTS after second-member failure, one durable recovery for both rows and coupled Core, exact unrelated Core/row preservation with malformed sibling JSON, synchronous/context/identity/order/global-metadata refusal, cold header admission and skipped damaged cold members, surviving hot failure settlement beside damaged cold evidence, concurrent archive/participant/audience/active-turn refusal, newer owner title/timestamp preservation, scoped fallback admission and canonical presentation-ID refusal without metadata publication. Actual HTTP acknowledgement **and final completion notification** are awaited before teardown. The successful ordinary text Runtime-stub flow retains both replies with malformed unrelated history and global Chat reads/snapshot writes forbidden. |
 | 2026-11-13 | The initial batch matrix passed **35/38**: two fixtures had accidentally selected their new unrelated conversation or tried to remove the last participant, and were corrected without relaxing admission. The remaining end-to-end failure exposed full-history dispatch qualification and presentation recording; source-captured diagnostics identified desktop-control, knowledge-source and generic Core presentation writes. Qualification now uses target state or canonical header catalogs, and the presentation recorder uses its narrow checked journal path. Independent read-only reviews closed cold capture/finalization hydration, cached-turn admission, fallback header scope, timestamp rollback and trimmed-ID ownership bypass; neither reports remaining P1/P2 in this delta. Generic rich-effect/Core/global projections, other consumer audit, live-provider/active-group/product acceptance, post-port measurements/million-entry operations and hosted three-OS CI remain open. |
 
+| 2026-11-13 | Code/provider/orchestrator read checkpoint: server build and fixture typecheck passed. The five new real SQLite/HTTP cases passed **5/5 Node**; existing Code-session, product-scope, provider-control, orchestrator API/recovery and architecture consumers passed **206/206 Node**. The new five native cases and existing Code-session/provider consumers passed **42/42 actual Electron 41.2.0 / Node 24.14.0**, zero skipped/cancelled, in two explicitly awaited child runs (**5 + 37**). Counts overlap earlier checkpoints and are not additive. |
+| 2026-11-13 | New cases prove native Code inspect/activate with malformed unrelated messages and global Chat reads/snapshot writes forbidden; archive-race cleanup of an unattached new session; durable-commit recovery retaining its attached session; Code/provider metadata inspection beside both damaged hot messages and damaged cold evidence; preservation of an explicitly different CoreStore's owner authority; and target-only orchestrator plan/loop inspection plus cold dispatch refusal before Runtime. Both independent read-only reviews report no remaining P1/P2 in this delta. Code creation/intent admission and generic Core/replay writes retain global projections; this does not close proposal/companion consumer audit, live acceptance, measurements or hosted three-OS CI. |
+
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
 ## Next integration checkpoint
@@ -202,8 +208,8 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: finish the remaining consumer audit (including Code session delegation,
-proposal/control paths and companion/orchestrator operations), isolated
+Next work: finish the remaining consumer audit (including proposal/control paths and
+companion operations, plus classification of remaining generic Core/global work), isolated
 live/active-parallel/group and cross-product paging/search acceptance, and the
 still-unexplained Electron multi-process startup failure (retain the
 new safe diagnostic evidence); then post-port

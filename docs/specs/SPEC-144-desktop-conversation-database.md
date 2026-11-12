@@ -189,6 +189,16 @@ which commits through the same journal and history invalidation without a global
 projection. Rich Runtime effects and other generic Core mutations retain their explicit
 global cost; this checkpoint does not declare the remaining consumer audit complete.
 
+Native Code session inspection reads Core and headers from one catalog capture; activation
+uses target state and the same recovering new-session cleanup as ordinary activation.
+Creating a Code conversation together with its operation intent remains a global atomic
+admission, and its generic intent/Core writes retain that explicit cost. Provider control
+bindings read metadata without hot/cold messages, using the catalog's matching Core when
+both stores are the same; an explicitly separate CoreStore still supplies its owner/run
+authority. Orchestrator plans and execution-loop inspection read the requested conversation,
+and dispatch admits its writable target before hydration. Generic orchestrator replay/Core
+writes remain global operations.
+
 Activation tracks Runtime creations independently of returned leases, including failures
 before attachment setup or publication. Cleanup checks the recovering current header and
 retains a session already attached by a durable commit. Low-level setup failure closes its
