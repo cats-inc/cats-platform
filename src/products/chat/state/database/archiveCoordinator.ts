@@ -103,8 +103,17 @@ export async function performConversationArchive(host: ConversationArchiveHost, 
       next.archives = old ? next.archives.map(record => record.id === archiveId ? updated : record) : [...next.archives, updated];
       next.conversations = next.conversations.map(record => record.id === conversationId
         ? { ...record, status: kind === 'archive' ? 'archived' : prepared.originalStatus === 'planned' ? 'planned' : 'active', updatedAt: now } : record);
-      await worker(host.profile, { phase: 'commit', profile: host.profile, job: job!, preparedDigest: bytesDigest(bytes),
-        previousDigest: bytesDigest(serializeEnvelope(previous)), envelope: serializeEnvelope(next) }, signal, options.timeoutMs, options.workerCheckpoint);
+      try {
+        await worker(host.profile, { phase: 'commit', profile: host.profile, job: job!, preparedDigest: bytesDigest(bytes),
+          previousDigest: bytesDigest(serializeEnvelope(previous)), envelope: serializeEnvelope(next) }, signal, options.timeoutMs, options.workerCheckpoint);
+      } catch (error) {
+        // A transport cancellation can win after the durable transaction. The
+        // worker is reaped, and this parent still owns the serving lock. Publish
+        // that exact committed revision and notify Core listeners before leaving.
+        if (!host.signal.aborted && session.database.meta('revision') === next.storage.revision
+          && session.database.meta('metadata_digest') === bytesDigest(serializeEnvelope(next))) await host.recovered(session, previous);
+        throw error;
+      }
       await options.checkpoint?.('database_committed');
       await host.recovered(session, previous);
       await options.checkpoint?.('metadata_recovered');

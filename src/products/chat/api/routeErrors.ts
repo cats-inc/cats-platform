@@ -8,6 +8,8 @@ import {
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { MessageCursorExpiredError } from '../shared/transcript.js';
 import { ProfileStorageError } from '../state/database/profileFormat.js';
+import { ConversationArchiveError } from '../state/database/archiveJobs.js';
+import { ConversationArchivedError } from '../shared/conversationArchive.js';
 
 export function errorStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : '';
@@ -60,7 +62,16 @@ export function handleRestError(
     return;
   }
   if (error instanceof ProfileStorageError) {
-    sendRestError(context, 503, error.code, error.message);
+    sendRestError(context, error.code === 'conversation_archived' ? 409 : 503, error.code, error.message);
+    return;
+  }
+  if (error instanceof ConversationArchivedError) {
+    sendRestError(context, 409, error.code, error.message);
+    return;
+  }
+  if (error instanceof ConversationArchiveError) {
+    sendRestError(context, error.code === 'archive_missing' ? 404 : error.code === 'archive_invalid' ? 422
+      : error.code === 'archive_failed' ? 503 : error.code === 'archive_cancelled' ? 408 : 409, error.code, error.message);
     return;
   }
   if (error instanceof ChatApiError) {

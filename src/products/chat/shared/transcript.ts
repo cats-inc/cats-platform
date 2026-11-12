@@ -17,6 +17,9 @@ export interface MessagePage {
   windowCount?: number;
   /** Display-only Core projection for this window; raw messages stay limit-bounded. */
   displayMessages?: ChatMessage[];
+  /** Immutable cold history; restore explicitly before sending or editing. */
+  archive?: { id: string; createdAt: string };
+  archiveActions?: boolean;
 }
 
 export type TranscriptChannelView = ChatChannelView & { messagePage?: Omit<MessagePage, 'messages' | 'displayMessages'> };

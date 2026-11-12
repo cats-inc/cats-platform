@@ -6,6 +6,7 @@ import type { CatsCoreState } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import { hasActiveSupervisedRun } from '../model/workProject.js';
 import { archiveDirectory, conversationArchive } from './archiveAssets.js';
+import type { ArchivePageRequest } from './archiveRead.js';
 
 export const ARCHIVE_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -36,6 +37,7 @@ export interface PreparedConversationArchive {
 }
 export type ArchiveWorkerPayload = ({ phase: 'prepare'; profile: string; job: ConversationArchiveJob }
   | { phase: 'commit'; profile: string; job: ConversationArchiveJob; preparedDigest: string; envelope: string; previousDigest: string }
+  | ({ phase: 'read' } & ArchivePageRequest)
   | { phase: 'cleanup'; profile: string; ownerLeaseToken: string; job?: ConversationArchiveJob }) & { observe?: boolean };
 
 export function archiveJobDirectory(file: string, token: string): string {

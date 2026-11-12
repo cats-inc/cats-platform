@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,9 +11,11 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { CONVERSATION_PROPOSAL_METADATA_KEY } from '../build/server/products/chat/state/conversationProposals.js';
 import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
 import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
+import { archiveDirectory } from '../build/server/products/chat/state/database/archiveAssets.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
+import { setTimeout as delay } from 'node:timers/promises';
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-transcript-api '));
@@ -44,8 +46,8 @@ async function fixture(t) {
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   await server.startupRecovery; await server.appHostingReady();
   const url = `http://127.0.0.1:${server.address().port}`;
-  const get = (pathname, authenticated = true, method = 'GET') => fetch(`${url}${pathname}`, {
-    method, headers: authenticated ? { cookie: auth.cookie } : {} });
+  const get = (pathname, authenticated = true, method = 'GET', csrf = true, signal) => fetch(`${url}${pathname}`, {
+    method, signal, headers: authenticated ? { cookie: auth.cookie, ...(method !== 'GET' && csrf ? { 'x-cats-csrf-token': auth.csrfToken } : {}) } : {} });
   store.read = async () => { throw new Error('Query API must not materialize all transcripts'); };
   const [id, other] = source.chat.channels.map(channel => channel.id);
   return { get, store, source, config, id, other };
@@ -65,6 +67,84 @@ test('authenticated message pages are bounded, chronological, exclusive and reda
   const second = await (await get(`/api/channels/${id}/messages?before=${first.nextCursor}`)).json();
   assert.equal(second.messages.length, 20); assert.equal(second.messages[0].id, `${id}-0`);
   assert.equal(second.nextCursor, null); assert.equal(second.total, 70);
+});
+
+test('authenticated archive actions expose bounded redacted readback and explicit restore', async t => {
+  const { get, id, store } = await fixture(t);
+  assert.equal((await get(`/api/channels/${id}/archive`, false, 'POST')).status, 401);
+  assert.equal((await get(`/api/channels/${id}/archive`, true, 'POST', false)).status, 403);
+  assert.equal((await get(`/api/channels/${id}/archive`)).status, 405);
+  const missing = await get('/api/channels/missing/archive', true, 'POST');
+  assert.equal(missing.status, 404, await missing.text());
+  const hot = await (await get(`/api/channels/${id}/messages`)).json();
+  const archived = await get(`/api/channels/${id}/archive`, true, 'POST');
+  assert.equal(archived.status, 200); assert.equal((await archived.json()).archived, true);
+  assert.equal((await get(`/api/channels/${id}/messages?before=${hot.nextCursor}`)).status, 409);
+  const cold = await (await get(`/api/channels/${id}/messages`)).json();
+  assert.equal(cold.messages.length, 50); assert.equal(cold.total, 70); assert.ok(cold.archive.id); assert.equal(cold.archiveActions, true);
+  assert.ok(!JSON.stringify(cold).includes('private-proposal-token')); assert.deepEqual(cold.messages, hot.messages);
+  const channel = await (await get(`/api/channels/${id}`)).json();
+  assert.ok(!JSON.stringify(channel).includes('private-proposal-token'));
+  const readOnly = await get(`/api/channels/${id}/messages`, true, 'POST');
+  assert.equal(readOnly.status, 409); assert.equal((await readOnly.json()).error.code, 'conversation_archived');
+  assert.equal((await get(`/api/channels/${id}/messages/${id}-0/retry`, true, 'POST')).status, 409);
+  assert.equal((await get(`/api/channels/${id}/activations`, true, 'POST')).status, 409);
+  assert.equal((await store.searchMessages('hello', { channelId: id })).length, 0);
+  const restored = await get(`/api/channels/${id}/unarchive`, true, 'POST');
+  assert.equal(restored.status, 200); assert.equal((await restored.json()).archived, false);
+  assert.equal((await store.searchMessages('hello', { channelId: id })).length, 50);
+});
+
+for (const action of ['archive', 'unarchive']) test(`a disconnected ${action} after durable commit still refreshes another real SSE client`, { timeout: 20_000 }, async t => {
+  const { get, store, id } = await fixture(t);
+  if (action === 'unarchive') assert.equal((await get(`/api/channels/${id}/archive`, true, 'POST')).status, 200);
+  const subscription = new AbortController(), caller = new AbortController();
+  const response = await get(`/api/subscribe?kind=channel&id=${id}`, true, 'GET', true, subscription.signal);
+  assert.equal(response.status, 200); const reader = response.body.getReader(); let buffered = '';
+  const until = async predicate => {
+    for (;;) {
+      let end;
+      while ((end = buffered.indexOf('\n\n')) >= 0) {
+        const frame = buffered.slice(0, end); buffered = buffered.slice(end + 2);
+        const json = frame.split('\n').find(line => line.startsWith('data: '));
+        if (json && predicate(JSON.parse(json.slice(6)))) return;
+      }
+      const chunk = await reader.read(); if (chunk.done) throw Error('Subscription ended before committed change');
+      buffered += new TextDecoder().decode(chunk.value);
+    }
+  };
+  try {
+    await until(value => Boolean(value.state?.selectedChannel));
+    const archive = store.archiveConversation.bind(store);
+    store.archiveConversation = (channelId, kind, options) => archive(channelId, kind, { ...options, async workerCheckpoint(phase) {
+      if (phase !== 'archive_database_committed') return;
+      caller.abort();
+      if (!options.signal.aborted) await Promise.race([
+        new Promise(resolve => options.signal.addEventListener('abort', resolve, { once: true })),
+        delay(3000).then(() => { throw Error('HTTP disconnect did not cancel native work'); }),
+      ]);
+    } });
+    await assert.rejects(get(`/api/channels/${id}/${action}`, true, 'POST', true, caller.signal), { name: 'AbortError' });
+    await Promise.race([until(value => {
+      const channel = (value.patch?.state ?? value.state)?.selectedChannel;
+      return channel && Boolean(channel.messagePage?.archive) === (action === 'archive');
+    }), delay(8000).then(() => { throw Error('No committed channel notification'); })]);
+    assert.equal((await store.readChannelHeader(id)).status === 'archived', action === 'archive');
+  } finally { subscription.abort(); await reader.cancel().catch(() => {}); }
+});
+
+test('damaged cold page errors are controlled and do not disable other conversation queries', async t => {
+  const { get, id, other, config } = await fixture(t);
+  const archived = await (await get(`/api/channels/${id}/archive`, true, 'POST')).json();
+  const root = archiveDirectory(databasePath(config.chatStatePath));
+  const manifest = JSON.parse(await readFile(path.join(root, `${archived.archiveId}.manifest.json`), 'utf8'));
+  const file = path.join(root, manifest.file), bytes = await readFile(file);
+  const block = manifest.blocks.find(block => block.kind === 'message'); bytes[block.offset + Math.floor(block.bytes / 2)] ^= 1;
+  await writeFile(file, bytes);
+  const response = await get(`/api/channels/${id}/messages`); assert.equal(response.status, 422);
+  const body = await response.text(); assert.equal(JSON.parse(body).error.code, 'archive_invalid');
+  assert.ok(!body.includes('private-proposal-token')); assert.ok(!body.includes(config.chatStatePath));
+  assert.equal((await get(`/api/channels/${other}/messages`)).status, 200);
 });
 
 test('page cursors survive edits/appends and explicitly reject changed ordering', async t => {

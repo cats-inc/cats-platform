@@ -1,6 +1,7 @@
 import type {
   ChatState,
 } from '../../api/contracts.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import type {
   RoomRoutingState,
   RoomWakeReason,
@@ -117,6 +118,7 @@ export async function ensureTargetSession(
   now: Date,
   options: EnsureTargetSessionOptions = {},
 ): Promise<EnsureTargetSessionResult> {
+  assertConversationWritable(requireChannel(state, channelId));
   const nowIso = now.toISOString();
   const wakeTrigger = options.wakeTrigger ?? 'route_target';
   const wakeReason = options.wakeReason ?? 'room_default';

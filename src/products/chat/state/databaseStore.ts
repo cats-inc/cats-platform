@@ -31,6 +31,11 @@ import { maintainConversationArchives as maintainArchives, performConversationAr
   type ConversationArchiveOptions, type ConversationArchiveHost } from './database/archiveCoordinator.js';
 import { ConversationArchiveError, type ArchiveAction, type ConversationArchiveJob } from './database/archiveJobs.js';
 import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
+import { conversationArchive } from './database/archiveAssets.js';
+import { readArchivePage, type ArchivePageRequest, type ArchivePageResult } from './database/archiveRead.js';
+import { archivePlacementBasis, MAX_ARCHIVE_PLACEMENTS, type ArchivePlacementBasis } from './database/archivePlacement.js';
+import { decodeMessageCursor, encodeMessageCursor } from './messageCursor.js';
+import { MessageCursorExpiredError, type MessagePresentationPlacement } from '../shared/transcript.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
@@ -40,6 +45,9 @@ export interface DatabaseStoreOptions extends StorageHooks {
   snapshotMaintenance?: { initialDelayMs?: number; intervalMs?: number };
   /** Private scheduler timing seam for isolated archive cleanup checks. */
   archiveMaintenance?: { retryDelayMs?: number };
+  /** Private read fault seam; never selected from an HTTP request. */
+  archiveReadCheckpoint?(phase: 'captured' | 'proof_prepared' | 'page_read'): void | Promise<void>;
+  archiveReadWorkerCheckpoint?(phase: string): void | Promise<void>;
 }
 
 class MutationFailure extends Error {
@@ -68,6 +76,7 @@ export class DatabaseChatStore implements ChatStore {
   private archiveCleanupTimer?: ReturnType<typeof setTimeout>;
   private archiveCleanupNotBefore = 0;
   private archiveCleanupAgain = false;
+  private archiveReadCache = new Map<string, { placements?: MessagePresentationPlacement[]; pending?: Promise<ArchivePageResult> }>();
 
   constructor(filePath: string, private readonly options: DatabaseStoreOptions = {}) {
     this.filePath = path.resolve(filePath);
@@ -200,7 +209,7 @@ export class DatabaseChatStore implements ChatStore {
   }
 
   async readPresentation(channelId?: string): Promise<ChatPresentationSnapshot> {
-    return this.run(async (session, envelope) => {
+    return this.withMessageWindow(channelId, DEFAULT_MESSAGE_PAGE_SIZE, undefined, (session, envelope, selected) => {
       if (session.database.meta('transcript_repair_form') !== '1') throw new ProfileStorageError('presentation_pending',
         'Conversation read models need startup preparation before they can be served.');
       const headers = session.conversations.headers();
@@ -208,12 +217,8 @@ export class DatabaseChatStore implements ChatStore {
       const facts = session.conversations.presentationFacts();
       if (headers.some(header => !facts.has(header.id))) throw new ProfileStorageError('presentation_pending',
         'Conversation read models need startup preparation before they can be served.');
-      const id = channelId ?? envelope.chat.selectedChannelId;
-      const header = headers.find(channel => channel.id === id);
-      const page = header ? session.conversations.page(id) : null;
       return { metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() },
-        headers, selected: header && page ? { channel: { ...header, messages: page.messages }, page,
-          placements: session.conversations.presentationPlacements(envelopeCore(envelope), id, page, true) } : null,
+        headers, selected,
         core: structuredClone(envelopeCore(envelope)),
         awaitingReplyChannelIds: [...facts].filter(([id, awaiting]) => awaiting && !archivedIds.has(id)).map(([id]) => id) };
     });
@@ -229,6 +234,10 @@ export class DatabaseChatStore implements ChatStore {
 
   async readChannel(id: string): Promise<ChatChannelState | null> {
     return this.run(async session => session.conversations.channel(id));
+  }
+
+  async readChannelHeader(id: string): Promise<Omit<ChatChannelState, 'messages'> | null> {
+    return this.run(async session => session.conversations.header(id));
   }
 
   async readChannelState(id: string): Promise<ChatState> {
@@ -286,17 +295,121 @@ export class DatabaseChatStore implements ChatStore {
   }
 
   async readMessagePage(id: string, limit = 50, before?: string): Promise<MessagePage> {
-    return this.run(async session => session.conversations.page(id, limit, before));
+    return (await this.readMessageWindow(id, limit, before)).page;
   }
 
   async readMessageWindow(id: string, limit = 50, before?: string): Promise<ChatMessageWindow> {
-    return this.run(async (session, envelope) => {
-      const page = session.conversations.page(id, limit, before);
-      const header = session.conversations.header(id)!;
-      return { page, channel: { ...header, messages: page.messages }, core: structuredClone(envelopeCore(envelope)),
-        placements: session.conversations.presentationPlacements(envelopeCore(envelope), id, page, before === undefined),
-        metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() } };
+    return this.withMessageWindow(id, limit, before, (_session, _envelope, window) => {
+      if (!window) throw new ConversationArchiveError('archive_missing');
+      return window;
     });
+  }
+
+  private async withMessageWindow<T>(channelId: string | undefined, limit: number, before: string | undefined,
+    build: (session: OpenProfile, envelope: StorageEnvelope, window: ChatMessageWindow | null) => T): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try { return await this.messageWindowAttempt(channelId, limit, before, build); }
+      catch (error) { if (channelId !== undefined || attempt > 0 || !(error instanceof MessageCursorExpiredError)) throw error; }
+    }
+  }
+
+  private async messageWindowAttempt<T>(channelId: string | undefined, limit: number, before: string | undefined,
+    build: (session: OpenProfile, envelope: StorageEnvelope, window: ChatMessageWindow | null) => T): Promise<T> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new RangeError('Invalid conversation page limit');
+    const window = (session: OpenProfile, envelope: StorageEnvelope, id: string, page: MessagePage,
+      placements = session.conversations.presentationPlacements(envelopeCore(envelope), id, page, before === undefined)): ChatMessageWindow => ({
+      page: { ...page, archiveActions: true }, channel: { ...session.conversations.header(id)!, messages: page.messages },
+      core: structuredClone(envelopeCore(envelope)), placements,
+      metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() },
+    });
+    const capture = await this.run(async (session, envelope) => {
+      const id = channelId ?? envelope.chat.selectedChannelId;
+      if (!session.conversations.header(id)) return { result: build(session, envelope, null) };
+      const archive = conversationArchive(session.database, id);
+      if (!archive) return { result: build(session, envelope, window(session, envelope, id, session.conversations.page(id, limit, before))) };
+      if (this.resetContext.getStore()?.active) throw new ConversationArchiveError('archive_busy');
+      const cursor = before === undefined ? null : decodeMessageCursor(before, id);
+      const row = session.database.get('select order_revision, content_revision from channels where id = ?', id)!;
+      if (cursor && cursor.order !== Number(row.order_revision)) throw new MessageCursorExpiredError();
+      if (cursor && cursor.before > archive.messageCount) throw new RangeError('Invalid conversation page cursor');
+      const basis = archivePlacementBasis(envelopeCore(envelope), id);
+      return { cold: { profile: this.filePath, ownerLeaseToken: session.leaseToken, channelId: id,
+        archiveId: archive.archiveId, manifestDigest: archive.manifestDigest, orderRevision: String(row.order_revision),
+        before: cursor?.before ?? archive.messageCount, limit }, archive, basis,
+        cacheKey: canonicalDigest([1, envelope.storage.installationId, archive.archiveId, archive.manifestDigest, basis]),
+        installationId: envelope.storage.installationId, contentRevision: row.content_revision,
+        historyRevision: session.database.meta(`channel_history:${id}`) ?? '0' };
+    });
+    if ('result' in capture) return capture.result!;
+    const signal = AbortSignal.any([this.maintenanceSignal, this.archiveAbort.signal]);
+    await this.options.archiveReadCheckpoint?.('captured');
+    let result: ArchivePageResult;
+    try { result = await this.coldPage(capture.cold, capture.cacheKey, capture.basis, signal); }
+    catch (error) {
+      if (error instanceof ConversationArchiveError && !['archive_cancelled', 'archive_busy'].includes(error.code)) {
+        await this.run(async (session, envelope) => {
+          const id = capture.cold.channelId;
+          if ((channelId === undefined && envelope.chat.selectedChannelId !== id)
+            || envelope.storage.installationId !== capture.installationId) throw new MessageCursorExpiredError();
+          const row = session.database.get('select order_revision, content_revision from channels where id = ?', id);
+          if (!row) throw new ConversationArchiveError('archive_missing');
+          const archive = conversationArchive(session.database, id);
+          if (!archive || archive.archiveId !== capture.archive.archiveId || archive.manifestDigest !== capture.archive.manifestDigest
+            || row.content_revision !== capture.contentRevision || String(row.order_revision) !== capture.cold.orderRevision
+            || (session.database.meta(`channel_history:${id}`) ?? '0') !== capture.historyRevision) throw new MessageCursorExpiredError();
+        }, signal);
+        if (error.code === 'archive_changed') throw new MessageCursorExpiredError();
+      }
+      throw error;
+    }
+    await this.options.archiveReadCheckpoint?.('page_read');
+    return this.run(async (session, envelope) => {
+      const id = capture.cold.channelId, archive = conversationArchive(session.database, id);
+      const row = session.database.get('select order_revision, content_revision from channels where id = ?', id);
+      if ((channelId === undefined && envelope.chat.selectedChannelId !== id)
+        || envelope.storage.installationId !== capture.installationId) throw new MessageCursorExpiredError();
+      if (!row) return build(session, envelope, null);
+      if (!archive || archive.archiveId !== capture.archive.archiveId || archive.manifestDigest !== capture.archive.manifestDigest
+        || (channelId === undefined && envelope.chat.selectedChannelId !== id)
+        || envelope.storage.installationId !== capture.installationId || row.content_revision !== capture.contentRevision
+        || String(row.order_revision) !== capture.cold.orderRevision
+        || (session.database.meta(`channel_history:${id}`) ?? '0') !== capture.historyRevision) throw new MessageCursorExpiredError();
+      const page: MessagePage = { messages: result.messages, total: result.total, orderRevision: capture.cold.orderRevision,
+        historyRevision: capture.historyRevision, nextCursor: result.nextPosition === null ? null
+          : encodeMessageCursor(id, Number(capture.cold.orderRevision), result.nextPosition),
+        archive: { id: archive.archiveId, createdAt: archive.createdAt } };
+      return build(session, envelope, window(session, envelope, id, page, result.placements));
+    }, signal);
+  }
+
+  private async coldPage(request: ArchivePageRequest, key: string, basis: ArchivePlacementBasis[], signal: AbortSignal): Promise<ArchivePageResult> {
+    const read = (input: ArchivePageRequest) => readArchivePage(input, signal, this.options.archiveReadWorkerCheckpoint);
+    if (basis.length === 0) return read(request);
+    const cached = this.archiveReadCache.get(key);
+    if (cached) {
+      this.archiveReadCache.delete(key); this.archiveReadCache.set(key, cached);
+      const placements = cached.placements ?? (await cached.pending!).placements;
+      return { ...await read(request), placements };
+    }
+    while (this.archiveReadCache.size >= 32) {
+      const oldest = [...this.archiveReadCache].find(([, entry]) => !entry.pending);
+      if (!oldest) throw new ConversationArchiveError('archive_busy');
+      this.archiveReadCache.delete(oldest[0]);
+    }
+    const entry: { placements?: MessagePresentationPlacement[]; pending?: Promise<ArchivePageResult> } = {
+      pending: read({ ...request, basis }),
+    };
+    this.archiveReadCache.set(key, entry);
+    try {
+      const result = await entry.pending!;
+      entry.pending = undefined; entry.placements = result.placements;
+      let count = [...this.archiveReadCache.values()].reduce((sum, value) => sum + (value.placements?.length ?? 0), 0);
+      for (const [id, value] of this.archiveReadCache) if (count > MAX_ARCHIVE_PLACEMENTS && id !== key && !value.pending) {
+        count -= value.placements?.length ?? 0; this.archiveReadCache.delete(id);
+      }
+      await this.options.archiveReadCheckpoint?.('proof_prepared');
+      return result;
+    } catch (error) { if (this.archiveReadCache.get(key) === entry) this.archiveReadCache.delete(key); throw error; }
   }
 
   async searchMessages(query: string, options: { channelId?: string; limit?: number } = {}): Promise<MessageSearchHit[]> {
@@ -391,6 +504,7 @@ export class DatabaseChatStore implements ChatStore {
     if (this.archiveCleanupTimer) clearTimeout(this.archiveCleanupTimer);
     this.archiveCleanupAgain = false;
     this.maintenanceAbort.abort();
+    this.archiveReadCache.clear();
     await this.stopSnapshotMaintenance();
     await closeStateMaintenanceWorkers(databasePath(this.filePath));
     if (!this.session && this.pending === 0) { this.closed = true; return; }
@@ -422,6 +536,7 @@ export class DatabaseChatStore implements ChatStore {
       await assertProfileOffline(this.filePath);
       await remove();
       this.abandonedArchiveJobs.clear();
+      this.archiveReadCache.clear();
       this.archiveAbort = new AbortController();
     });
   }
@@ -502,6 +617,9 @@ export class DatabaseChatStore implements ChatStore {
         for (const id of affected) {
           const segment = records.get(id); const channelId = segment?.metadata.channelId;
           if (!segment || typeof channelId !== 'string' || invalidated.has(channelId) || session.conversations.position(channelId) === null) continue;
+          if (conversationArchive(session.database, channelId)) {
+            session.database.setMeta(`channel_history:${channelId}`, randomUUID()); invalidated.add(channelId); continue;
+          }
           const page = session.conversations.page(channelId);
           const proof = session.conversations.presentationPlacements({ ...core, segments: [segment] }, channelId, page, true, true)[0];
           const anchor = proof?.responseMessageId ?? proof?.anchorMessageId;

@@ -70,9 +70,9 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   guards and self-contained asset snapshots/paired restore are implemented. Schema 5 adds
   verified background SQL staging. Native archive/unarchive, live-lease reservations,
   target/asset CAS, kill/restart recovery, owner-deletion cleanup/retry and live-profile CLI
-  commands are implemented. Pending: authenticated product actions, bounded cold transcript
-  presentation and Desktop controls/acceptance. Do not mark FR-15 complete on backend/CLI
-  checks alone.
+  commands are implemented. Authenticated product actions and bounded native cold transcript
+  presentation now preserve current-Core placement/privacy and recover commit/transport races.
+  Pending: Desktop controls/acceptance. Do not mark FR-15 complete on backend/CLI/API checks alone.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -162,7 +162,10 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Native archive/unarchive checkpoint: fixed product worker/reaper, schema-5 verified SQL staging, target/asset CAS, independent native connection leases, parent-kill/close/reset recovery and proof-bound owner-deletion GC/retry implemented. The Node archive/schema/restore/maintenance/reset matrix passed **79/79** before the last scheduler retry case; final cancellation/GC deltas passed **3/3** (overlapping counts). Four real owner-death cases passed in that matrix after correcting the Windows test child's import preload to a file URL. The Electron matrix's final terminal summary was not retained; no aggregate pass is claimed for that invocation. |
 | 2026-11-12 | Final affected store/scoped/presentation/snapshot/CLI consumers passed **87/87 Node**, including the actual shipped Electron CLI case. Split outputs and fixtures typechecked. Actual bundled maintenance, paired coordinator and complete CLI passed **3/3**, each probing both Node and Electron; the CLI also unarchives/rearchives and compares complete raw messages. Independent read-only reviews resolved asset publication/replacement races, compact-choice preservation, terminal reservation withdrawal under zero lock deadlines and automatic cleanup retry; no remaining P1/P2 was reported in those deltas. Product archive API/UI, full live/cross-product acceptance, post-port measurements and hosted three-OS CI remain pending. |
 
-*Created and last updated: 2026-11-12*
+| 2026-11-13 | Authenticated archive/unarchive and native cold readback implemented. The Node archive/page/query/presentation checkpoint passed **59/59** before the final disconnect/activation fixes. Final focused deltas passed **9/10**, with only a test's mistaken Core-active versus Chat-configured comparison; correcting it to the original Core status passed **1/1**. The final actual Electron matrix passed **68/68**, including three pre/queued-disconnect cases, zero Runtime access on archived activation/wake/send/retry, committed cancellation/Core notification, real HTTP disconnect with a second SSE client, bounded readers/queue cancellation, source/default-selection races, current-Core redaction/deletion and SQL metadata-type parity. Counts overlap and are not additive. |
+| 2026-11-13 | Server build and fixture typecheck passed; affected session lifecycle consumers passed **17/17** after targeted typed-test bundling. Actual bundled worker/coordinator/complete CLI/cold-read probes passed **4/4**, each under both Node and Electron. Cold pages with a cached placement proof continue reading an unaffected member after another member is deliberately damaged; the damaged requested member fails safely without disabling other conversations. Independent read-only API and cold-read reviews report no remaining blocking P1/P2 after concurrency, capture/default selection, SQL parity, pre-auth disconnect, Runtime activation and committed-notification fixes. These are local Windows focused checks, not full application acceptance or hosted three-OS CI. Desktop archive controls and remaining full-port gates stay open. |
+
+*Created: 2026-11-12. Last updated: 2026-11-13.*
 
 ## Next integration checkpoint
 
@@ -172,7 +175,7 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: authenticated archive/unarchive actions, bounded cold readback and Desktop controls;
+Next work: Desktop archive/unarchive controls and read-only transcript acceptance;
 finish isolated live/active-parallel/cross-product paging/search acceptance, remaining scoped
 REST consumers, and the still-unexplained Electron multi-process startup failure (retain the
 new safe diagnostic evidence); then post-port

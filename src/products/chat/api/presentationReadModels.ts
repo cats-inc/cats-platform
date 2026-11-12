@@ -12,8 +12,9 @@ export function presentationChat(snapshot: ChatPresentationSnapshot): ChatState 
 
 export function presentedChannelWindow(snapshot: ChatMessageWindow): TranscriptChannelView {
   const state: ChatState = { ...snapshot.metadata, channels: [snapshot.channel] };
-  const { total, nextCursor, orderRevision, historyRevision } = snapshot.page;
-  const messagePage = { total, nextCursor, orderRevision, historyRevision, windowCount: snapshot.page.messages.length };
+  const { total, nextCursor, orderRevision, historyRevision, archive, archiveActions } = snapshot.page;
+  const messagePage = { total, nextCursor, orderRevision, historyRevision, windowCount: snapshot.page.messages.length,
+    ...(archive ? { archive } : {}), ...(archiveActions ? { archiveActions } : {}) };
   const view: TranscriptChannelView = { ...buildChannelView(state, snapshot.channel), messagePage };
   return enrichConversationPresentation(view, snapshot.core, snapshot.placements);
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import type { CollaborationPreparationBudget } from '../../shared/collaborationPreparationBudget.js';
 import type { CollaborationReport } from '../orchestratorCollaboration.js';
 import { isCollaborationTool } from '../orchestratorCollaboration.js';
@@ -6199,6 +6200,7 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
+  assertConversationWritable(channelBeforeMessage);
   if (options.enableCollaborationExecution && options.chatStore && options.transport !== 'telegram') {
     const choice = resolveCollaborationOwnerChoice(state, channelId, payload.choiceResponse);
     const intent = choice ? readCollaborationIntent(await options.chatStore.readCore(),
@@ -7280,6 +7282,7 @@ export async function beginChannelMessageRetryDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channel = requireChannel(nextState, channelId);
+  assertConversationWritable(channel);
   let core: CatsCoreState | undefined;
   let sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
   const sourceWasMissingFromTranscript = !sourceMessage;

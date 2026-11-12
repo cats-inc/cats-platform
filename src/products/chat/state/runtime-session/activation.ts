@@ -3,7 +3,8 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { setChannelRoomRouting } from '../model/index.js';
+import { requireChannel, setChannelRoomRouting } from '../model/index.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import { ensureTargetSession } from './wake.js';
 import {
   buildChannelActivationResult,
@@ -23,6 +24,7 @@ export async function activateChannelSessions(
   now: Date = new Date(),
   options: RuntimeSessionRoutingOptions = {},
 ): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
+  assertConversationWritable(requireChannel(state, channelId));
   let nextState = state;
   const results: ChannelActivationResult[] = [];
   const activationTargets = resolveChannelActivationTargets(nextState, channelId);
@@ -66,6 +68,7 @@ export async function wakeChannelEntryParticipant(
   state: ChatState;
   result: ChannelActivationResult | null;
 }> {
+  assertConversationWritable(requireChannel(state, channelId));
   const roomEntryTarget = resolveRoomEntryWakeTarget({
     state,
     channelId,

@@ -265,8 +265,31 @@ database. It may atomically repair an already-backed-up original with the same a
 unknown edits are refused and interruption admits only original/already-published target bytes.
 Offline check validates cold evidence too. CLI archive/unarchive coordinate with live profile
 users without starting server/auth/Runtime. The fixed native archive entrypoint ships beside
-both split and bundled sidecars. Authenticated product actions, bounded cold transcript
-readback and Desktop controls remain pending; backend/CLI checks alone do not satisfy FR-15.
+both split and bundled sidecars. Authenticated POST archive/unarchive actions now use the
+existing auth/CSRF and channel mutation gates. Already-disconnected/queued-aborted requests
+never start an action. A cancellation after the exact durable target revision/digest committed
+recovers its handoff and Core notifications; terminal attempts notify other channel subscribers
+even when the initiating transport disappears. Send/retry/activation/wake reject archived
+channels before Runtime access. Desktop controls and full product acceptance remain pending;
+backend/CLI/API checks alone do not satisfy FR-15.
+
+Cold transcript windows now use the same bounded page API/read models. A native reader
+verifies the manifest/header and requested gzip members outside the serving lock. Current
+channel order generations identify cursors; archive counts identify totals. A short capture
+and final recheck bind installation, cold pointer, target content/history and the effective
+default selection. Source removal/change takes precedence over a misleading corruption error.
+Default-selection races receive one bounded retry; explicit removed targets return missing.
+
+Core display content always comes from current Core, never old archive contexts. Missing or
+changed placement bases trigger a coalesced native full-stream proof preparation, cached by
+installation/archive/manifest/basis. The streaming timestamp-anchor preparation also handles
+non-monotonic times and off-page responses/rejections. Subsequent pages read only their own
+message members. The in-process cache retains at most 32 entries/100,000 ready proofs; excess
+candidate counts are refused explicitly. Cold Core/lane edits conservatively advance history
+tokens. Per-profile readers share two worker slots across store instances, with 64 cancellable
+queued reads and bounded wait/native deadlines. Close/reset abort queued/native reads. Raw
+and enriched API pages retain the existing proposal redaction and expose only a browser-safe
+archive descriptor/action capability, not archive paths or frozen Core contents.
 
 ## Dependencies and open validation
 
@@ -274,4 +297,4 @@ readback and Desktop controls remain pending; backend/CLI checks alone do not sa
 - Platform's Electron 41 and the actual Platform Node process; existing auth and routing.
 - Three-platform CI and isolated real-data byte comparison must be evidenced before release.
 
-*Created and last updated: 2026-11-12*
+*Created: 2026-11-12. Last updated: 2026-11-13.*

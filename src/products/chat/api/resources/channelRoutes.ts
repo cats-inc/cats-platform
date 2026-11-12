@@ -1,4 +1,5 @@
 import { handleMessagePage } from './messageQueryRoutes.js';
+import { routeConversationArchive, assertChannelWritable } from './conversationArchiveRoutes.js';
 import { queueCatlasConversationTitle } from '../catlasTitles.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { enrichConversationPresentation } from '../../shared/conversationPresentationView.js';
@@ -571,6 +572,7 @@ async function handleRestSendMessage(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
+    await assertChannelWritable(context, channelId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
     // SPEC-133 DC-05: only the server marks a send from the local owner, which desktop
     // control treats as owner-present; a client-supplied value never survives.
@@ -687,6 +689,7 @@ async function handleRestRetryMessage(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
+    await assertChannelWritable(context, channelId);
     let acknowledgedDispatch:
       | Awaited<ReturnType<typeof beginChannelMessageRetryDispatch>>
       | null = null;
@@ -817,6 +820,7 @@ async function handleRestRetryMessage(
 export async function routeChatChannelResourceApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (await routeConversationArchive(context)) return true;
   if (await routeChatChannelAttachmentResourceApi(context)) {
     return true;
   }

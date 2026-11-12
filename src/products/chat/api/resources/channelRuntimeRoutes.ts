@@ -43,6 +43,7 @@ import {
   publishChannelLifecycleEvents,
 } from './channelActivation.js';
 import { recordCompanionOwnerPresence } from '../../companion/life/presence.js';
+import { assertChannelWritable } from './conversationArchiveRoutes.js';
 
 function buildStreamSpeakerPayload(input: {
   containerId?: string | null;
@@ -419,6 +420,7 @@ async function handleRestActivateChannel(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
+    await assertChannelWritable(context, channelId);
     await context.dependencies.mutationGate.run(channelId, async () => {
       const activation = await activateChannelLocked(context.dependencies, channelId);
       const now = new Date(activation.startedAt);

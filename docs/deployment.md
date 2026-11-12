@@ -101,8 +101,17 @@ reject a target with active execution or a concurrent target edit, preserve unre
 and leave the hot/cold authoritative copy recoverable on interruption. Compression and full
 proofs run in killable native workers. Archive makes the transcript cold/read-only; unarchive
 verifies it before restoring hot rows and search entries. Owner deletion is a separate action.
-Product UI/API controls are still pending; do not assume an older Desktop can display a cold
-transcript. Close/reset cancels and reaps workers before removing profile files.
+Authenticated product clients can POST `/api/channels/:id/archive` or
+`/api/channels/:id/unarchive` through the ordinary auth/CSRF gate. Existing message/channel/
+subscription queries return bounded cold windows with an archive descriptor; raw and display
+pages redact private proposal payloads. Cold history is absent from the hot search index until
+explicit restore. Send/retry/session activation refuse archived targets before Runtime access.
+Terminal attempts notify subscriptions even when the initiating client disconnects after a
+durable commit. Controlled archive conflicts are 409, missing targets 404, damaged cold proofs
+422 and unavailable operations 503; cancellation is 408 when a response remains connected.
+Native readers have bounded per-profile concurrency and cancellable queue/deadlines.
+Desktop UI controls and complete acceptance are still pending; do not assume an older Desktop
+can display a cold transcript. Close/reset cancels and reaps workers before removing profile files.
 
 Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
 failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native

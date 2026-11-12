@@ -13,6 +13,9 @@ import { DatabaseChatStore } from '../build/server/products/chat/state/databaseS
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { canonicalDigest } from '../build/server/platform/persistence/state-db/canonicalJson.js';
 import { archivedProfile } from './fixtures/desktop-state-archive.mjs';
+import { createProfileLease } from '../build/server/products/chat/state/database/profileLease.js';
+import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
+import { withProfileLock } from '../build/server/platform/persistence/state-db/profileLock.js';
 
 test('bundled maintenance reaper/native entries run under Node and shipped Electron with attribution', { timeout: 60_000 }, async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-bundled-db-worker-'));
@@ -107,4 +110,40 @@ test('the complete bundled CLI checks, snapshots, restores and exports in Node a
     const archivedOutput = path.join(root, `${name}-archived-export.json`); await run(['export', '--output', archivedOutput]);
     assert.deepEqual(JSON.parse(await readFile(archivedOutput, 'utf8')).chat.channels[0].messages, channel.messages);
   }
+});
+
+test('bundled cold paging and one-time placement preparation run in actual Node and Electron', { timeout: 60_000 }, async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cats-bundled-cold-page-'));
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10 }));
+  const packageRoot = path.join(root, 'package'); await mkdir(packageRoot);
+  await writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ type: 'module' }));
+  await symlink(path.resolve('node_modules'), path.join(packageRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  const outfile = path.join(packageRoot, 'build/server/index.js');
+  await bundleServer({ entryPoint: fileURLToPath(new URL('../build/server/products/chat/state/database/archiveRead.js', import.meta.url)), outfile });
+  const f = await archivedProfile(t);
+  const lease = await withProfileLock(f.file, () => createProfileLease(f.file));
+  try {
+    const database = openStateDatabase({ file: databasePath(f.file), mode: 'reader' });
+    let order;
+    try { order = String(database.get('select order_revision from channels where id = ?', f.channelId).order_revision); }
+    finally { database.close(); }
+    const request = { profile: f.file, ownerLeaseToken: lease.token, channelId: f.channelId, archiveId: f.archiveId,
+      manifestDigest: f.manifestDigest, orderRevision: order, limit: 50, before: 401 };
+    const probe = path.join(packageRoot, 'probe.mjs');
+    await writeFile(probe, `import { readArchivePage } from ${JSON.stringify(pathToFileURL(outfile).href)};
+      const input = JSON.parse(process.argv[2]), signal = AbortSignal.timeout(15_000);
+      const first = await readArchivePage({ ...input, basis: [{ key: JSON.stringify(['test-turn', null]), turnId: 'test-turn',
+        targetStateId: null, targetId: null, createdAt: '2030-01-01T00:00:00.000Z', live: false }] }, signal);
+      const next = await readArchivePage({ ...input, before: first.nextPosition }, signal);
+      console.log(JSON.stringify({ total: first.total, first: first.messages[0].id, next: next.messages.at(-1).id,
+        anchor: first.placements[0].anchorMessageId, electron: process.versions.electron ?? null }));`);
+    for (const [name, command] of [['node', process.execPath], ['electron', createRequire(import.meta.url)('electron')]]) {
+      const result = await promisify(execFile)(command, [probe, JSON.stringify(request)], {
+        cwd: packageRoot, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true, timeout: 20_000,
+      });
+      const value = JSON.parse(result.stdout);
+      assert.equal(value.total, 401); assert.equal(value.first, 'cold-351'); assert.equal(value.next, 'cold-350');
+      assert.equal(value.anchor, 'cold-400'); if (name === 'electron') assert.ok(value.electron);
+    }
+  } finally { await withProfileLock(f.file, lease); }
 });

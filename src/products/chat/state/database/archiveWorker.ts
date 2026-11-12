@@ -14,7 +14,6 @@ import { conversationTerm, indexText, INDEX_FORM } from '../../../../platform/pe
 import type { StateMaintenanceJob } from '../../../../platform/persistence/state-db/stateMaintenance.js';
 import type { ChatChannelState, ChatMessage } from '../../api/contracts.js';
 import { MetadataCommit } from './metadataCommit.js';
-import { ConversationDatabase } from './conversationStore.js';
 import { writeColdArchive, readColdArchiveManifest, type ColdArchiveContext } from './coldArchive.js';
 import { archiveDirectory, conversationArchive, openConversationArchive } from './archiveAssets.js';
 import { createProfileLease, profileLeaseAlive, type ProfileLease } from './profileLease.js';
@@ -23,18 +22,23 @@ import { archiveJobDirectory, archiveJobLock, assertArchiveIdle, assertArchiveJo
   jobFromRow, validateArchiveJob, validatePreparedArchive, type ArchiveWorkerPayload,
   type ConversationArchiveJob, type PreparedConversationArchive } from './archiveJobs.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import type { ArchivePageRequest, ArchivePageResult } from './archiveRead.js';
+import { prepareArchivePlacements } from './archivePlacement.js';
 
 const samePath = (a: string, b: string) => storageNameIdentity(path.resolve(a)) === storageNameIdentity(path.resolve(b));
 const changed = () => new ConversationArchiveError('archive_changed');
 let observe = false;
 async function checkpoint(phase: string): Promise<void> {
   if (!observe) return;
+  await report(phase);
+}
+async function report(value: unknown): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const listener = (message: unknown) => {
       if ((message as { type?: unknown })?.type === 'continue') { process.removeListener('message', listener); resolve(); }
     };
     process.on('message', listener);
-    process.send?.({ progress: phase }, error => {
+    process.send?.({ progress: value }, error => {
       if (error) { process.removeListener('message', listener); reject(new ConversationArchiveError('archive_failed')); }
     });
   });
@@ -76,6 +80,24 @@ function* contexts(database: StateDatabase, envelope: ReturnType<typeof sourceEn
         || value.channelId === job.channelId || value.sourceChannelId === job.channelId
         || value.metadata?.channelId === job.channelId)) yield { family: `core.${family}`, value };
   }
+}
+
+async function readPage(request: ArchivePageRequest): Promise<ArchivePageResult> {
+  if (!Number.isSafeInteger(request.limit) || request.limit < 1 || request.limit > 200
+    || !Number.isSafeInteger(request.before) || request.before < 0) throw new ConversationArchiveError('archive_invalid');
+  const database = openStateDatabase({ file: databasePath(request.profile), mode: 'reader' });
+  try {
+    const archive = conversationArchive(database, request.channelId);
+    const row = database.get('select order_revision from channels where id = ?', request.channelId);
+    if (!archive || archive.archiveId !== request.archiveId || archive.manifestDigest !== request.manifestDigest
+      || String(row?.order_revision) !== request.orderRevision) throw changed();
+    const reader = openConversationArchive(database, archive);
+    try {
+      await checkpoint('read_opened');
+      const placements = request.basis?.length ? prepareArchivePlacements(reader.messages(), request.basis) : [];
+      return { ...reader.readPage(request.limit, request.before), placements };
+    } finally { reader.close(); }
+  } finally { database.close(); }
 }
 async function assertDirectory(directory: string): Promise<void> {
   const stat = await lstat(directory);
@@ -300,6 +322,7 @@ async function commit(profile: string, payload: Extract<ArchiveWorkerPayload, { 
         // hides archived channels and restores this same fact on unarchive.
         metadata.stage(next, payload.previousDigest);
       }, { durable: true });
+      await checkpoint('archive_database_committed');
     } finally { database.close(); }
   });
 }
@@ -438,7 +461,7 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
       const payload = request.payload as ArchiveWorkerPayload;
       if (!payload || typeof payload.profile !== 'string' || !samePath(request.file, databasePath(payload.profile))) throw new ConversationArchiveError('archive_invalid');
       observe = payload.observe === true;
-      const parentToken = payload.phase === 'cleanup' ? payload.ownerLeaseToken : validateArchiveJob(payload.job).leaseToken;
+      const parentToken = payload.phase === 'cleanup' || payload.phase === 'read' ? payload.ownerLeaseToken : validateArchiveJob(payload.job).leaseToken;
       const admit = async () => {
         if (!await profileLeaseAlive(payload.profile, parentToken)) throw changed();
         return createProfileLease(payload.profile, undefined, parentToken);
@@ -449,6 +472,7 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
       releaseLease = payload.phase === 'commit' ? await admit()
         : await withProfileLock(payload.profile, admit, { timeoutMs: payload.phase === 'cleanup' ? 0 : undefined });
       if (payload.phase === 'cleanup') await cleanup(payload.profile, payload.job ? validateArchiveJob(payload.job) : undefined);
+      else if (payload.phase === 'read') { await checkpoint('read_started'); await report({ page: await readPage(payload) }); }
       else {
         const job = validateArchiveJob(payload.job);
         if (payload.phase === 'prepare') await prepare(payload.profile, job);

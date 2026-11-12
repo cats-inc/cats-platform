@@ -96,6 +96,21 @@ test('native archive and unarchive preserve complete history/groups/Core while s
   assert.deepEqual(fatal, []);
 });
 
+for (const action of ['archive', 'restore']) test(`cancellation after native ${action} commit recovers metadata and notifies Core exactly once`, async t => {
+  const f = await fixture(t); if (action === 'restore') await f.store.archiveConversation(f.channelId, 'archive');
+  const states = []; const unsubscribe = f.store.subscribeCore(core => states.push(core));
+  const controller = new AbortController();
+  try {
+    await assert.rejects(f.store.archiveConversation(f.channelId, action, { signal: controller.signal,
+      workerCheckpoint(phase) { if (phase === 'archive_database_committed') controller.abort(); } }), { code: 'archive_cancelled' });
+    assert.equal(states.length, 1);
+    assert.equal(states[0].conversations.find(record => record.id === buildChatConversationId(f.channelId)).status,
+      action === 'archive' ? 'archived' : f.core.conversations.find(record => record.id === buildChatConversationId(f.channelId)).status);
+    assert.equal(f.inspect(db => db.get('select count(*) as n from metadata_handoff').n), 0);
+    assert.equal((await f.store.readChannelHeader(f.channelId)).status, action === 'archive' ? 'archived' : f.chat.channels[0].status);
+  } finally { unsubscribe(); }
+});
+
 test('an edit to the target after native preparation refuses publication and retains the newest hot data', async t => {
   const { file, store, channelId, chat, fatal, inspect } = await fixture(t);
   await assert.rejects(store.archiveConversation(channelId, 'archive', { checkpoint: async phase => {
