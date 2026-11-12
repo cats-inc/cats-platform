@@ -93,9 +93,11 @@ see Compatibility and recovery.
   - Cat images: an AI profile post under 0.16.0 can record image edit or
     video jobs in `platform/state/multimedia/cat-images.sqlite`, which 0.15.x
     refuses (`media_state_invalid`), so its Cat images then stop working.
-    Going back after such a post also copies that file from the backup taken
-    before the upgrade and deletes its `-wal` and `-shm` files; the jobs
-    recorded after the upgrade are lost.
+    0.16.0 keeps no copy of that file. Going back after such a post needs the
+    operator's own copy from before the upgrade: with Desktop stopped, copy it
+    back and delete its `-wal` and `-shm` files; jobs recorded after the
+    upgrade are lost. Without such a copy, 0.15.x cannot use Cat images on
+    that profile.
   - A Cat cover set before the upgrade moves to a 0.16.0 media link that
     0.15.x cannot show, so it looks broken there until it is set again; 0.16.0
     keeps the original picture in the window's local storage under
@@ -116,10 +118,13 @@ see Compatibility and recovery.
     original bytes and 0.15.1 runs on them. The copies were deleted.
   - Runtime's bundle starts laid out as Desktop ships it, without FFmpeg
     (cats-runtime#222).
-  - The Platform sidecar laid out with exactly the Windows stage's packages
-    loads the server and resizes a PNG with sharp (cats-platform#456). The
-    macOS universal merge rule for sharp's single-architecture natives is
-    covered by a test and review; this release's macOS build is its first run.
+  - sharp's natives for all three OSes, prepared at sharp's exact versions,
+    pass staging's version and binary checks. The sidecar `node_modules` laid
+    out as staging lays it out and passed through electron-builder's own
+    resource filter keeps sharp whole, and on Windows x64 it loads the server
+    and resizes a PNG with sharp (cats-platform#456). The macOS universal
+    merge rule for sharp's single-architecture natives is covered by a test
+    and review; this release's macOS build is its first run.
   - Each change passed its own review and CI. Live Claude Code and Codex
     acceptance of the conversation tools did not run (PLAN-134 Phase 7,
     PLAN-135 Phase 6).
