@@ -11,6 +11,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { MessagePage, MessageSearchHit, MessageSearchOptions } from '../shared/transcript.js';
 import { materializedMessagePage } from './materializedMessagePage.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
+import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
 
 import type { ChatState, ChatChannelState } from '../api/contracts.js';
 import type { ChannelProjectionMetadata } from './core-projection/scoped.js';
@@ -94,6 +95,8 @@ export interface ChatStore extends CoreStore {
   readMessageWindow?(id: string, limit?: number, before?: string): Promise<ChatMessageWindow>;
   /** Synchronous existing-channel mutation; optional metadata is limited to derived memory. */
   updateChannel?(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null>;
+  /** Explicit product maintenance. Production performs compression/index preparation off-thread. */
+  archiveConversation?(id: string, action: 'archive' | 'restore', options?: { signal?: AbortSignal }): Promise<ConversationArchiveResult>;
 }
 
 export type ChatMetadata = Omit<ChatState, 'channels'>;

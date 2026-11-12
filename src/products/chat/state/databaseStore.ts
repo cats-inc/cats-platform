@@ -27,6 +27,10 @@ import { prepareTranscriptState } from './transcriptRepairs.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
 import { DEFAULT_MESSAGE_PAGE_SIZE } from '../shared/transcript.js';
 import { ProfileSnapshotMaintenance } from './database/profileSnapshots.js';
+import { maintainConversationArchives as maintainArchives, performConversationArchive,
+  type ConversationArchiveOptions, type ConversationArchiveHost } from './database/archiveCoordinator.js';
+import { ConversationArchiveError, type ArchiveAction, type ConversationArchiveJob } from './database/archiveJobs.js';
+import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
@@ -34,6 +38,8 @@ export interface DatabaseStoreOptions extends StorageHooks {
   runtimeDataDir?: string | null;
   /** Private timing seam for isolated lifecycle checks. */
   snapshotMaintenance?: { initialDelayMs?: number; intervalMs?: number };
+  /** Private scheduler timing seam for isolated archive cleanup checks. */
+  archiveMaintenance?: { retryDelayMs?: number };
 }
 
 class MutationFailure extends Error {
@@ -56,6 +62,12 @@ export class DatabaseChatStore implements ChatStore {
   private readonly maintenanceSignal: AbortSignal;
   private snapshots?: ProfileSnapshotMaintenance;
   private maintenanceRequested = false;
+  private archiveCleanup?: Promise<void>;
+  private archiveAbort = new AbortController();
+  private abandonedArchiveJobs = new Map<string, ConversationArchiveJob>();
+  private archiveCleanupTimer?: ReturnType<typeof setTimeout>;
+  private archiveCleanupNotBefore = 0;
+  private archiveCleanupAgain = false;
 
   constructor(filePath: string, private readonly options: DatabaseStoreOptions = {}) {
     this.filePath = path.resolve(filePath);
@@ -71,6 +83,81 @@ export class DatabaseChatStore implements ChatStore {
     if (this.closing || this.closed || this.maintenanceSignal.aborted) return;
     this.maintenanceRequested = true;
     this.resumeSnapshotMaintenance();
+    void this.maintainConversationArchives().catch(() => {
+      if (!this.maintenanceSignal.aborted) process.stderr.write('[cats-platform-store] archive_cleanup_deferred\n');
+    });
+  }
+
+  private archiveHost(): ConversationArchiveHost {
+    return { profile: this.filePath, signal: AbortSignal.any([this.maintenanceSignal, this.archiveAbort.signal]),
+      run: (work, signal) => this.resetContext.exit(() => this.run(async (session, envelope) => {
+        if (this.abandonedArchiveJobs.size) {
+          const abandoned = [...this.abandonedArchiveJobs.values()];
+          session.database.transaction(() => {
+            for (const job of abandoned) session.database.run('delete from conversation_archive_jobs where token = ? and lease_token = ?', job.token, job.leaseToken);
+          }, { durable: true });
+          for (const job of abandoned) this.abandonedArchiveJobs.delete(job.token);
+        }
+        return work(session, envelope);
+      }, signal)),
+      abandon: job => {
+        // A zero/expired lock deadline may defer withdrawal. Remember only jobs
+        // whose native producer has already closed, and retry under the next
+        // archive/maintenance lock even while this connection lease remains alive.
+        this.abandonedArchiveJobs.set(job.token, job);
+        return this.resetContext.exit(() => withProfileLock(this.filePath, async () => {
+        if (this.closing || this.closed || this.maintenanceSignal.aborted || this.archiveAbort.signal.aborted) return;
+        this.session?.database.transaction(() => {
+          this.session!.database.run('delete from conversation_archive_jobs where token = ? and lease_token = ?', job.token, job.leaseToken);
+        }, { durable: true });
+        this.abandonedArchiveJobs.delete(job.token);
+      }, { signal: this.maintenanceSignal, timeoutMs: this.options.lockTimeoutMs })); },
+      recovered: async (session, previous) => {
+        await this.options.checkpoint?.('database_committed');
+        session.envelope = await session.metadata.recover();
+        const core = envelopeCore(session.envelope);
+        if (hasSubstantiveCoreChange(envelopeCore(previous), core)) for (const listener of this.listeners) {
+          try { listener(structuredClone(core)); } catch { process.stderr.write('[cats-platform-store] core_listener_failed\n'); }
+        }
+      } };
+  }
+
+  async maintainConversationArchives(options?: ConversationArchiveOptions): Promise<void> {
+    if (this.closing || this.closed || this.maintenanceSignal.aborted) return;
+    if (this.archiveCleanup) return this.archiveCleanup;
+    this.archiveCleanupNotBefore = Date.now() + (this.options.archiveMaintenance?.retryDelayMs ?? 60_000);
+    const epoch = this.archiveAbort;
+    return this.archiveCleanup = maintainArchives(this.archiveHost(), options).catch(error => {
+      if (epoch === this.archiveAbort && !epoch.signal.aborted) this.archiveCleanupAgain = true;
+      throw error;
+    }).finally(() => {
+      this.archiveCleanup = undefined;
+      if (this.archiveCleanupAgain) { this.archiveCleanupAgain = false; this.queueArchiveCleanup(); }
+    });
+  }
+
+  private queueArchiveCleanup(): void {
+    if (!this.maintenanceRequested || this.closing || this.closed || this.maintenanceSignal.aborted || this.archiveAbort.signal.aborted) return;
+    if (this.archiveCleanup) { this.archiveCleanupAgain = true; return; }
+    if (this.archiveCleanupTimer) return;
+    this.archiveCleanupTimer = setTimeout(() => {
+      this.archiveCleanupTimer = undefined;
+      void this.maintainConversationArchives().catch(() => {
+        if (!this.maintenanceSignal.aborted) process.stderr.write('[cats-platform-store] archive_cleanup_deferred\n');
+      });
+    }, Math.max(0, this.archiveCleanupNotBefore - Date.now()));
+    this.archiveCleanupTimer.unref();
+  }
+
+  async archiveConversation(id: string, action: ArchiveAction, options?: ConversationArchiveOptions): Promise<ConversationArchiveResult> {
+    if (this.resetContext.getStore()?.active) throw new ConversationArchiveError('archive_busy');
+    const signal = options?.signal ? AbortSignal.any([this.maintenanceSignal, this.archiveAbort.signal, options.signal])
+      : AbortSignal.any([this.maintenanceSignal, this.archiveAbort.signal]);
+    const epoch = this.archiveAbort;
+    try {
+      await this.run(async session => this.prepareSearch(session), signal);
+      return await performConversationArchive(this.archiveHost(), id, action, options);
+    } finally { if (epoch === this.archiveAbort) this.queueArchiveCleanup(); }
   }
 
   private resumeSnapshotMaintenance(): void {
@@ -117,6 +204,7 @@ export class DatabaseChatStore implements ChatStore {
       if (session.database.meta('transcript_repair_form') !== '1') throw new ProfileStorageError('presentation_pending',
         'Conversation read models need startup preparation before they can be served.');
       const headers = session.conversations.headers();
+      const archivedIds = new Set(headers.filter(header => header.status === 'archived').map(header => header.id));
       const facts = session.conversations.presentationFacts();
       if (headers.some(header => !facts.has(header.id))) throw new ProfileStorageError('presentation_pending',
         'Conversation read models need startup preparation before they can be served.');
@@ -127,7 +215,7 @@ export class DatabaseChatStore implements ChatStore {
         headers, selected: header && page ? { channel: { ...header, messages: page.messages }, page,
           placements: session.conversations.presentationPlacements(envelopeCore(envelope), id, page, true) } : null,
         core: structuredClone(envelopeCore(envelope)),
-        awaitingReplyChannelIds: [...facts].filter(([, awaiting]) => awaiting).map(([id]) => id) };
+        awaitingReplyChannelIds: [...facts].filter(([id, awaiting]) => awaiting && !archivedIds.has(id)).map(([id]) => id) };
     });
   }
 
@@ -300,6 +388,8 @@ export class DatabaseChatStore implements ChatStore {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closing = true;
+    if (this.archiveCleanupTimer) clearTimeout(this.archiveCleanupTimer);
+    this.archiveCleanupAgain = false;
     this.maintenanceAbort.abort();
     await this.stopSnapshotMaintenance();
     await closeStateMaintenanceWorkers(databasePath(this.filePath));
@@ -322,12 +412,17 @@ export class DatabaseChatStore implements ChatStore {
       // The profile lock keeps other writers out while connections close and the
       // reset removes the old identity. The next request can initialize fresh state.
       await this.stopSnapshotMaintenance();
+      if (this.archiveCleanupTimer) clearTimeout(this.archiveCleanupTimer);
+      this.archiveCleanupTimer = undefined; this.archiveCleanupAgain = false;
+      this.archiveAbort.abort();
       await closeStateMaintenanceWorkers(databasePath(this.filePath));
       session.database.close();
       await session.releaseLease();
       this.session = null;
       await assertProfileOffline(this.filePath);
       await remove();
+      this.abandonedArchiveJobs.clear();
+      this.archiveAbort = new AbortController();
     });
   }
 
@@ -429,6 +524,7 @@ export class DatabaseChatStore implements ChatStore {
         catch { process.stderr.write('[cats-platform-store] core_listener_failed\n'); }
       }
     }
+    if (session.database.get("select archive_id from conversation_archives where state = 'delete_pending' limit 1")) this.queueArchiveCleanup();
   }
 
   private async run<T>(work: (session: OpenProfile, envelope: StorageEnvelope) => Promise<T>, signal?: AbortSignal): Promise<T> {
@@ -495,7 +591,7 @@ function validateScopedMetadata(previous: ChatMetadata, next: ChatMetadata, chan
  * caller mistakes remain ordinary operation failures; corruption/I/O stops the host.
  */
 function classifyStorageFailure(error: unknown, phase: 'lock' | 'opening' | 'recovering' | 'operation'): ProfileStorageError | undefined {
-  if (error instanceof ProfileStorageError) return ['closed', 'profile_busy'].includes(error.code) ? undefined : error;
+  if (error instanceof ProfileStorageError) return ['closed', 'profile_busy', 'conversation_archived', 'archive_invalid'].includes(error.code) ? undefined : error;
   if (error instanceof SyntaxError) return new ProfileStorageError('invalid_database_record',
     'A database record contains invalid JSON; preserve the state and restore a verified backup.');
   const code = (error as NodeJS.ErrnoException | null)?.code;

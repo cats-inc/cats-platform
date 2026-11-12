@@ -233,12 +233,23 @@ Full logical exports/global reads hydrate cold records, and ordinary mutations r
 to an archived transcript without reinserting it. Automatic transcript repairs stop for archived
 channels, including startup preparation and ordinary writes. Owner deletion leaves a cleanup tombstone.
 
-The remaining archive actions must prepare/compress/verify off the serving thread, reserving the
-target with its live profile lease. Before the durable metadata handoff removes hot messages
-and FTS entries, compare the target content revision, reject active execution, and promote the
-verified immutable assets. Unrelated conversation writes must not invalidate preparation.
-Interrupted jobs require recoverable reservations; abandoned work cannot delete another
-process's open stage. Explicit restore verifies the cold payload before rehydrating hot rows.
+Schema 5 adds an operational message/index staging table for background unarchive preparation.
+The final transaction copies prepared rows/FTS terms using SQL instead of decompressing and
+indexing a transcript under the serving lock. Prepared-job digests are invalidated by staging
+edits; reservations notice hot-row/header changes as well as ordinary product writes. These
+rows are not a second logical transcript and are excluded from export. Schema-4 cold profiles
+must receive the same self-contained verified backup before transactional upgrade.
+
+Archive/unarchive now prepare, compress and verify in a fixed native worker behind the
+nonblocking maintenance reaper. Reservations bind the target content revision and parent
+profile lease; native connections have their own leases. Preparation promotes verified
+immutable assets outside the serving lock. The final short coordinated operation rechecks
+the target, latest active execution and prepared file identities before the durable SQL/
+metadata handoff removes hot messages/FTS or rehydrates verified SQL staging rows. Sibling
+writes do not invalidate preparation. Cancellation, close, reset and parent death reap native
+work before cleanup; stale reservations and unfinished stages are recoverable. Failed cleanup
+is retried by the owner scheduler without requiring another user write. Explicit owner deletion
+uses catalog tombstones and proof-bound asset removal; unknown replacement bytes are preserved.
 Archive keeps channel/group/Core relationships; owner deletion removes the pointer and uses
 recoverable asset cleanup, without resurrecting archived content. Full logical exports/global
 snapshots must hydrate cold history; ordinary mutations must not silently reinsert it.
@@ -252,9 +263,10 @@ Windows filename aliases share the existing profile identity rules. Restore pres
 current assets even when damaged, stages verified replacements and publishes them before the
 database. It may atomically repair an already-backed-up original with the same archive ID;
 unknown edits are refused and interruption admits only original/already-published target bytes.
-Offline check validates cold evidence too. Product controls, authenticated archive operations,
-archive/unarchive transaction recovery, cleanup workers and native archive packaging remain
-unimplemented; the persistence/backup tests alone do not satisfy FR-15.
+Offline check validates cold evidence too. CLI archive/unarchive coordinate with live profile
+users without starting server/auth/Runtime. The fixed native archive entrypoint ships beside
+both split and bundled sidecars. Authenticated product actions, bounded cold transcript
+readback and Desktop controls remain pending; backend/CLI checks alone do not satisfy FR-15.
 
 ## Dependencies and open validation
 

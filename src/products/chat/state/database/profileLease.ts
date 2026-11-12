@@ -15,7 +15,7 @@ export interface ProfileLease {
  * These helpers are always called under the profile operation lock.
  */
 export async function createProfileLease(profile: string,
-  prepared?: () => void | Promise<void>): Promise<ProfileLease> {
+  prepared?: () => void | Promise<void>, parentToken?: string): Promise<ProfileLease> {
   const directory = `${profile}.leases`;
   await mkdir(directory, { recursive: true });
   const stat = await lstat(directory);
@@ -23,7 +23,9 @@ export async function createProfileLease(profile: string,
   await reclaimLeaseTemporaries(directory);
   const token = randomUUID();
   const file = path.join(directory, `${token}.json`);
-  const text = JSON.stringify({ pid: process.pid, host: hostname(), token });
+  if (parentToken !== undefined && !/^[a-f0-9-]{36}$/u.test(parentToken)) throw invalid();
+  const text = JSON.stringify({ pid: process.pid, host: hostname(), token,
+    ...(parentToken ? { parentToken, purpose: 'archive-worker' } : {}) });
   await writeDurableFile(file, text, prepared);
   return Object.assign(async () => {
     const bytes = await readOptionalFile(file);
@@ -53,7 +55,7 @@ export async function assertProfileOffline(profile: string, ignoreToken?: string
     const owner = parseJsonRecord(bytes.toString('utf8'));
     if (owner.host !== hostname() || !Number.isSafeInteger(owner.pid) || Number(owner.pid) < 1) throw invalid();
     if (`${owner.token}.json` !== name) throw invalid();
-    if (owner.token === ignoreToken) continue;
+    if (owner.token === ignoreToken || ignoreToken !== undefined && owner.parentToken === ignoreToken && owner.purpose === 'archive-worker') continue;
     let gone = false;
     try { process.kill(Number(owner.pid), 0); }
     catch (error) { gone = (error as NodeJS.ErrnoException).code === 'ESRCH'; }
@@ -61,6 +63,21 @@ export async function assertProfileOffline(profile: string, ignoreToken?: string
       'Close Cats Desktop and every process using this profile before restoring state.');
     await unlink(file);
   }
+}
+
+/** A job belongs to this exact connection lease, not just a possibly reused PID. */
+export async function profileLeaseAlive(profile: string, token: string): Promise<boolean> {
+  if (!/^[a-f0-9-]{36}$/u.test(token)) throw invalid();
+  const directory = `${profile}.leases`;
+  const stat = await lstat(directory).catch(error => { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; });
+  if (!stat) return false;
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw invalid();
+  const bytes = await readOptionalFile(path.join(directory, `${token}.json`));
+  if (!bytes) return false;
+  const owner = parseJsonRecord(bytes.toString('utf8'));
+  if (owner.token !== token || owner.host !== hostname() || !Number.isSafeInteger(owner.pid) || Number(owner.pid) < 1) throw invalid();
+  try { process.kill(Number(owner.pid), 0); return true; }
+  catch (error) { return (error as NodeJS.ErrnoException).code !== 'ESRCH'; }
 }
 
 /** A killed writer can leave a partial durable-file candidate before publishing its lease.

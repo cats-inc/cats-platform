@@ -88,8 +88,21 @@ Restore stages these assets before publishing its database and preserves exact c
 bytes with the rollback copy, including damaged originals. A good backup can repair damaged
 files with the same archive ID. Resume verifies original/already-published digests and refuses
 unknown edits. Background proofs/copies yield between bounded reads and honor cancellation.
-Archive creation and conversation unarchive controls remain under implementation in this
-unreleased candidate; this storage support does not expose them yet.
+The candidate also provides explicit conversation commands that coordinate with live profile
+users (the four offline commands above still require all users to stop):
+
+```text
+cats-platform state archive --channel "conversation-id"
+cats-platform state unarchive --channel "conversation-id"
+```
+
+Use the same `--profile` selection. These commands start no listener or Runtime work. They
+reject a target with active execution or a concurrent target edit, preserve unrelated writes,
+and leave the hot/cold authoritative copy recoverable on interruption. Compression and full
+proofs run in killable native workers. Archive makes the transcript cold/read-only; unarchive
+verifies it before restoring hot rows and search entries. Owner deletion is a separate action.
+Product UI/API controls are still pending; do not assume an older Desktop can display a cold
+transcript. Close/reset cancels and reaps workers before removing profile files.
 
 Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
 failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native

@@ -10,11 +10,11 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
   let native: ChildProcess | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let failure: string | undefined;
-  let outcome: { ok: boolean; code?: string } | undefined;
+  let outcome: { ok: boolean; code?: string; productCode?: string } | undefined;
   let done = false;
   let started = false;
   let parentGone = false;
-  const finish = (response: { ok: boolean; code?: string }) => {
+  const finish = (response: { ok: boolean; code?: string; productCode?: string }) => {
     if (done) return;
     done = true; clearTimeout(timer);
     if (process.connected && !parentGone) {
@@ -33,6 +33,10 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
   process.on('message', (input: unknown) => {
     const message = input as { type?: string; job?: StateMaintenanceJob; timeoutMs?: number; worker?: string } | null;
     if (message?.type === 'cancel') { cancel('cancelled'); return; }
+    if (message?.type === 'continue') {
+      if (native?.connected) native.send({ type: 'continue' }, error => { if (error) cancel('worker_failed'); });
+      return;
+    }
     if (started || done) return;
     started = true;
     try {
@@ -46,13 +50,19 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
       native = fork(fileURLToPath(message.worker ? new URL(message.worker)
         : new URL('./stateMaintenanceNativeWorker.js', import.meta.url)), [], options);
       native.on('message', (response: unknown) => {
-        const value = response as { ok?: unknown; code?: unknown } | null;
+        if (message.job!.kind === 'product' && response && typeof response === 'object' && Object.hasOwn(response, 'progress')) {
+          if (process.connected) process.send?.({ progress: (response as { progress: unknown }).progress });
+          return;
+        }
+        const value = response as { ok?: unknown; code?: unknown; productCode?: unknown } | null;
         outcome = value?.ok === true ? { ok: true } : { ok: false,
-          code: value?.code === 'integrity_check_failed' ? 'integrity_check_failed' : 'worker_failed' };
+          code: value?.code === 'integrity_check_failed' ? 'integrity_check_failed' : 'worker_failed',
+          productCode: message.job!.kind === 'product' && typeof value?.productCode === 'string' && /^[a-z_]{1,64}$/u.test(value.productCode)
+            ? value.productCode : undefined };
       });
       native.once('error', () => { failure ??= 'worker_failed'; });
       native.once('close', code => finish(failure ? { ok: false, code: failure }
-        : code === 0 && outcome?.ok ? outcome : { ok: false, code: outcome?.code ?? 'worker_failed' }));
+        : code === 0 && outcome?.ok ? outcome : { ok: false, code: outcome?.code ?? 'worker_failed', productCode: outcome?.productCode }));
       timer = setTimeout(() => cancel('timeout'), message.timeoutMs);
       native.send(message.job, error => { if (error) cancel('worker_failed'); });
     } catch { if (native) cancel('worker_failed'); else finish({ ok: false, code: 'worker_failed' }); }

@@ -1,6 +1,6 @@
 /** SPEC-144: conversations and parallel groups; settings and Core remain JSON. */
 import { MESSAGE_PRESENTATION_INDEXES } from './messageIndex.js';
-export const STATE_SCHEMA_VERSION = 4;
+export const STATE_SCHEMA_VERSION = 5;
 /** "CPLT", deliberately different from the image ledger and Cats Bot. */
 export const STATE_APPLICATION_ID = 0x43504c54;
 const CHANNEL_CATALOG_SQL = `
@@ -39,6 +39,43 @@ create table conversation_archive_jobs(
   created_at text not null
 ) strict;
 `;
+const ARCHIVE_STAGE_SQL = `
+create index conversation_archives_state on conversation_archives(state, archive_id);
+alter table conversation_archive_jobs add column prepared_digest text not null default '';
+create table conversation_archive_stage(
+  token text not null,
+  channel_id text not null,
+  message_id text not null,
+  position integer not null,
+  created_at text not null,
+  json text not null,
+  terms text not null,
+  primary key(token, position),
+  unique(token, message_id)
+) strict, without rowid;
+-- Invalidate a completed staging proof if anything changes before publication.
+create trigger archive_stage_insert after insert on conversation_archive_stage
+when exists(select 1 from conversation_archive_jobs where token = new.token and prepared_digest != '')
+begin update conversation_archive_jobs set prepared_digest = '' where token = new.token; end;
+create trigger archive_stage_update after update on conversation_archive_stage
+begin update conversation_archive_jobs set prepared_digest = '' where token in (old.token, new.token) and prepared_digest != ''; end;
+create trigger archive_stage_delete after delete on conversation_archive_stage
+begin update conversation_archive_jobs set prepared_digest = '' where token = old.token and prepared_digest != ''; end;
+-- An archive reservation also notices direct row changes, without rewriting a token
+-- for every ordinary streaming update when no archive of that channel is underway.
+create trigger archive_hot_insert after insert on messages
+when exists(select 1 from conversation_archive_jobs where channel_id = new.channel_id and kind = 'archive')
+begin update channels set content_revision = lower(hex(randomblob(16))) where id = new.channel_id; end;
+create trigger archive_hot_update after update on messages
+when exists(select 1 from conversation_archive_jobs where channel_id in (old.channel_id, new.channel_id) and kind = 'archive')
+begin update channels set content_revision = lower(hex(randomblob(16))) where id in (old.channel_id, new.channel_id); end;
+create trigger archive_hot_delete after delete on messages
+when exists(select 1 from conversation_archive_jobs where channel_id = old.channel_id and kind = 'archive')
+begin update channels set content_revision = lower(hex(randomblob(16))) where id = old.channel_id; end;
+create trigger archive_header_update after update of json on channels
+when old.json != new.json and exists(select 1 from conversation_archive_jobs where channel_id = new.id and kind = 'archive')
+begin update channels set content_revision = lower(hex(randomblob(16))) where id = new.id; end;
+`;
 export const STATE_SCHEMA_UPGRADES: Record<number, string> = { 1: `${CHANNEL_CATALOG_SQL}
 insert into channel_catalog(channel_id, position, title, created_at, updated_at, cat_assignments, participant_assignments)
 select id, position, json_extract(json, '$.title'), json_extract(json, '$.createdAt'),
@@ -47,7 +84,7 @@ select id, position, json_extract(json, '$.title'), json_extract(json, '$.create
 `, 2: MESSAGE_PRESENTATION_INDEXES, 3: `
 alter table channels add column content_revision text not null default '';
 update channels set content_revision = lower(hex(randomblob(16)));
-${COLD_ARCHIVES_SQL}` };
+${COLD_ARCHIVES_SQL}`, 4: ARCHIVE_STAGE_SQL };
 
 export const STATE_SCHEMA_SQL = `
 create table meta(key text primary key not null, value text not null) strict, without rowid;
@@ -94,4 +131,5 @@ create table metadata_handoff(
   previous_digest text,
   json text not null
 ) strict;
+${ARCHIVE_STAGE_SQL}
 `;

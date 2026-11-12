@@ -86,6 +86,8 @@ test('the complete bundled CLI checks, snapshots, restores and exports in Node a
   let store = new DatabaseChatStore(file); let expected;
   try { await store.initialize(); expected = await store.logicalDigest(); } finally { await store.close(); }
   for (const [name, command] of [['node', process.execPath], ['electron', createRequire(import.meta.url)('electron')]]) {
+    store = new DatabaseChatStore(file);
+    try { expected = await store.logicalDigest(); } finally { await store.close(); }
     const run = async args => promisify(execFile)(command, [outfile, 'state', ...args, '--profile', file], {
       cwd: packageRoot, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true, timeout: 30_000,
     });
@@ -99,5 +101,10 @@ test('the complete bundled CLI checks, snapshots, restores and exports in Node a
     assert.equal(JSON.parse((await run(['check'])).stdout).result.checked, true);
     const output = path.join(root, `${name}-export.json`); await run(['export', '--output', output]);
     assert.equal(canonicalDigest(JSON.parse(await readFile(output, 'utf8'))), expected);
+    const source = JSON.parse(await readFile(output, 'utf8')), channel = source.chat.channels[0];
+    assert.equal(JSON.parse((await run(['unarchive', '--channel', channel.id])).stdout).result.archived, false);
+    assert.equal(JSON.parse((await run(['archive', '--channel', channel.id])).stdout).result.archived, true);
+    const archivedOutput = path.join(root, `${name}-archived-export.json`); await run(['export', '--output', archivedOutput]);
+    assert.deepEqual(JSON.parse(await readFile(archivedOutput, 'utf8')).chat.channels[0].messages, channel.messages);
   }
 });

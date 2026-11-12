@@ -21,8 +21,12 @@ export async function bundleServer({
     // Keep the SDK's import.meta.url beside its shipped browser.js resource.
     external: ['#cats-app-package'],
   });
-  await Promise.all(['stateMaintenanceWorker.js', 'stateMaintenanceNativeWorker.js'].map(name => build({
-    entryPoints: [resolve(root, 'build/server/platform/persistence/state-db', name)],
+  await Promise.all([
+    ['platform/persistence/state-db', 'stateMaintenanceWorker.js'],
+    ['platform/persistence/state-db', 'stateMaintenanceNativeWorker.js'],
+    ['products/chat/state/database', 'archiveWorker.js'],
+  ].map(([directory, name]) => build({
+    entryPoints: [resolve(root, 'build/server', directory, name)],
     bundle: true,
     outfile: resolve(dirname(outfile), name),
     platform: 'node', target: 'node22', format: 'esm', sourcemap: true, packages: 'external',

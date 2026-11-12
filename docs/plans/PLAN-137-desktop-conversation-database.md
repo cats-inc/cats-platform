@@ -67,10 +67,12 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
   bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
-  guards and self-contained asset snapshots/paired restore are implemented. Pending: native
-  workers/reservation lifecycle and crash recovery, archive/unarchive hot-row transactions,
-  deletion asset cleanup, and product/CLI controls. Do not mark FR-15 complete on these
-  persistence/backup foundations alone.
+  guards and self-contained asset snapshots/paired restore are implemented. Schema 5 adds
+  verified background SQL staging. Native archive/unarchive, live-lease reservations,
+  target/asset CAS, kill/restart recovery, owner-deletion cleanup/retry and live-profile CLI
+  commands are implemented. Pending: authenticated product actions, bounded cold transcript
+  presentation and Desktop controls/acceptance. Do not mark FR-15 complete on backend/CLI
+  checks alone.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -157,6 +159,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Storage checkpoint: **191/192 Node**, zero skipped; the sole failure was the existing actual Electron CLI `state --help` child reaching its unchanged 20-second limit with no output. The same test passed **1/1** in isolation in 9.0 seconds without source/deadline changes; its cause remains unestablished. The corresponding storage matrix excluding that CLI file passed **180/180 Electron**, zero skipped, including actual cold CLI check/export. The complete bundled sidecar CLI passed **1/1**, checking/snapshotting/restoring/exporting a cold profile under both actual hosts with exact linked dependencies. These are local Windows checkpoints, not hosted CI or a full application pass. |
 | 2026-11-12 | Final deltas: archived channels stop automatic transcript repair; an actually repairable assistant/session fixture passes startup/retitle with unchanged cold messages and zero hot rows (**1/1 Node and 1/1 Electron**). Strict JSON encoding now precedes canonical message hashing; cyclic messages remain controlled `invalid_input`, with final codec checks **20/20 in each host**. Affected runtime merge and architecture checks passed **126/126** after correcting the stale pre-extraction helper-location assertion; it now verifies the API adapter delegates/re-exports the central state repair helper and does not compose repair passes. Server build and fixture typecheck passed. Independent read-only reviews have no remaining blocking P1/P2 in these slices. |
 
+| 2026-11-12 | Native archive/unarchive checkpoint: fixed product worker/reaper, schema-5 verified SQL staging, target/asset CAS, independent native connection leases, parent-kill/close/reset recovery and proof-bound owner-deletion GC/retry implemented. The Node archive/schema/restore/maintenance/reset matrix passed **79/79** before the last scheduler retry case; final cancellation/GC deltas passed **3/3** (overlapping counts). Four real owner-death cases passed in that matrix after correcting the Windows test child's import preload to a file URL. The Electron matrix's final terminal summary was not retained; no aggregate pass is claimed for that invocation. |
+| 2026-11-12 | Final affected store/scoped/presentation/snapshot/CLI consumers passed **87/87 Node**, including the actual shipped Electron CLI case. Split outputs and fixtures typechecked. Actual bundled maintenance, paired coordinator and complete CLI passed **3/3**, each probing both Node and Electron; the CLI also unarchives/rearchives and compares complete raw messages. Independent read-only reviews resolved asset publication/replacement races, compact-choice preservation, terminal reservation withdrawal under zero lock deadlines and automatic cleanup retry; no remaining P1/P2 was reported in those deltas. Product archive API/UI, full live/cross-product acceptance, post-port measurements and hosted three-OS CI remain pending. |
+
 *Created and last updated: 2026-11-12*
 
 ## Next integration checkpoint
@@ -167,22 +172,22 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: finish isolated live/active-parallel/cross-product paging/search acceptance;
-remaining scoped REST consumers, and the still-unexplained Electron multi-process startup
-failure (retain the new safe diagnostic evidence); explicit compressed
-archives and their explicit product/operations consumers; then post-port
+Next work: authenticated archive/unarchive actions, bounded cold readback and Desktop controls;
+finish isolated live/active-parallel/cross-product paging/search acceptance, remaining scoped
+REST consumers, and the still-unexplained Electron multi-process startup failure (retain the
+new safe diagnostic evidence); then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
 
-- Next archive action integration: perform native prepare against a read-only SQLite snapshot,
-  admitting exact JSON bytes only when installation/revision/digest agree and no handoff is
-  pending. Defer a capture race; never hold the serving lock through compression. Reserve the
-  target using its content revision and live profile lease token, with a separate per-job lock
-  so stale cleanup cannot delete a worker's stage. Final archive/unarchive applies under the
-  operation lock with target CAS/latest active-execution admission, verified immutable assets
-  before hot-row changes, and the existing durable metadata handoff. Keep these product jobs
-  behind a fixed trusted worker entrypoint/reaper and add split/bundled artifact acceptance.
+- Archive actions now prepare off-thread against a consistent snapshot and use a fixed trusted
+  worker/reaper. Keep compression, full digest proofs and asset copying outside the serving
+  lock; the final operation checks target revision/latest execution and immutable file stat
+  proofs. Native leases outlive service death until connections close. Terminal reservation
+  withdrawal must survive a zero-deadline lock conflict. Cleanup verifies before/after hashing
+  and again under its short try-lock, preserving unknown replacements; failed background GC
+  retries without another write. Product readback must preserve the same privacy/placement
+  rules as hot pages and expose an explicit read-only/restorable state.
 
 - The mounted transcript now consumes `messagePage`/`orderRevision`, loads older pages and
   merges `displayMessages` (falling back to raw `messages` for fixture responses). Retained

@@ -15,6 +15,8 @@ import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { STATE_SCHEMA_VERSION } from '../build/server/platform/persistence/state-db/stateSchema.js';
 import { schemaUpgradeManifestName } from '../build/server/products/chat/state/database/schemaUpgrade.js';
 import { downgradeDatabaseSchema } from './fixtures/desktop-state-schema.mjs';
+import { archivedProfile } from './fixtures/desktop-state-archive.mjs';
+import { verifyArchiveAssets } from '../build/server/products/chat/state/database/archiveAssets.js';
 
 async function fixture(t, pending = false, sourceSchema = 1, basename = 'profile.json') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-schema 升級 '));
@@ -43,7 +45,7 @@ function version(file) {
   try { return database.meta('schema_version'); } finally { database.close(); }
 }
 
-for (const sourceSchema of [1, 2, 3]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
+for (const sourceSchema of [1, 2, 3, 4]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema);
   const metadata = await readFile(file);
   const store = create(); await store.initialize();
@@ -58,6 +60,23 @@ for (const sourceSchema of [1, 2, 3]) test(`schema ${sourceSchema} upgrades only
   try { assert.equal(saved.meta('schema_version'), String(sourceSchema)); } finally { saved.close(); }
 });
 
+test('schema 4 cold profiles receive a standalone asset backup before staging-schema upgrade', async t => {
+  const { file, create, channelId } = await archivedProfile(t);
+  const first = create(), expected = await first.logicalDigest(); await first.close();
+  const raw = new (sqliteDriver().DatabaseSync)(databasePath(file));
+  try { downgradeDatabaseSchema(raw, 4); } finally { raw.close(); }
+  const metadata = await readFile(file), store = create(); await store.initialize();
+  assert.equal(await store.logicalDigest(), expected);
+  assert.equal((await store.readChannel(channelId)).messages.length, 401);
+  const directory = path.join(path.dirname(file), (await readdir(path.dirname(file))).find(name => name.includes('.pre-state-db-schema-4-')));
+  const manifest = JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8'));
+  assert.equal(manifest.sourceSchema, 4); assert.equal(manifest.targetSchema, STATE_SCHEMA_VERSION); assert.equal(manifest.archives.length, 2);
+  assert.deepEqual(await readFile(path.join(directory, path.basename(file))), metadata);
+  const backup = openStateDatabase({ file: databasePath(path.join(directory, path.basename(file))), mode: 'reader' });
+  try { assert.equal(backup.meta('schema_version'), '4'); await verifyArchiveAssets(backup, manifest.archives, undefined, true); }
+  finally { backup.close(); }
+});
+
 test('an interruption after backup leaves schema 1 and retry reuses the verified backup', async t => {
   const { file, create, expected, backups } = await fixture(t);
   await assert.rejects(create({ checkpoint: stage => { if (stage === 'schema_backup_complete') throw Error('paused before upgrade'); } }).initialize(), /paused before upgrade/);
@@ -67,7 +86,7 @@ test('an interruption after backup leaves schema 1 and retry reuses the verified
   assert.equal(await store.logicalDigest(), expected);
 });
 
-for (const sourceSchema of [1, 2, 3]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
+for (const sourceSchema of [1, 2, 3, 4]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema, 'manifest.json');
   const bytes = await readFile(file); const store = create(); await store.initialize();
   assert.equal(await store.logicalDigest(), expected); assert.equal(version(file), String(STATE_SCHEMA_VERSION));

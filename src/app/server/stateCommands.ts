@@ -8,6 +8,8 @@ import { openStateDatabase, StateDatabaseError, type StateDatabase } from '../..
 import { closeStateMaintenanceWorkers, runStateMaintenance, StateMaintenanceError } from '../../platform/persistence/state-db/stateMaintenance.js';
 import { logicalDatabaseSnapshot } from '../../products/chat/state/database/logicalExport.js';
 import { verifyArchiveAssets } from '../../products/chat/state/database/archiveAssets.js';
+import { DatabaseChatStore } from '../../products/chat/state/databaseStore.js';
+import { ConversationArchiveError } from '../../products/chat/state/database/archiveJobs.js';
 import { MetadataCommit } from '../../products/chat/state/database/metadataCommit.js';
 import { assertProfileOffline } from '../../products/chat/state/database/profileLease.js';
 import { maintainProfileSnapshot } from '../../products/chat/state/database/profileSnapshots.js';
@@ -16,7 +18,7 @@ import { databasePath, parseJsonRecord, ProfileStorageError, readOptionalFile, s
   type StorageEnvelope } from '../../products/chat/state/database/profileFormat.js';
 import { resolveDefaultPlatformDir, resolvePlatformStatePath } from '../../shared/platformPaths.js';
 
-interface StateCommand { command: 'check' | 'snapshot' | 'export' | 'restore'; profile?: string; output?: string; manifest?: string; timeoutMs: number; }
+interface StateCommand { command: 'check' | 'snapshot' | 'export' | 'restore' | 'archive' | 'unarchive'; profile?: string; output?: string; manifest?: string; channel?: string; timeoutMs: number; }
 class StateCommandUsageError extends Error {}
 
 export function getStateHelpText(): string {
@@ -27,31 +29,36 @@ export function getStateHelpText(): string {
     '  snapshot                      Publish a verified paired snapshot; keep seven valid pairs',
     '  export --output <new-file>    Stream a complete deterministic logical JSON export',
     '  restore --manifest <file>     Restore a paired snapshot or the previous JSON minor', '',
+    'Conversation commands (coordinate with live users of the same profile):',
+    '  archive --channel <id>        Verify cold storage, then remove inactive conversation hot rows',
+    '  unarchive --channel <id>      Verify and restore a conversation and its search index', '',
     'Options:',
     '  --profile <file>              Exact profile; defaults to CATS_PLATFORM_DIR/state/chat-state.local.json',
     '  --timeout-ms <1..600000>       Native maintenance deadline (default 300000)',
     '  -h, --help', '',
     'Check/export never initialize, migrate or repair state. Export requires a new output file.',
     'Restore backs up current files first; after interruption, rerun with the same manifest.',
+    'Archive commands refuse active work; target changes during preparation require a retry.',
   ].join('\n');
 }
 
 function parseStateCommand(args: string[]): StateCommand | null {
   if (args.includes('--help') || args.includes('-h')) return null;
   const command = args[0];
-  if (!['check', 'snapshot', 'export', 'restore'].includes(command ?? '')) throw new StateCommandUsageError();
+  if (!['check', 'snapshot', 'export', 'restore', 'archive', 'unarchive'].includes(command ?? '')) throw new StateCommandUsageError();
   const values = new Map<string, string>();
   for (let i = 1; i < args.length; i++) {
     const flag = args[i]!; const value = args[++i];
-    if (!['--profile', '--output', '--manifest', '--timeout-ms'].includes(flag) || values.has(flag)
+    if (!['--profile', '--output', '--manifest', '--timeout-ms', '--channel'].includes(flag) || values.has(flag)
       || !value?.trim() || value.startsWith('-')) throw new StateCommandUsageError();
     values.set(flag, value);
   }
   const timeout = values.get('--timeout-ms') ?? '300000';
   if (!/^[1-9][0-9]*$/u.test(timeout) || Number(timeout) > 600_000
-    || (command === 'export') !== values.has('--output') || (command === 'restore') !== values.has('--manifest')) throw new StateCommandUsageError();
+    || (command === 'export') !== values.has('--output') || (command === 'restore') !== values.has('--manifest')
+    || ['archive', 'unarchive'].includes(command) !== values.has('--channel')) throw new StateCommandUsageError();
   return { command: command as StateCommand['command'], profile: values.get('--profile'), output: values.get('--output'),
-    manifest: values.get('--manifest'), timeoutMs: Number(timeout) };
+    manifest: values.get('--manifest'), channel: values.get('--channel'), timeoutMs: Number(timeout) };
 }
 
 /** Routed before ordinary startup/auth provisioning. No HTTP listener, Runtime
@@ -81,7 +88,13 @@ export async function runStateCommand(args: string[], env: NodeJS.ProcessEnv = p
       if (!await readOptionalFile(profile) || !(await lstat(databasePath(profile)).catch(error => {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error;
       }))) throw new ProfileStorageError('not_initialized', 'No initialized conversation database exists at this profile.');
-      result = await withProfileLock(profile, async () => {
+      if (options.command === 'archive' || options.command === 'unarchive') {
+        const store = new DatabaseChatStore(profile, { signal: abort.signal });
+        try {
+          result = await store.archiveConversation(options.channel!, options.command === 'archive' ? 'archive' : 'restore',
+            { signal: abort.signal, timeoutMs: options.timeoutMs });
+        } finally { await store.close(); }
+      } else result = await withProfileLock(profile, async () => {
         await assertProfileOffline(profile); abort.signal.throwIfAborted();
         if (await readOptionalFile(`${profile}.state-db-restore.json`)
           || await readOptionalFile(path.join(path.dirname(profile), 'platform-data-reset.pending.json'))) throw new ProfileStorageError('recovery_pending', 'Complete pending state recovery before using offline commands.');
@@ -114,10 +127,13 @@ export async function runStateCommand(args: string[], env: NodeJS.ProcessEnv = p
     process.stdout.write(`${JSON.stringify({ command: options.command, ok: true, profile, result })}\n`);
     return 0;
   } catch (error) {
-    const code = abort.signal.aborted ? 'cancelled' : error instanceof ProfileStorageError ? error.code
+    const code = abort.signal.aborted ? 'cancelled' : error instanceof ProfileStorageError || error instanceof ConversationArchiveError ? error.code
       : error instanceof StateDatabaseError || error instanceof StateMaintenanceError ? error.code
       : (error as { code?: unknown })?.code === 'profile_lock_timeout' ? 'profile_busy' : 'state_operation_failed';
-    const message = code === 'profile_busy' ? 'Close Cats Desktop and every process using this profile, then retry.'
+    const message = code === 'archive_active' ? 'Wait for this conversation to finish its active work, then retry.'
+      : code === 'archive_busy' || code === 'archive_changed' ? 'The conversation is busy or changed during preparation. Retry when it is idle.'
+      : code === 'archive_invalid' ? 'The cold archive did not verify. Preserve its files and restore a complete verified backup.'
+      : code === 'profile_busy' ? 'Close Cats Desktop and every process using this profile, then retry.'
       : code === 'not_initialized' || code === 'missing' ? 'No initialized database was found. Start the matching Cats build to initialize or migrate this profile first.'
         : code === 'unsupported_sqlite' ? 'Use the supported Cats Desktop runtime; this host lacks required SQLite capabilities.'
           : code === 'newer_schema' || code === 'newer_profile' ? 'Use the matching or newer Cats build to read this state.'
