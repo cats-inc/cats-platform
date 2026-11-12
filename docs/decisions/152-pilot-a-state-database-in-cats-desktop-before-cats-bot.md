@@ -6,12 +6,17 @@
 
 ## Status
 
-Proposed, 2026-11-12. Documentation only; nothing in Desktop changes yet.
+Accepted for implementation, 2026-11-12. The owner subsequently instructed: prepare the
+SPEC/PLAN and complete the Desktop port. [SPEC-144](../specs/SPEC-144-desktop-conversation-database.md)
+and [PLAN-137](../plans/PLAN-137-desktop-conversation-database.md) record that authorization,
+the implementation contracts and actual progress. This does not authorize a release or
+version bump. The live Desktop store has not switched yet.
 
 - The owner decided the order and why (D1 to D3 below).
-- Everything about how Desktop would do it is a proposal (P1 to P9) for the owner to accept
-  or change. Phase 0 measures first, and its report goes to the owner before any design is
-  written.
+- The original P1 to P9 proposals below remain the design rationale. The execution scope
+  and refinements are now in SPEC-144. The content-free
+  [Phase 0 report](../research/2026-11-12-desktop-state-database-baseline.md) exceeds the
+  proposed gate at 1x in both local Node and Electron; larger capacity limits are explicit.
 
 ## Context
 
@@ -254,5 +259,5 @@ For comparison in Phase 0; the conditions matter:
 
 ---
 
-*Decision proposed: 2026-11-12*
-*Decision makers: the owner (D1 to D3); the proposals await the owner*
+*Decision proposed and implementation authorized: 2026-11-12*
+*Decision maker: the owner; implementation progress is recorded in PLAN-137*

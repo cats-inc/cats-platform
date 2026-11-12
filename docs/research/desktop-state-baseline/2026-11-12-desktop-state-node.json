@@ -1,0 +1,42 @@
+{
+  "measuredAt": "2026-11-12T04:36:15.621Z",
+  "runtime": {
+    "node": "26.13.0",
+    "electron": null
+  },
+  "workload": {
+    "channelsAt1x": 40,
+    "messagesPerChannel": 300,
+    "bodyCharacters": 160,
+    "workflowTurnsPerChannel": 5,
+    "parallelGroupSize": 4,
+    "participantsPerChannel": 2
+  },
+  "freeMemoryBytes": 3249287168,
+  "scales": [
+    {
+      "scale": 1,
+      "channels": 40,
+      "messages": 12000,
+      "bytes": 6185576,
+      "samples": 3,
+      "changeP50Ms": 1481.7167,
+      "changeP95Ms": 1656.0688,
+      "coldReadMs": 1537.6164,
+      "normalizationMs": 434.1171999999999,
+      "peakRssBytes": 625344512
+    },
+    {
+      "scale": 10,
+      "channels": 400,
+      "messages": 120000,
+      "bytes": 62081666,
+      "samples": 3,
+      "changeP50Ms": 19229.64390000001,
+      "changeP95Ms": 19669.75379999999,
+      "coldReadMs": 20708.7535,
+      "normalizationMs": 8687.751,
+      "peakRssBytes": 3905196032
+    }
+  ]
+}

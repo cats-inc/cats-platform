@@ -1,0 +1,27 @@
+{
+  "measuredAt": "2026-11-12T04:42:48.557Z",
+  "runtime": {
+    "node": "26.13.0",
+    "electron": null
+  },
+  "workload": {
+    "channelsAt1x": 40,
+    "messagesPerChannel": 300,
+    "bodyCharacters": 160,
+    "workflowTurnsPerChannel": 5,
+    "parallelGroupSize": 4,
+    "participantsPerChannel": 2
+  },
+  "freeMemoryBytes": 4094099456,
+  "scales": [
+    {
+      "scale": 100,
+      "channels": 4000,
+      "messages": 1200000,
+      "failed": true,
+      "reason": "resource_capacity",
+      "memoryBudgetMiB": 2342,
+      "estimatedPeakMiB": 60000
+    }
+  ]
+}

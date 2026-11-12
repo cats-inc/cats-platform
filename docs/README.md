@@ -1,5 +1,10 @@
 # Documentation Index
 
+[Desktop conversation database](specs/SPEC-144-desktop-conversation-database.md) implements
+ADR-152 under the owner's 2026-11-12 port authorization ([PLAN-137](plans/PLAN-137-desktop-conversation-database.md)).
+The [Phase 0 baseline](research/2026-11-12-desktop-state-database-baseline.md) exceeds the proposed
+gate at 1x. Adapter/query/coordination work is in progress; live startup still uses JSON.
+
 [Cat profile posts, media creation and sharing](specs/SPEC-143-cat-profile-posts-media-and-sharing.md)
 implements a Facebook-style Directory feed, agent post lifecycle, source/avatar/cover
 creation, Companion publication and share links through existing ingress. The local PoC and

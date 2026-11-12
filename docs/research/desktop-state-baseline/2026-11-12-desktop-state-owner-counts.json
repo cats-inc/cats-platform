@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-11-12T04:54:47.976Z",
+  "runtime": {
+    "node": "26.13.0",
+    "electron": null
+  },
+  "workload": {
+    "channelsAt1x": 40,
+    "messagesPerChannel": 300,
+    "bodyCharacters": 160,
+    "workflowTurnsPerChannel": 5,
+    "parallelGroupSize": 4,
+    "participantsPerChannel": 2
+  },
+  "freeMemoryBytes": 2100092928,
+  "scales": [],
+  "ownerCounts": {
+    "bytes": 1789505,
+    "channels": 1,
+    "messages": 51,
+    "parallelGroups": 0,
+    "observedReadMs": 5.0139,
+    "parseAndCountMs": 12.206799999999994
+  }
+}

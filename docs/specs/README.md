@@ -1,5 +1,10 @@
 # Feature Specifications
 
+- [SPEC-144: Desktop conversation database](SPEC-144-desktop-conversation-database.md)
+  — authorized scope, 2026-11-12; in progress. ADR-152 measurements, SQLite conversation
+  store, indexed paging/search, coordinated JSON metadata, safe migration/restore, maintenance
+  and compressed JSONL archive. PLAN-137; not yet connected to live Desktop startup.
+
 - [SPEC-143: Cat profile posts, media creation and sharing](SPEC-143-cat-profile-posts-media-and-sharing.md)
   — draft, 2026-11-11; not implemented. Cat-authored image/video posts, agent create/edit/delete,
   source directory and avatar/cover inputs, async publication, Companion initiative, revocable

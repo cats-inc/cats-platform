@@ -1,7 +1,9 @@
 # Architecture Decision Records (ADR)
 
 - [ADR-152: Pilot a state database in Cats Desktop before Cats Bot](152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md)
-  — proposed, 2026-11-12; documentation only. The owner decided the order (D1–D3): Desktop,
+  — accepted for implementation, 2026-11-12; SPEC-144 and PLAN-137 are authorized and in
+  progress. The Phase 0 baseline exceeds the proposed gate at 1x in local Node/Electron;
+  live Desktop startup has not switched yet. The owner decided the order (D1–D3): Desktop,
   whose conversations and messages all live in one rewritten JSON file, tries a SQLite state
   database first; Cats Bot, light and one-to-one, keeps its readable files and decides after
   Desktop's pilot has been tested. P1–P9 propose measuring first with a gate, what moves,

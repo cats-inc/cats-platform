@@ -1,0 +1,33 @@
+name: Desktop state database
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/platform/persistence/state-db/**'
+      - 'src/products/chat/state/**'
+      - 'tests/desktop-state-*.test.js'
+      - 'tests/fixtures/desktop-state-*.mjs'
+      - 'scripts/testing/*desktop-state*.mjs'
+      - '.github/workflows/desktop-state-database.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:server
+      - name: Node and shipped Electron acceptance
+        run: node scripts/testing/run-desktop-state-host.mjs

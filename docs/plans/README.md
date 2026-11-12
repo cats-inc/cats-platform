@@ -1,5 +1,10 @@
 # Implementation Plans
 
+- [PLAN-137: Desktop conversation database](PLAN-137-desktop-conversation-database.md)
+  — in progress, 2026-11-12. Phase 0 baseline exceeds the proposed gate at 1x; adapter/query
+  foundation passed 48/48 focused tests each in local Node and Electron and independent
+  review after fixes; live-store migration and the remaining full port are next.
+
 - [PLAN-136: Cat profile posts, media creation and sharing](PLAN-136-cat-profile-posts-media-and-sharing.md)
   — draft, 2026-11-11; source inventory and documents only. P0–P5 deliver a real avatar-conditioned
   Paris photo post through the feed, heartbeat, remote share page and owner notifications;
