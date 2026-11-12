@@ -2,7 +2,7 @@ import { readConversationPresentation, conversationPlainText } from '@cats-inc/p
 import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelView, ChatMessage } from '../api/contracts.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
-import { presentationTargetKey, type TranscriptChannelView, type MessagePresentationPlacement } from './transcript.js';
+import { presentationTargetKey, type TranscriptChannelView, type MessagePresentationPlacement } from '../../shared/transcript.js';
 
 /** Display-only enrichment. This must never enter prompts or completion repair. */
 export function enrichConversationPresentation(view: ChatChannelView, core: CatsCoreState,

@@ -204,6 +204,11 @@ authority. Orchestrator plans and execution-loop inspection read the requested c
 and dispatch admits its writable target before hydration. Generic orchestrator replay/Core
 writes remain global operations.
 
+Browser-safe transcript/query/archive contracts are shared product contracts, backed by the
+existing canonical workspace DTOs. Shared renderer consumers do not depend on Chat-owned
+implementations. Offline commands do not load HTTP composition or image decoding; image
+decoding loads its native package only when requested, including the bundled sidecar.
+
 Proposal cards use target-scoped atomic transitions and matching catalog/Core revisions for
 complete Project counts, including archived siblings. Only the successful `open -> confirming`
 claim may perform, outside the lock; interrupted confirming claims never replay. Schema 6 adds

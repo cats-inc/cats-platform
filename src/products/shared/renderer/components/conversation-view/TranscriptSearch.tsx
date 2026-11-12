@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import type { MessageSearchHit } from '../../../../chat/shared/transcript.js';
+import type { MessageSearchHit } from '../../../transcript.js';
 import { searchConversationMessages } from '../../api/transcript.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';

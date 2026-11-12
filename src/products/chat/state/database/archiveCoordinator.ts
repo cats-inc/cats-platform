@@ -9,7 +9,7 @@ import { archiveDirectory, conversationArchive } from './archiveAssets.js';
 import { bytesDigest, databasePath, readOptionalFile, serializeEnvelope, type StorageEnvelope } from './profileFormat.js';
 import { archiveJobDirectory, assertArchiveIdle, assertArchiveJob, reserveArchiveJob, validatePreparedArchive,
   ConversationArchiveError, type ArchiveAction, type ArchiveErrorCode, type ArchiveWorkerPayload, type ConversationArchiveJob } from './archiveJobs.js';
-import type { ConversationArchiveResult } from '../../shared/conversationArchive.js';
+import type { ConversationArchiveResult } from '../../../shared/conversationArchive.js';
 import { envelopeCore } from './profileFormat.js';
 import { assertNoLiveConversationOperations } from './conversationOperations.js';
 

@@ -1,4 +1,4 @@
-import type { ChatChannelView, ChatMessage } from '../api/contracts.js';
+import type { ChatChannelView, ChatMessage } from './api/workspaceContracts.js';
 
 /** Browser-safe query DTOs; complete channel/Core contracts remain unchanged. */
 export const DEFAULT_MESSAGE_PAGE_SIZE = 50;

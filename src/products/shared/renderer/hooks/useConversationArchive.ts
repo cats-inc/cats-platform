@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { TranscriptChannelView } from '../../../chat/shared/transcript.js';
+import type { TranscriptChannelView } from '../../transcript.js';
 import { changeConversationArchive, ConversationArchiveRequestError } from '../api/conversationArchive.js';
 
 export type RefreshArchivedConversation = (channelId: string, signal: AbortSignal) => Promise<void>;

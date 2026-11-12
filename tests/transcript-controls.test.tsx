@@ -8,7 +8,7 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { TranscriptSearch } from '../src/products/shared/renderer/components/conversation-view/TranscriptSearch.tsx';
 import { usePagedTranscript } from '../src/products/shared/renderer/hooks/usePagedTranscript.ts';
 import { clearConversationViewMemory } from '../src/products/shared/renderer/conversationViewMemory.ts';
-import type { TranscriptChannelView, MessagePage } from '../src/products/chat/shared/transcript.ts';
+import type { TranscriptChannelView, MessagePage } from '../src/products/shared/transcript.ts';
 import type { ChatMessage } from '../src/products/chat/api/contracts.ts';
 import type { TranscriptHistory } from '../src/products/shared/renderer/transcriptHistory.ts';
 

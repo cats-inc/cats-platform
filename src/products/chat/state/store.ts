@@ -8,10 +8,10 @@ import { keepOwnerWorkProjects } from './model/workProject.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import type { MessagePage, MessageSearchHit, MessageSearchOptions } from '../shared/transcript.js';
+import type { MessagePage, MessageSearchHit, MessageSearchOptions } from '../../shared/transcript.js';
 import { materializedMessagePage } from './materializedMessagePage.js';
 import type { ChatCatalogSnapshot, ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
-import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
+import type { ConversationArchiveResult } from '../../shared/conversationArchive.js';
 
 import type { ChatState, ChatChannelState } from '../api/contracts.js';
 import type { ChannelProjectionMetadata } from './core-projection/scoped.js';

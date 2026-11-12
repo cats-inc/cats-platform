@@ -22,7 +22,7 @@ import {
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore, createLockedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
 import { readConversationCatalog, readConversationState, updateConversationState } from '../scopedConversationState.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';

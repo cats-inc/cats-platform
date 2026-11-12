@@ -1,6 +1,6 @@
 import type { ChatState } from './contracts.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from '../state/presentation.js';
-import type { TranscriptChannelView } from '../shared/transcript.js';
+import type { TranscriptChannelView } from '../../shared/transcript.js';
 import { buildChannelView } from '../state/model/index.js';
 import { enrichConversationPresentation } from '../shared/conversationPresentationView.js';
 

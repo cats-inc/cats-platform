@@ -13,7 +13,7 @@ import { createLockedDispatchChatStore } from '../build/server/products/chat/sta
 import { buildChatConversationId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { createChannel } from '../build/server/products/chat/state/model/index.js';
-import { assertConversationWritable } from '../build/server/products/chat/shared/conversationArchive.js';
+import { assertConversationWritable } from '../build/server/products/shared/conversationArchive.js';
 
 const TIME = '2026-01-01T00:00:00.000Z';
 function richSource() {

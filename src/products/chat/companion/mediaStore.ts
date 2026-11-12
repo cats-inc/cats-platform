@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, realpath, stat, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
-import sharp, { type OutputInfo } from 'sharp';
+import type { OutputInfo } from 'sharp';
 import type { CompanionMediaAsset, CompanionMediaSettings } from './contracts.js';
 import type { CompanionBoxStore } from '../state/companion-box/storeTypes.js';
 import { getCompanionStorageRootPath } from '../state/companion-box/index.js';
@@ -68,6 +68,7 @@ export class CompanionMediaStore {
     if (!bytes.length || bytes.length > COMPANION_IMAGE_MAX_BYTES) throw new CompanionPostError('image_size_exceeded');
     let decoded: { data: Buffer; info: OutputInfo };
     try {
+      const { default: sharp } = await import('sharp');
       const reader = sharp(bytes, { limitInputPixels: 40_000_000, failOn: 'warning' });
       const metadata = await reader.metadata();
       if (!['jpeg', 'png', 'webp'].includes(metadata.format ?? '') || (metadata.pages ?? 1) !== 1) throw new Error();

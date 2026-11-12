@@ -1,7 +1,7 @@
 import type {
   ChatState,
 } from '../../api/contracts.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import type {
   RoomRoutingState,
   RoomWakeReason,

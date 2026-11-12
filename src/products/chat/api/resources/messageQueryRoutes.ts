@@ -1,6 +1,6 @@
 import { sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { redactConversationProposalCards } from '../../state/conversationProposals.js';
-import { DEFAULT_MESSAGE_PAGE_SIZE, MAX_MESSAGE_PAGE_SIZE, MAX_MESSAGE_SEARCH_RESULTS } from '../../shared/transcript.js';
+import { DEFAULT_MESSAGE_PAGE_SIZE, MAX_MESSAGE_PAGE_SIZE, MAX_MESSAGE_SEARCH_RESULTS } from '../../../shared/transcript.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 import { presentedChannelWindow } from '../presentationReadModels.js';

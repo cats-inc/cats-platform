@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChatMessage } from '../src/products/chat/api/contracts.js';
-import type { MessagePage } from '../src/products/chat/shared/transcript.js';
+import type { MessagePage } from '../src/products/shared/transcript.js';
 import { TranscriptHistory, mergeTranscriptMessages, type TranscriptWindow } from '../src/products/shared/renderer/transcriptHistory.js';
 
 const message = (id: number | string, body = String(id)): ChatMessage => ({ id: String(id), channelId: 'channel', senderKind: 'user',

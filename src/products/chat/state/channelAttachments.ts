@@ -2,7 +2,7 @@ import { access, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { requireChannel } from './model/index.js';
-import { assertConversationWritable } from '../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import {
   collectParticipantLeaseCwds,
 } from '../shared/channelParticipants.js';

@@ -1,6 +1,6 @@
-import type { ChatMessage } from '../../chat/api/contracts.js';
-import type { MessagePage } from '../../chat/shared/transcript.js';
-import { presentationTargetKey } from '../../chat/shared/transcript.js';
+import type { ChatMessage } from '../api/workspaceContracts.js';
+import type { MessagePage } from '../transcript.js';
+import { presentationTargetKey } from '../transcript.js';
 
 export interface TranscriptWindow {
   messages: ChatMessage[]; total: number; nextCursor: string | null; orderRevision: string;

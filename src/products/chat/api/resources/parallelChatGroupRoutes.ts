@@ -19,7 +19,7 @@ import {
   resolveParallelChatMemberTarget,
 } from '../../state/model/index.js';
 import { resolveTranscriptOrCanonicalChatMessage } from '../../state/chatCoreInterop.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import { readConversationCatalog, readConversationMetadata } from '../scopedConversationState.js';
 import type {
   CancelParallelChatGroupInput,

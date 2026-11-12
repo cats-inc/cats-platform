@@ -28,17 +28,17 @@ import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import { closeStateMaintenanceWorkers } from '../../../platform/persistence/state-db/stateMaintenance.js';
 import { prepareTranscriptState } from './transcriptRepairs.js';
 import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
-import { DEFAULT_MESSAGE_PAGE_SIZE } from '../shared/transcript.js';
+import { DEFAULT_MESSAGE_PAGE_SIZE } from '../../shared/transcript.js';
 import { ProfileSnapshotMaintenance } from './database/profileSnapshots.js';
 import { maintainConversationArchives as maintainArchives, performConversationArchive,
   type ConversationArchiveOptions, type ConversationArchiveHost } from './database/archiveCoordinator.js';
 import { ConversationArchiveError, type ArchiveAction, type ConversationArchiveJob } from './database/archiveJobs.js';
-import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
+import type { ConversationArchiveResult } from '../../shared/conversationArchive.js';
 import { conversationArchive } from './database/archiveAssets.js';
 import { readArchivePage, type ArchivePageRequest, type ArchivePageResult } from './database/archiveRead.js';
 import { archivePlacementBasis, MAX_ARCHIVE_PLACEMENTS, type ArchivePlacementBasis } from './database/archivePlacement.js';
 import { decodeMessageCursor, encodeMessageCursor } from './messageCursor.js';
-import { MessageCursorExpiredError, type MessagePresentationPlacement } from '../shared/transcript.js';
+import { MessageCursorExpiredError, type MessagePresentationPlacement } from '../../shared/transcript.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;

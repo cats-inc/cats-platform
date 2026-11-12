@@ -8,7 +8,7 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import { MemoryRouter } from 'react-router-dom';
 import { setImmediate as nextTask } from 'node:timers/promises';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
-import type { TranscriptChannelView } from '../src/products/chat/shared/transcript.ts';
+import type { TranscriptChannelView } from '../src/products/shared/transcript.ts';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 import type { AppLoadState } from '../src/products/shared/renderer/workspaceAppViewState.ts';
 import { useConversationArchive } from '../src/products/shared/renderer/hooks/useConversationArchive.ts';

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
-import type { ChatChannelView } from '../../../chat/api/contracts.js';
-import type { TranscriptChannelView } from '../../../chat/shared/transcript.js';
+import type { ChatChannelView } from '../../api/workspaceContracts.js';
+import type { TranscriptChannelView } from '../../transcript.js';
 import { getTranscriptHistory, subscribeTranscriptHistoryEpoch, transcriptHistoryEpoch } from '../transcriptHistoryCache.js';
 import { forgetConversationScroll } from '../conversationViewMemory.js';
 import { TranscriptHistory, mergeTranscriptMessages } from '../transcriptHistory.js';

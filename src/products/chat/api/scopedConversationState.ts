@@ -3,7 +3,7 @@ import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelState, ChatState } from './contracts.js';
 import type { ChatChannelMutationContext, ChatChannelsMutationOptions, ChatStore } from '../state/store.js';
 import { ChatApiError } from './routeErrors.js';
-import { assertConversationWritable } from '../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 
 /** A dispatch-local state, never an input to a global snapshot write. */
 export function readConversationState(store: ChatStore, id: string): Promise<ChatState> {

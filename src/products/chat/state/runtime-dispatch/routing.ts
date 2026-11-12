@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import type { CollaborationPreparationBudget } from '../../shared/collaborationPreparationBudget.js';
 import type { CollaborationReport } from '../orchestratorCollaboration.js';
 import { isCollaborationTool } from '../orchestratorCollaboration.js';

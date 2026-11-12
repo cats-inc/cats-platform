@@ -1,7 +1,7 @@
 import type { CatsCoreState } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import type { ChatMessage } from '../../api/contracts.js';
-import { presentationTargetKey, type MessagePresentationPlacement } from '../../shared/transcript.js';
+import { presentationTargetKey, type MessagePresentationPlacement } from '../../../shared/transcript.js';
 import { ConversationArchiveError } from './archiveJobs.js';
 
 export interface ArchivePlacementBasis {

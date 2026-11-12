@@ -4,7 +4,7 @@ import type {
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import { requireChannel, setChannelRoomRouting } from '../model/index.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import { ensureTargetSession } from './wake.js';
 import {
   buildChannelActivationResult,

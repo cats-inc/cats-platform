@@ -1,6 +1,6 @@
 import { runStateMaintenance, StateMaintenanceError } from '../../../../platform/persistence/state-db/stateMaintenance.js';
 import type { ChatMessage } from '../../api/contracts.js';
-import type { MessagePresentationPlacement } from '../../shared/transcript.js';
+import type { MessagePresentationPlacement } from '../../../shared/transcript.js';
 import { ConversationArchiveError } from './archiveJobs.js';
 import { databasePath, storageNameIdentity } from './profileFormat.js';
 import type { ArchivePlacementBasis } from './archivePlacement.js';

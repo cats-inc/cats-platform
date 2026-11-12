@@ -95,6 +95,8 @@ test('the complete bundled CLI checks, snapshots, restores and exports in Node a
       cwd: packageRoot, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true, timeout: 30_000,
     });
     assert.match((await run(['--help'])).stdout, /Offline commands/);
+    await assert.rejects(run(['export', '--output', file]), error => error.code === 1
+      && JSON.parse(error.stderr).code === 'invalid_output');
     const pair = JSON.parse((await run(['snapshot'])).stdout).result.manifest;
     store = new DatabaseChatStore(file);
     try { await store.updateCore(core => ({ ...core, ownerProfile: { ...core.ownerProfile, displayName: `After ${name} snapshot` } })); }

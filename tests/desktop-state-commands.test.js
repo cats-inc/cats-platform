@@ -201,3 +201,16 @@ test('the actual shipped Electron CLI supports offline help, check and export wi
   const exported = await run(['export', '--output', output], electron); assert.equal(exported.code, 0, exported.stderr);
   assert.equal(canonicalDigest(JSON.parse(await readFile(output, 'utf8'))), digest);
 });
+
+
+test('offline state CLI does not load the product HTTP/image stack', async t => {
+  const { root, run } = await fixture(t);
+  const preload = path.join(root, 'no-product-images.cjs');
+  await writeFile(preload, "const Module = require('node:module'); const load = Module._load; Module._load = function(name, ...args) { if (name === 'sharp') throw Error('PRODUCT_HTTP_IMAGE_IMPORT'); return load.call(this, name, ...args); };\n");
+  const help = await run(['--help'], undefined, {}, ['--require', preload]);
+  assert.equal(help.code, 0, help.stderr); assert.match(help.stdout, /check/);
+  const checked = await run(['check'], undefined, {}, ['--require', preload]);
+  assert.equal(checked.code, 0, checked.stderr); assert.equal(JSON.parse(checked.stdout).result.checked, true);
+  const missing = await run(['check', '--profile', path.join(root, 'missing.json')], undefined, {}, ['--require', preload]);
+  assert.equal(missing.code, 1); assert.equal(JSON.parse(missing.stderr).code, 'not_initialized');
+});

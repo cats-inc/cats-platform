@@ -213,7 +213,43 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-13 | Proposal claims are once-only across independent stores/services, preserve complete Project counts, keep interrupted confirming cards non-replayable, block archive through actual perform and read cold details with bounded pages. Initial proposal consumers passed **14/14 Node**. After generic scoped-catalog reuse, affected proposal/Companion consumers passed **134/134 Node**. Final heartbeat/Companion/Boss/owner/memory consumer checks passed **41/41 Node**, including seven actual SQLite Companion cases; the initial new fixture failures were corrected (database-open options, supported state-file layout, canonical participant lease setter and message-count assumptions) without relaxing production guards. Final new native join-card HTTP cases passed **2/2 Node**, including hot approval, cold-target refusal, spoofed earlier non-card metadata and malformed unrelated history with global history reads/snapshot writes forbidden. Current-source typed Telegram checks passed **9/9** after rebuilding its bundle; an earlier denied bundle attempt's stale output is not validation. Server build, host build and fixture typecheck passed. |
 | 2026-11-13 | Independent read-only reviews closed proposal fallback/cold-capture and Companion gate/error ownership findings. The last join-card review closed valid-card predicate mismatch and two-lock initial cold admission. Final actual Electron consumer checks passed **15/15** in explicitly awaited runs (**13 native Companion/proposal + 2 native join-card HTTP**), zero skipped/cancelled. Hosted three-OS CI and remaining isolated Desktop acceptance are pending; this checkpoint is not the entire goal's completion. |
 
+| 2026-11-13 | First exact-candidate hosted CI at `b26a12f9c`: Windows and macOS complete state acceptance passed. Linux Node passed **373/373 applicable cases** (nine platform skips); Linux Electron passed 364 with nine CLI failures because eager HTTP/image imports emitted Sharp's Linux warning ahead of structured error JSON. Full Node CI passed **7062**, with **one ownership guard failure** and 161 platform skips. The nine flagged shared-renderer edges are now removed by moving the unchanged transcript/archive contracts to `products/shared`, using the existing canonical workspace DTO types; no ownership allowlist was loosened and no old-module aliases remain. Offline CLI now defers server composition and Sharp loads only inside actual image decoding, including bundles. A new poisoned-Sharp actual-CLI regression passed **1/1 Node**. Server/renderer compilation and the unchanged dependency guard passed. Both narrow independent reviews report no blocking P1/P2. Final affected CLI/image/publication checks passed **28/28 Node**, including the shipped Electron CLI and the poisoned-image-import regression. New exact-candidate hosted CI remains pending. Counts overlap earlier checks. |
+| 2026-11-13 | The new source candidate built Runtime/server/host/web from clean Platform `b26a12f9c` and Runtime `512c074713cbe563124f21c4ed9218e0b408c33f` in the private `state-db-final-20261113` root. The candidate command's 90-second total readiness timer stopped it just before normal readiness; migration completed and all services drained cleanly. A private recovery script initially compared slash variants instead of canonical root strings and hit its own deadline; correcting that script resumed the same built sources and reached `ready_for_chat`. These are validation-tool failures, not passing UI acceptance or evidence of a product crash. No installed profile changed. |
+| 2026-11-13 | Local complete bundled CLI recheck reached Electron paired restore but hit its per-command 30-second observation deadline with empty output (overall 159 seconds), so that recheck is **inconclusive**, not a pass. Prior unchanged functional bundle cases remain recorded. Do not repeat slow local checks merely to obtain a green count; require the fresh exact-candidate hosted functional bundle result. Performance/million-entry work remains owner-deferred. |
+
 *Created: 2026-11-12. Last updated: 2026-11-13.*
+
+## Final requirement audit
+
+| Requirement | Implementation and evidence |
+| --- | --- |
+| FR-1 | Original Node/Electron baseline and counts-only owner evidence retained. Post-port comparison/million-entry runs are owner-deferred. |
+| FR-2 | Lazy isolated SQLite adapter; local Node/Electron capability, Unicode/space paths and foreign-file refusal pass. Exact-candidate three-OS CI pending. |
+| FR-3 | Complete JSON records and collection order; Platform application ID; schema 6 with backed-up transactional upgrades from 1–5 and unknown/newer refusal. |
+| FR-4 | Version-8 metadata envelope; in-memory Core remains 7; cats/settings/Core retained; messages/groups live in SQLite. |
+| FR-5 | Cross-process operation lock, synchronous transactions, durable metadata handoff, fault recovery and unique domain revisions. |
+| FR-6 | Atomic Core/global semantics, scoped product mutations, independent Memory stores, subscriptions and monotonic lifecycle/scope/proposal/Project state preserved. |
+| FR-7 | Changed-row SQL/FTS updates, target and atomic multi-target writers; remaining global transactions and life/peer-board history reads explicitly classified. |
+| FR-8 | Indexed cached-count keyset windows, order/history invalidation, optimistic/live reconciliation and retained-page scroll anchors; focused native/renderer and isolated Desktop evidence. |
+| FR-9 | Bounded multilingual FTS, authenticated/redacted API and Desktop search with cancellation/scopes/cold-exclusion explanation. |
+| FR-10 | Validated old-profile admission; unknown policy/lifecycle/future/malformed refusal and exact original backups. |
+| FR-11 | Staged bounded import, canonical equality, import marker, durable publication and concurrent/restart recovery. |
+| FR-12 | Failure/restart/concurrent-start tests and manifest/digest-bound resumable restores; safe diagnostics for the earlier Electron startup failure, with final cross-platform result pending. |
+| FR-13 | Deterministic rich-state export; isolated real-copy equality and source-byte preservation passed. |
+| FR-14 | Killable background check/snapshot/reaper, exact JSON/DB pairing, bounded valid-snapshot retention and backward-clock handling. |
+| FR-15 | Verified compressed JSONL, native staging/CAS/recovery, readback/export, self-contained assets and deletion distinction; Chat/Code/Work archive/restore Desktop evidence passed. |
+| FR-16 | Initialize before readiness, bounded progress-only deadline extension, fatal-state stop, connection/worker shutdown/reset tests. |
+| FR-17 | Offline CLI help/check/snapshot/export/legacy+paired restore; configured profile selection, nonzero failures and no read-only initialization. |
+| FR-18 | All fixtures/candidates isolated; restart/multiple stores/processes and product consumers covered; installed Desktop and owner profile untouched. |
+| FR-19 | Lazy driver and licensing, split/bundled workers and native entrypoints; actual Node/Electron bundled maintenance/coordinator/CLI/cold-page acceptance passed. |
+| FR-20 | Independent reviews closed concrete P1/P2. Focused local Node/Electron evidence recorded; exact-candidate three-OS CI and final Desktop receipt pending. |
+
+The first authorized release containing this persisted-format/message-list contract change
+requires **0.17.0**. Main's existing 0.16.1 preparation belongs to its previously selected
+release source; this task does not bump, publish or reopen that release. Functional live intake,
+SSE/streaming, group and parallel mutations are validated with controlled Runtime fixtures;
+additional credentialed provider/network execution is not claimed. Keep final UI and CI
+receipts distinct from provider execution and from the owner-deferred performance work.
 
 ## Next integration checkpoint
 

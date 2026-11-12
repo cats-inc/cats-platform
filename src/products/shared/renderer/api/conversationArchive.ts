@@ -1,5 +1,5 @@
-import type { ConversationArchiveResult } from '../../../chat/shared/conversationArchive.js';
-import type { TranscriptChannelView } from '../../../chat/shared/transcript.js';
+import type { ConversationArchiveResult } from '../../conversationArchive.js';
+import type { TranscriptChannelView } from '../../transcript.js';
 
 export class ConversationArchiveRequestError extends Error {
   constructor(readonly code: string, readonly status: number) { super('The conversation archive request failed.'); }

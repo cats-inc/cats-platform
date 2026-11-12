@@ -6,10 +6,10 @@ import {
   isClientMessageIdTooLongError,
 } from '../shared/clientMessageIdentity.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
-import { MessageCursorExpiredError } from '../shared/transcript.js';
+import { MessageCursorExpiredError } from '../../shared/transcript.js';
 import { ProfileStorageError } from '../state/database/profileFormat.js';
 import { ConversationArchiveError } from '../state/database/archiveJobs.js';
-import { ConversationArchivedError } from '../shared/conversationArchive.js';
+import { ConversationArchivedError } from '../../shared/conversationArchive.js';
 
 export function errorStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : '';

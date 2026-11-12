@@ -16,7 +16,7 @@ import { resolveChannelParticipantAssignments } from '../../shared/channelPartic
 import { readConversationsState, updateConversationsState } from '../scopedConversationState.js';
 import { closeUnreferencedConversationSessions, trackCreatedRuntimeSessions } from '../conversationRuntimeCleanup.js';
 import { ChatApiError } from '../routeErrors.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import type {
   ParallelChatDispatchResponse,
   ParallelChatDispatchResult,

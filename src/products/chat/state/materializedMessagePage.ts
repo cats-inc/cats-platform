@@ -1,5 +1,5 @@
 import type { ChatChannelState } from '../api/contracts.js';
-import { MessageCursorExpiredError, MAX_MESSAGE_PAGE_SIZE, type MessagePage } from '../shared/transcript.js';
+import { MessageCursorExpiredError, MAX_MESSAGE_PAGE_SIZE, type MessagePage } from '../../shared/transcript.js';
 import { decodeMessageCursor, encodeMessageCursor } from './messageCursor.js';
 
 /** Memory fixtures only. Production pages use indexed SQL and cached counts. */

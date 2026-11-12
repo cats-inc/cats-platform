@@ -5,7 +5,7 @@ import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.
 import { updateChatState } from '../state/store.js';
 import { readConversationState, readWritableConversationState, assertWritableConversation,
   updateConversationState, mergePreparedParticipantMutation } from './scopedConversationState.js';
-import { assertConversationWritable } from '../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import { closeUnreferencedConversationSessions } from './conversationRuntimeCleanup.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { GuideCatRecord } from '../../../core/types.js';

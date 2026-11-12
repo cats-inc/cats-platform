@@ -13,7 +13,7 @@ import { databasePath } from '../build/server/products/chat/state/database/profi
 import { archiveDirectory } from '../build/server/products/chat/state/database/archiveAssets.js';
 import { createChannel, removeChannelParticipant, updateChannelParticipant } from '../build/server/products/chat/state/model/index.js';
 import { mergePreparedParticipantMutation, updateConversationState, updateConversationsState } from '../build/server/products/chat/api/scopedConversationState.js';
-import { assertConversationWritable } from '../build/server/products/chat/shared/conversationArchive.js';
+import { assertConversationWritable } from '../build/server/products/shared/conversationArchive.js';
 import { maybeAutoResumeRecoveredCatContinuation } from '../build/server/products/chat/api/routeContinuationRecovery.js';
 import { buildWorkflowContinuationReplayRequest, readWorkflowContinuationReplay } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 import { createWorkflowEvent, createWorkflowTurn } from '../build/server/products/chat/state/room-routing/workflow.js';

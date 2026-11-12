@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { loadConfig } from './config.js';
 import { loadProjectEnvFiles } from './shared/loadProjectEnvFile.js';
-import { createServer } from './app/server/index.js';
+import type { createServer } from './app/server/index.js';
 import { createAppStartupTrace } from './app/server/startupTrace.js';
 import {
   createAppStartupState,
@@ -146,6 +146,7 @@ export async function startApp(extension: {
     startupTrace.trace('chat.store.created', {
       chatStatePath: config.chatStatePath,
     });
+    const { createServer } = await import('./app/server/index.js');
     const server = createServer({
       shared: { config, runtimeClient, startup, appComponents, desktopAppsKey, ingressSecrets, runtimeClientDiagnosticSink },
       chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },

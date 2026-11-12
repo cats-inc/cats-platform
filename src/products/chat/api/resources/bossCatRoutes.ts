@@ -12,7 +12,7 @@ import { resolveChannelCanonicalIdentity } from '../../state/model/index.js';
 import type { ChatStore } from '../../state/store.js';
 import type { ChatState } from '../contracts.js';
 import { readConversationCatalog, readConversationsState, updateConversationsState } from '../scopedConversationState.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertConversationWritable } from '../../../shared/conversationArchive.js';
 import { shouldHydrateCompanionSession } from '../../companion/hydration.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';

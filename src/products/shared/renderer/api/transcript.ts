@@ -1,4 +1,4 @@
-import type { MessagePage, MessageSearchOptions, MessageSearchResponse } from '../../../chat/shared/transcript.js';
+import type { MessagePage, MessageSearchOptions, MessageSearchResponse } from '../../transcript.js';
 
 export class TranscriptQueryError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }

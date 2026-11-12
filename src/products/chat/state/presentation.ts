@@ -1,6 +1,6 @@
 import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelState } from '../api/contracts.js';
-import type { MessagePage, MessagePresentationPlacement } from '../shared/transcript.js';
+import type { MessagePage, MessagePresentationPlacement } from '../../shared/transcript.js';
 import type { ChatMetadata } from './store.js';
 
 /** Read model only. Never feed headers or a window to a snapshot mutation. */
