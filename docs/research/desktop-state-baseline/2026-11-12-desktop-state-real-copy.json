@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-11-12T06:39:40.236Z",
+  "runtime": {
+    "node": "26.13.0",
+    "electron": null
+  },
+  "sourceFiles": 4,
+  "sourceVersion": 7,
+  "channels": 1,
+  "messages": 51,
+  "beforeDigest": "afca1579a4b19928f1ed1fbc0967dcf08a265310af1c29b1b86742cd60af9235",
+  "afterDigest": "afca1579a4b19928f1ed1fbc0967dcf08a265310af1c29b1b86742cd60af9235",
+  "byteEqual": true,
+  "migrationMs": 858.3483,
+  "totalMs": 1674.4719,
+  "restoredVersion": 7,
+  "rollbackReadable": true,
+  "originalUnchanged": true
+}

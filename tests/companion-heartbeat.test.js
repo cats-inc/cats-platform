@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
 import { appendMessage, createChannel, resolveLeadParticipantLease, setChannelParticipantLease } from '../build/server/products/chat/state/model/index.js';
 import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
@@ -362,7 +362,7 @@ async function withHeartbeatServer(callback, {
   const createSession = runtimeClient.createSession;
   runtimeClient.createSession = async (input) => ({ ...await createSession(input), status: initialStatus });
   const chatStore = fileBacked
-    ? new FileChatStore(path.join(workingDir, 'platform', 'state', 'chat-state.local.json'))
+    ? new LegacyJsonChatStore(path.join(workingDir, 'platform', 'state', 'chat-state.local.json'))
     : new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const config = {
@@ -524,7 +524,7 @@ test('DM sleep, disk-store restart and wake resume the original session before a
     await chatStore.write(append.state);
     const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
     await deactivateChannelLocked(dependencies, lane.id);
-    const restoredStore = new FileChatStore(config.chatStatePath);
+    const restoredStore = new LegacyJsonChatStore(config.chatStatePath);
     const restoredDependencies = { ...dependencies, chatStore: restoredStore, mutationGate: { run: (_key, operation) => operation() } };
     assert.equal(resolveLeadParticipantLease((await restoredStore.read()).channels.find((row) => row.id === lane.id)).sessionId, sessionId);
     assert.equal((await activateChannelLocked(restoredDependencies, lane.id)).results[0].status, 'started');
@@ -712,7 +712,7 @@ test('sleeping DM with a model string and no option overrides resumes its explic
 
 test('heartbeat: a file-backed initializing activation survives restart and completes its first hidden turn', async () => {
   await withHeartbeatServer(async ({ lane, sessionId, now, runtimeClient, speak, companionStore, config }) => {
-    const restoredStore = new FileChatStore(config.chatStatePath);
+    const restoredStore = new LegacyJsonChatStore(config.chatStatePath);
     const readLane = async () => (await restoredStore.read()).channels.find((channel) => channel.id === lane.id);
     assert.equal(resolveLeadParticipantLease(await readLane()).status, 'initializing');
     runtimeClient.observeSession = async () => ({ session: { id: sessionId, status: 'initializing' } });

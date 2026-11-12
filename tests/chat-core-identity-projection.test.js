@@ -18,10 +18,10 @@ import {
   createCat,
   createParallelChatGroup,
 } from '../build/server/products/chat/state/model/index.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 
 test('ChatStore projects direct-lane participants, temporary participant actors, and chat containers', async () => {
-  const store = new FileChatStore(
+  const store = new LegacyJsonChatStore(
     path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-core-projection-')), 'chat-state.json'),
   );
   const now = new Date('2026-04-14T00:00:00.000Z');

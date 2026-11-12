@@ -6,6 +6,11 @@ on:
     paths:
       - 'src/platform/persistence/state-db/**'
       - 'src/products/chat/state/**'
+      - 'src/index.ts'
+      - 'src/shared/platformDataReset.ts'
+      - 'desktop/host/processSupervisor.ts'
+      - 'desktop/host/bootstrapPage.ts'
+      - 'desktop/host/contracts.ts'
       - 'tests/desktop-state-*.test.js'
       - 'tests/fixtures/desktop-state-*.mjs'
       - 'scripts/testing/*desktop-state*.mjs'
@@ -29,5 +34,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:server
+      - run: npm run build:host
       - name: Node and shipped Electron acceptance
         run: node scripts/testing/run-desktop-state-host.mjs
+      - name: Startup, reset and host integration
+        run: npm run test:file -- tests/cli-entrypoint.test.js tests/desktop-supervisor.test.js tests/desktop-bootstrap-timeout.test.js tests/platform-data-reset.test.js

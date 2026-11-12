@@ -21,7 +21,7 @@ import {
   updateCatSkillProfile,
 } from '../build/server/products/chat/state/model/index.js';
 import { resolveCompanionRoleMigrationBackupPath } from '../build/server/products/chat/state/companionRoleMigration.js';
-import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const AGENCY_SKILL = 'plugin:agency-agents/work/agency-code-reviewer';
 
@@ -98,7 +98,7 @@ test('channel cat views project the Cat companion role over assignment snapshots
 });
 
 async function writeLegacyCompanionSnapshot(statePath) {
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const now = new Date('2026-09-29T00:00:00.000Z');
   let state = await store.read();
   state = createCat(state, { name: 'Milo', provider: 'claude', roles: ['reviewer'] }, now);
@@ -113,12 +113,12 @@ async function writeLegacyCompanionSnapshot(statePath) {
   return { raw, miloId: milo.id };
 }
 
-test('FileChatStore migrates legacy companion skill profiles once, with a dedicated backup', async () => {
+test('LegacyJsonChatStore migrates legacy companion skill profiles once, with a dedicated backup', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-role-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const { raw, miloId } = await writeLegacyCompanionSnapshot(statePath);
 
-  const state = await new FileChatStore(statePath).read();
+  const state = await new LegacyJsonChatStore(statePath).read();
   const milo = state.cats.find((cat) => cat.id === miloId);
   assert.deepEqual(milo.roles, ['reviewer', 'companion']);
   assert.equal(milo.skillProfile, null);
@@ -130,19 +130,19 @@ test('FileChatStore migrates legacy companion skill profiles once, with a dedica
   assert.equal(persisted.chat.cats.find((cat) => cat.id === miloId).skillProfile, null);
 
   const afterFirstRead = await readFile(statePath, 'utf-8');
-  await new FileChatStore(statePath).read();
+  await new LegacyJsonChatStore(statePath).read();
   assert.equal(await readFile(statePath, 'utf-8'), afterFirstRead);
   assert.equal(await readFile(backupPath, 'utf-8'), raw);
 });
 
-test('FileChatStore does not migrate while something other than a file occupies the backup path', async () => {
+test('LegacyJsonChatStore does not migrate while something other than a file occupies the backup path', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-role-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const { miloId } = await writeLegacyCompanionSnapshot(statePath);
   const backupPath = resolveCompanionRoleMigrationBackupPath(statePath);
   await mkdir(backupPath);
 
-  const blocked = await new FileChatStore(statePath).read();
+  const blocked = await new LegacyJsonChatStore(statePath).read();
   assert.equal(blocked.cats.find((cat) => cat.id === miloId).skillProfile, 'companion');
   const stored = JSON.parse(await readFile(statePath, 'utf-8'));
   assert.equal(stored.chat.cats.find((cat) => cat.id === miloId).skillProfile, 'companion',
@@ -150,19 +150,19 @@ test('FileChatStore does not migrate while something other than a file occupies 
 
   await rm(backupPath, { recursive: true });
   const beforeMigration = await readFile(statePath, 'utf-8');
-  const migrated = await new FileChatStore(statePath).read();
+  const migrated = await new LegacyJsonChatStore(statePath).read();
   assert.deepEqual(migrated.cats.find((cat) => cat.id === miloId).roles, ['reviewer', 'companion']);
   assert.equal(await readFile(backupPath, 'utf-8'), beforeMigration);
 });
 
-test('FileChatStore migrates a legacy .bak during recovery and backs up the .bak bytes', async () => {
+test('LegacyJsonChatStore migrates a legacy .bak during recovery and backs up the .bak bytes', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-role-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const { raw, miloId } = await writeLegacyCompanionSnapshot(statePath);
   await writeFile(`${statePath}.bak`, raw, 'utf-8');
   await writeFile(statePath, '{', 'utf-8');
 
-  const state = await new FileChatStore(statePath).read();
+  const state = await new LegacyJsonChatStore(statePath).read();
   assert.deepEqual(state.cats.find((cat) => cat.id === miloId).roles, ['reviewer', 'companion']);
   assert.equal(await readFile(resolveCompanionRoleMigrationBackupPath(statePath), 'utf-8'), raw);
   const primary = JSON.parse(await readFile(statePath, 'utf-8'));

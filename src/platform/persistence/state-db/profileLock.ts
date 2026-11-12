@@ -167,7 +167,8 @@ async function pause(deadline: number, signal?: AbortSignal): Promise<void> {
   await new Promise<void>(done => setTimeout(done, Math.min(20, remaining)));
 }
 
-function timeoutError(): Error { return new Error('Timed out waiting for the active profile operation.'); }
+function timeoutError(): Error { return Object.assign(new Error('Timed out waiting for the active profile operation.'),
+  { code: 'profile_lock_timeout' }); }
 
 function checkDeadline(deadline: number, options: LockOptions): void {
   options.signal?.throwIfAborted();

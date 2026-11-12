@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { emptyOwnerLifecycle, normalizeOwnerLifecycle, OwnerLifecycleFormatError, setOwnerEntry } from '../src/core/ownerLifecycle.ts';
-import { FileChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 
@@ -22,12 +22,12 @@ async function profile(t: test.TestContext) {
 
 test('old profile loads without writes, first intent has a backup and survives restart/Chat save', async t => {
   const { file, raw } = await profile(t);
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   assert.equal((await store.readCore()).ownerLifecycle, undefined);
   assert.equal(await readFile(file, 'utf8'), raw);
   await store.updateCore(core => setOwnerEntry(core, 'codespace', 'codespace-example', { listing: 'removed', path: 'C:/project' }));
   assert.equal(await readFile(`${file}.bak`, 'utf8'), raw);
-  const restarted = new FileChatStore(file);
+  const restarted = new LegacyJsonChatStore(file);
   await restarted.write(await restarted.read());
   assert.equal((await restarted.readCore()).ownerLifecycle?.entries['codespace:codespace-example'].listing, 'removed');
 });
@@ -38,7 +38,7 @@ test('future and malformed lifecycle data preserve primary bytes even with a val
   for (const invalid of [{ ...emptyOwnerLifecycle(), version: 2 }, { ...emptyOwnerLifecycle(), entries: { 'run:r': {} } }]) {
     const bytes = JSON.stringify({ ...snapshot, ownerLifecycle: invalid });
     await writeFile(file, bytes);
-    const store = new FileChatStore(file);
+    const store = new LegacyJsonChatStore(file);
     await assert.rejects(store.readCore(), OwnerLifecycleFormatError);
     await assert.rejects(store.updateCore(core => core), OwnerLifecycleFormatError);
     assert.equal(await readFile(file, 'utf8'), bytes);
@@ -49,20 +49,20 @@ test('future and malformed lifecycle data preserve primary bytes even with a val
 test('failed backup leaves original state intact and no temporary file, retry recovers', async t => {
   const { file, raw, dir } = await profile(t);
   await mkdir(`${file}.bak`);
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   await assert.rejects(store.updateCore(core => setOwnerEntry(core, 'run', 'r', { listing: 'archived' })));
   assert.equal(await readFile(file, 'utf8'), raw);
   assert.deepEqual((await readdir(dir)).sort(), ['state.json', 'state.json.bak']);
   await rm(`${file}.bak`, { recursive: true });
   await store.updateCore(core => setOwnerEntry(core, 'run', 'r', { listing: 'archived' }));
-  assert.equal((await new FileChatStore(file).readCore()).ownerLifecycle?.revision, 1);
+  assert.equal((await new LegacyJsonChatStore(file).readCore()).ownerLifecycle?.revision, 1);
 });
 
 test('future profile versions preserve original bytes instead of restoring an older backup', async t => {
   const { file, raw, snapshot } = await profile(t);
   const future = JSON.stringify({ ...snapshot, version: 999, futureData: { keep: true } });
   await writeFile(file, future); await writeFile(`${file}.bak`, raw);
-  await assert.rejects(new FileChatStore(file).readCore(), OwnerLifecycleFormatError);
+  await assert.rejects(new LegacyJsonChatStore(file).readCore(), OwnerLifecycleFormatError);
   assert.equal(await readFile(file, 'utf8'), future);
   assert.equal(await readFile(`${file}.bak`, 'utf8'), raw);
 });

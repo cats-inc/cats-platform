@@ -32,6 +32,7 @@ interface ManagedServiceHandle {
   child: ChildProcessWithoutNullStreams | null;
   snapshot: ManagedServiceSnapshot;
   expectedExit: boolean;
+  storageFailure: boolean;
 }
 
 interface ProcessSupervisorDependencies {
@@ -50,9 +51,17 @@ interface ManagedServiceLifecyclePayload {
   phase?: string;
   ready?: boolean;
   error?: string;
+  stage?: string;
+  completed?: number;
 }
 
-const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
+// Finish a stalled ordinary attempt before the bootstrap page's 80-second recovery.
+// ADR-152 extends this only after a recognized state-import progress event.
+const DEFAULT_APP_STARTUP_TIMEOUT_MS = 75_000;
+const STATE_IMPORT_STARTUP_TIMEOUT_MS = 10 * 60_000;
+// Platform's documented fatal storage exit contract, kept host-local to avoid
+// importing a product implementation into the Electron host build.
+const STATE_STORAGE_FAILURE_EXIT_CODE = 78;
 const DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS = 60_000;
 const FORCE_STOP_EXIT_WAIT_MS = 1_000;
 const RUNTIME_TEMPLATE_SEED_STATE_FILE_NAME = '.bundled-template-seeds.json';
@@ -81,14 +90,21 @@ function waitForTimeout(ms: number): Promise<void> {
 function createStartupDeadlinePromise(serviceName: ManagedServiceName, timeoutMs: number): {
   promise: Promise<never>;
   cancel: () => void;
+  extend: (timeoutMs: number) => void;
 } {
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let schedule!: (timeoutMs: number) => void;
   return {
     promise: new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(new Error(`Timed out waiting for ${serviceName} startup after ${timeoutMs}ms`));
-      }, timeoutMs);
+      schedule = (duration) => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          reject(new Error(`Timed out waiting for ${serviceName} startup after ${duration}ms`));
+        }, duration);
+      };
+      schedule(timeoutMs);
     }),
+    extend: duration => schedule(duration),
     cancel: () => {
       if (timer) {
         clearTimeout(timer);
@@ -661,6 +677,7 @@ export class ManagedServiceSupervisor {
         child: null,
         snapshot: createInitialSnapshot(spec.name, spec.healthUrl, spec.logPath),
         expectedExit: false,
+        storageFailure: false,
       });
       this.logQueues.set(spec.name, Promise.resolve());
     }
@@ -790,6 +807,8 @@ export class ManagedServiceSupervisor {
     if (!handle) {
       throw new Error(`Unknown managed service: ${spec.name}`);
     }
+    if (handle.storageFailure) throw new Error(
+      'Cats state needs repair. Close Cats and run state check or restore, then explicitly retry startup.');
     if (handle.child && handle.child.exitCode === null && handle.child.signalCode === null) {
       return;
     }
@@ -813,6 +832,7 @@ export class ManagedServiceSupervisor {
       logPath: spec.logPath,
       lastOutput: null,
       lastOutputAt: null,
+      stateProgress: null,
     });
     this.queueLogWrite(
       spec.name,
@@ -885,10 +905,28 @@ export class ManagedServiceSupervisor {
       );
     };
 
-    const observeLifecycleOutput = (text: string) => {
-      for (const line of text.split(/\r?\n/u)) {
+    const lifecycleBuffers = { stdout: '', stderr: '' };
+    let stateProgressObserved = false;
+    const observeLifecycleOutput = (text: string, stream: 'stdout' | 'stderr') => {
+      const lines = (lifecycleBuffers[stream] + text).split(/\r?\n/u);
+      const partial = lines.pop() ?? '';
+      lifecycleBuffers[stream] = partial.length <= 64 * 1024 ? partial : '';
+      for (const line of lines) {
         const lifecycle = parseManagedServiceLifecycleLine(spec.name, line);
         if (!lifecycle) {
+          continue;
+        }
+        if (spec.name === 'cats-platform' && lifecycle.event === 'app.state_progress'
+          && lifecycle.phase === 'starting' && lifecycle.ready === false
+          && ['admitting_legacy_state', 'backup_complete', 'importing_conversations',
+            'database_published', 'rebuilding_search'].includes(lifecycle.stage ?? '')) {
+          if (!stateProgressObserved) {
+            stateProgressObserved = true;
+            startupDeadline.extend(STATE_IMPORT_STARTUP_TIMEOUT_MS);
+          }
+          this.updateSnapshot(spec.name, { stateProgress: { stage: lifecycle.stage!,
+            ...(Number.isSafeInteger(lifecycle.completed) && lifecycle.completed! >= 0
+              ? { completed: lifecycle.completed } : {}) } });
           continue;
         }
         if (lifecycle.ready === true && lifecycle.phase === 'ready') {
@@ -896,6 +934,7 @@ export class ManagedServiceSupervisor {
             status: 'ready',
             ready: true,
             error: null,
+            stateProgress: null,
           });
           resolveLifecycleReady?.();
           continue;
@@ -911,19 +950,24 @@ export class ManagedServiceSupervisor {
       const text = (chunk as Buffer).toString('utf8');
       writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
       this.recordServiceOutput(spec.name, spec.logPath, text, 'stdout');
-      observeLifecycleOutput(text);
+      observeLifecycleOutput(text, 'stdout');
     });
     child.stderr.on('data', (chunk) => {
       recordFirstStream('stderr');
       const text = (chunk as Buffer).toString('utf8');
       writeTaggedOutput(process.stderr, spec.name, chunk as Buffer);
       this.recordServiceOutput(spec.name, spec.logPath, text, 'stderr');
-      observeLifecycleOutput(text);
+      observeLifecycleOutput(text, 'stderr');
     });
     child.on('exit', (code, signal) => {
+      if (spec.name === 'cats-platform' && code === STATE_STORAGE_FAILURE_EXIT_CODE && !handle.expectedExit) {
+        handle.storageFailure = true;
+      }
       const exitMessage = handle.expectedExit
         ? `${spec.name} exited after host shutdown.`
-        : `${spec.name} exited before readiness (code: ${code ?? 'null'}, signal: ${signal ?? 'null'})`;
+        : handle.storageFailure
+          ? 'Cats state needs repair. Close Cats and run state check or restore before retrying.'
+          : `${spec.name} exited before readiness (code: ${code ?? 'null'}, signal: ${signal ?? 'null'})`;
       this.queueLogWrite(
         spec.name,
         spec.logPath,
@@ -935,6 +979,7 @@ export class ManagedServiceSupervisor {
         pid: null,
         exitCode: typeof code === 'number' ? code : null,
         error: handle.expectedExit ? null : exitMessage,
+        stateProgress: null,
       });
       handle.child = null;
     });
@@ -991,6 +1036,7 @@ export class ManagedServiceSupervisor {
         status: 'ready',
         ready: true,
         error: null,
+        stateProgress: null,
       });
     } catch (error) {
       this.updateSnapshot(spec.name, {
@@ -1019,7 +1065,11 @@ export class ManagedServiceSupervisor {
 
   private async stopService(name: ManagedServiceName): Promise<void> {
     const handle = this.handles.get(name);
-    if (!handle?.child) {
+    if (!handle) return;
+    // stopAll is part of an explicit Retry/restart or application shutdown.
+    handle.storageFailure = false;
+    if (!handle.child) {
+      this.updateSnapshot(name, { status: 'stopped', ready: false, error: null, exitCode: null });
       return;
     }
 

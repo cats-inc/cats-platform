@@ -8,7 +8,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { loadConfig } from '../src/config.ts';
 import { createServer } from '../src/app/server/index.ts';
-import { FileChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore } from '../src/products/chat/state/store.ts';
 import { PlatformIngress } from '../src/platform/apps/platformIngress.ts';
 import type { startAppProcess } from '../src/platform/apps/componentProcess.ts';
 import { fixtureIngressSecrets } from './fixtures/ingressSecrets.ts';
@@ -26,7 +26,7 @@ for (const failureMode of ['cleanup', 'settings']) test(`failed ingress ${failur
   const server = createServer({ shared: { config, platformIngress: ingress,
     desktopAppsKey: 'a'.repeat(64), runtimeClient: {
       async getHealth() { return { reachable: false, status: 'unavailable' }; },
-    } as never }, chat: { chatStore: new FileChatStore(config.chatStatePath) } });
+    } as never }, chat: { chatStore: new LegacyJsonChatStore(config.chatStatePath) } });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   let restoreWrite = () => {};
   t.after(async () => {

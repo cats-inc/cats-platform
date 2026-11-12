@@ -100,4 +100,23 @@ build. Independent foundation review found no remaining blocking issue after the
 fixes. This covers the query/coordination foundation, not the live-store migration or whole
 Desktop port. The prepared three-OS workflow is not evidence of a hosted pass.
 
+## Live-store migration checkpoint
+
+The [real-copy verification](desktop-state-baseline/2026-11-12-desktop-state-real-copy.json)
+used a private temporary copy of all four admitted source files. It imported one channel and
+51 messages in 858 ms, compared canonical pre/post exports byte for byte, restored the saved
+legacy bytes and read them through the old-format backend. All original source hashes remained
+unchanged. The matching logical digest was
+`afca1579a4b19928f1ed1fbc0967dcf08a265310af1c29b1b86742cd60af9235`.
+
+An earlier verification failed because Core re-projection advanced historical timestamps.
+The importer now keeps persisted source timestamps and uses persisted deterministic fallbacks
+for newly projected records; the passing result includes that correction. This is migration
+and rollback evidence, not a post-port performance benchmark. The new global snapshot APIs still
+materialize transcripts, and indexed/scoped product consumers remain in progress.
+
+The verification command requires an explicit source and the isolated Cats-home preload:
+`node --import ./scripts/testing/isolate-cats-home.mjs scripts/testing/verify-desktop-state-upgrade.mjs --source=<profile> --report=<report>`.
+It writes temporary copies and content-free reports, and never writes the selected originals.
+
 *Last updated: 2026-11-12*

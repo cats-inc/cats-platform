@@ -680,6 +680,7 @@ ${SETUP_WIZARD_CSS}
         'loading.retrying': 'Trying again\u2026',
         'loading.timedOut': 'Startup is taking too long. Try again or open details for diagnostics.',
         'loading.startingUp': 'Starting up\u2026',
+        'loading.upgradingState': 'Preparing your saved conversations…',
         'onboarding.headline': 'Choose which providers Cats may use, then continue into setup.',
         'onboarding.installCli': 'Install a CLI',
         'onboarding.installNodeFirst': 'Install Node first',
@@ -971,6 +972,7 @@ ${SETUP_WIZARD_CSS}
         'loading.retrying': '正在重試…',
         'loading.timedOut': '啟動等候逾時。請重試，或開啟詳細資料查看診斷。',
         'loading.startingUp': '正在啟動…',
+        'loading.upgradingState': '正在準備已儲存的對話…',
         'onboarding.headline': '選擇 Cats 可以使用的 providers，再繼續設定。',
         'onboarding.installCli': '安裝 CLI',
         'onboarding.installNodeFirst': '請先安裝 Node',
@@ -2374,7 +2376,8 @@ ${SETUP_WIZARD_CSS}
       splashDot.style.display = isError ? 'none' : '';
 
       /* Update text */
-      splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
+      splashText.textContent = isError ? '' : hasStateProgress(snap)
+        ? tx('loading.upgradingState') : friendlyLoadingSummary(snap.phase);
 
       /* Dismiss or resume slow-launch hint state */
       if (isError || isReady) {
@@ -2774,6 +2777,7 @@ ${SETUP_WIZARD_CSS}
     var retryHandle = null;
     var startupWaitHandle = null;
     var startupWaitExpired = false;
+    var startupStateWait = false;
     var showRecoveryDetails = false;
     /* Recovery sections collapse on every doRender() because showRecovery
      * rebuilds recoveryEl.innerHTML from scratch whenever a new snapshot
@@ -2964,20 +2968,30 @@ ${SETUP_WIZARD_CSS}
       if (startupWaitHandle !== null) window.clearTimeout(startupWaitHandle);
       startupWaitHandle = null;
       startupWaitExpired = false;
+      startupStateWait = false;
+    }
+
+    function hasStateProgress(snap) {
+      return (snap.services || []).some(function (service) {
+        return service.name === 'cats-platform' && service.status === 'starting' && service.stateProgress;
+      });
     }
 
     function syncStartupWait(snap) {
       var pending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
       if (!pending) {
         resetStartupWait();
-      } else if (!startupWaitExpired && startupWaitHandle === null) {
+      } else if (!startupWaitExpired && (!startupStateWait && hasStateProgress(snap)
+          || startupWaitHandle === null)) {
+        if (startupWaitHandle !== null) window.clearTimeout(startupWaitHandle);
+        startupStateWait = startupStateWait || hasStateProgress(snap);
         // The hints appear at 20/40/60 s. After another 20 s, expose recovery
         // even if the host is still publishing the same pending phase.
         startupWaitHandle = window.setTimeout(function () {
           startupWaitHandle = null;
           startupWaitExpired = true;
           doRender();
-        }, 80000);
+        }, startupStateWait ? 600000 : 80000);
       }
     }
 

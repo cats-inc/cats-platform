@@ -8,7 +8,7 @@ import { routeCoreApi } from '../src/core/api/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { createDefaultCoreState, upsertCoreProject, upsertCoreTask, upsertCoreWorkItem, upsertCoreRun, upsertCoreArtifact } from '../src/core/model/index.ts';
 import { applyOwnerAction, ownerActionView } from '../src/core/ownerActions.ts';
-import { FileChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 
@@ -84,14 +84,14 @@ test('persisted action tokens ignore projection clocks; deletion cannot return t
   const file = path.join(dir, 'state.json');
   const core = upsertCoreProject(createDefaultCoreState(), { id: 'p', title: 'Project' }).core;
   await writeFile(file, JSON.stringify(buildPersistedChatSnapshot(createDefaultChatState(), core)));
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   const view = ownerActionView(await store.readCore(), 'project', 'p');
   await store.updateCore(current => applyOwnerAction(current, 'project', 'p', { action: 'pause', token: view.token }));
   const next = ownerActionView(await store.readCore(), 'project', 'p');
   await store.updateCore(current => applyOwnerAction(current, 'project', 'p', { action: 'delete', token: next.token }));
   assert.equal(JSON.parse(await readFile(file + '.bak', 'utf8')).projects.length, 0);
   await writeFile(file, '{damaged');
-  assert.equal((await new FileChatStore(file).readCore()).projects.length, 0);
+  assert.equal((await new LegacyJsonChatStore(file).readCore()).projects.length, 0);
 });
 
 test('artifact batches recheck the exact selection atomically and reject stale previews', async t => {

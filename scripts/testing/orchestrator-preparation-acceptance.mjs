@@ -12,7 +12,7 @@ export async function runPreparationAcceptance({ load, root, workspace, target, 
   const { createServer } = await load('app/server/index.js');
   const { createDefaultChatState } = await load('products/chat/state/defaults.js');
   const { createChannel, createCat } = await load('products/chat/state/model/index.js');
-  const { FileChatStore } = await load('products/chat/state/store.js');
+  const { LegacyJsonChatStore } = await load('products/chat/state/store.js');
   const auth = await load('platform/auth/index.js');
   const operations = await load('products/chat/state/orchestratorCollaboration.js');
   const allowedTools = [operations.DISCOVER_COLLABORATION_CATS, operations.INSPECT_COLLABORATION_CONTEXT,
@@ -45,7 +45,7 @@ export async function runPreparationAcceptance({ load, root, workspace, target, 
   for (const channel of state.channels) for (const assignment of channel.catAssignments) {
     if (assignment.catId !== coordinatorId) assignment.execution.target = target;
   }
-  const store = new FileChatStore(config.chatStatePath);
+  const store = new LegacyJsonChatStore(config.chatStatePath);
   await store.write(state);
   const created = await auth.createFirstAdminLocalAuthState({ state: auth.createEmptyPlatformAuthState(now),
     displayName: 'Fixture owner', identifier: 'owner@example.invalid', password: randomBytes(32).toString('hex'),
@@ -187,7 +187,7 @@ export async function runPreparationAcceptance({ load, root, workspace, target, 
     for (const name of ['tasks', 'workItems', 'projects']) assert.deepEqual(
       core[name].map(({ id, status }) => ({ id, status })), initialCore[name].map(({ id, status }) => ({ id, status })), name);
     assert.ok(core.runs.every(run => run.id.startsWith('run-room-routing-')));
-    assert.deepEqual((await new FileChatStore(config.chatStatePath).read()).channels.find(item => item.id === channelId)
+    assert.deepEqual((await new LegacyJsonChatStore(config.chatStatePath).read()).channels.find(item => item.id === channelId)
       .messages.find(message => message.id === report.resultMessageId).metadata.collaborationPreparation, report.collaboration);
     assert.equal(isCancelled(), false, 'Preparation acceptance interrupted before completion');
     report.noCollaborationAdmission = true;

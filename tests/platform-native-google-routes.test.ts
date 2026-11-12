@@ -14,7 +14,7 @@ import {
   MemoryPlatformAuthActionGrantStore, type PlatformGoogleIdTokenClaims,
   type PlatformAuthSecurityEvent, type PlatformVerifiedGoogleIdentity,
 } from '../src/platform/auth/index.ts';
-import { FileChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { createChannel, appendMessage } from '../src/products/chat/state/model/index.ts';
 import { waitForGuideCatAssistRefreshIdle } from '../src/products/chat/api/guideCatAssist.ts';
@@ -39,7 +39,7 @@ async function fixture(t: TestContext, prior: 'local_password' | 'google' | 'non
     sessionSecret: SECRET, sessionTtlMs: 3600_000, now: NOW,
   });
   if (initial) await authStore.writeState(initial.state);
-  const chatStore = new FileChatStore(config.chatStatePath);
+  const chatStore = new LegacyJsonChatStore(config.chatStatePath);
   const core = createDefaultCoreState();
   if (initial) core.setupCompleteAt = NOW.toISOString();
   let chat = prior === 'none' ? createDefaultChatState() : createChannel(createDefaultChatState(), {
@@ -215,7 +215,7 @@ test('existing password profile upgrades and links Google without changing conve
   assert.equal(after.identities.length, 2);
   assert.equal(await readFile(f.config.chatStatePath, 'utf8'), beforeChat);
   assert.equal(await readFile(f.runtimePath, 'utf8'), beforeRuntime);
-  const reopened = await new FileChatStore(f.config.chatStatePath).read();
+  const reopened = await new LegacyJsonChatStore(f.config.chatStatePath).read();
   assert.ok(reopened.channels[0]?.messages.some((message) =>
     message.body === 'A valuable conversation must survive this upgrade.'));
 });

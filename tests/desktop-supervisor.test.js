@@ -757,6 +757,94 @@ test('startService accepts app-managed ready lifecycle events before health poll
   }
 });
 
+test('fatal storage exits latch until an explicit stop and retry', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-supervisor-storage-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const config = resolveDesktopHostConfig({ env: { CATS_DESKTOP_READINESS_TIMEOUT_MS: '5' },
+    userDataDir: root, catsHomeDir: join(root, 'cats-home') });
+  const children = [];
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: () => {
+      const child = new FakeChildProcess(); children.push(child);
+      setImmediate(() => {
+        if (children.length === 1) { child.exitCode = 78; child.emit('exit', 78, null); }
+        else child.stdout.write(`${JSON.stringify({ service: 'cats-platform', event: 'app.ready', phase: 'ready', ready: true })}\n`);
+      });
+      return child;
+    },
+    waitForServiceReadiness: async () => { throw Error('not listening'); },
+  });
+  const [, spec] = buildManagedServiceSpecs(config);
+  await assert.rejects(supervisor.startService(spec), /exited before readiness/);
+  assert.equal(supervisor.getSnapshots().find(item => item.name === 'cats-platform').exitCode, 78);
+  await assert.rejects(supervisor.startService(spec), /state needs repair/);
+  assert.equal(children.length, 1);
+  await supervisor.stopService('cats-platform');
+  await supervisor.startService(spec);
+  assert.equal(children.length, 2);
+  children[1].exitCode = 0; children[1].emit('exit', 0, null);
+});
+
+test('split progress lines remain bounded diagnostics and never establish readiness', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-supervisor-progress-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const config = resolveDesktopHostConfig({ env: { CATS_DESKTOP_READINESS_TIMEOUT_MS: '5' },
+    userDataDir: root, catsHomeDir: join(root, 'cats-home') });
+  const child = new FakeChildProcess();
+  let progress;
+  const supervisor = new ManagedServiceSupervisor(config, { spawn: () => child,
+    waitForServiceReadiness: async () => { throw Error('not listening'); },
+    onStateChange: state => { if (state.stateProgress) progress = state; },
+  });
+  const [, spec] = buildManagedServiceSpecs(config);
+  const starting = supervisor.startService(spec);
+  setTimeout(() => {
+    const line = JSON.stringify({ service: 'cats-platform', event: 'app.state_progress',
+      phase: 'starting', ready: false, stage: 'importing_conversations', completed: 12 });
+    child.stdout.write(line.slice(0, 25)); child.stdout.write(`${line.slice(25)}\n`);
+    assert.equal(progress.ready, false);
+    assert.deepEqual(progress.stateProgress, { stage: 'importing_conversations', completed: 12 });
+    child.stdout.write(`${JSON.stringify({ service: 'cats-platform', event: 'app.ready', phase: 'ready', ready: true })}\n`);
+  }, 50);
+  await starting;
+  assert.equal(supervisor.getSnapshots().find(item => item.name === 'cats-platform').stateProgress, null);
+  child.exitCode = 0; child.emit('exit', 0, null);
+});
+
+for (const importing of [false, true]) test(`startup deadline ${importing ? 'extends once for verified state progress' : 'settles before the ordinary UI retry'}`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-supervisor-deadline-'));
+  const config = resolveDesktopHostConfig({ env: { CATS_DESKTOP_READINESS_TIMEOUT_MS: '5' },
+    userDataDir: root, catsHomeDir: join(root, 'cats-home') });
+  const child = new FakeChildProcess();
+  let spawned;
+  const observedSpawn = new Promise(resolve => { spawned = resolve; });
+  const supervisor = new ManagedServiceSupervisor(config, { spawn: () => { spawned(); return child; },
+    waitForServiceReadiness: async () => { throw Error('not listening'); } });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  t.after(async () => {
+    t.mock.timers.reset();
+    child.exitCode = 0; child.emit('exit', 0, null);
+    await Promise.all(supervisor.logQueues.values());
+    await rm(root, { recursive: true, force: true });
+  });
+  const [, spec] = buildManagedServiceSpecs(config);
+  let settled = false;
+  const starting = supervisor.startService(spec).finally(() => { settled = true; });
+  const failed = assert.rejects(starting, importing ? /600000ms/ : /75000ms/);
+  await observedSpawn;
+  const progress = `${JSON.stringify({ service: 'cats-platform', event: 'app.state_progress',
+    phase: 'starting', ready: false, stage: 'importing_conversations', completed: 12 })}\n`;
+  if (importing) child.stdout.write(progress);
+  t.mock.timers.tick(75_000);
+  if (importing) {
+    await new Promise(setImmediate);
+    assert.equal(settled, false);
+    child.stdout.write(progress); // Repeated progress never renews the maximum deadline.
+    t.mock.timers.tick(525_000);
+  }
+  await failed;
+});
+
 test('startService surfaces app-managed startup errors written to stderr', async () => {
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-startup-error-'));
   const config = resolveDesktopHostConfig({

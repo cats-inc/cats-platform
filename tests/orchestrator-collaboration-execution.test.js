@@ -8,7 +8,7 @@ import { createServer } from '../build/server/app/server/index.js';
 import { createAuthenticatedTestSession, createTestAuthConfig, installAuthenticatedFetch } from './testUtils.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createChannel, createCat, appendMessage } from '../build/server/products/chat/state/model/index.js';
-import { MemoryChatStore, FileChatStore } from '../build/server/products/chat/state/store.js';
+import { MemoryChatStore, LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 import { appendCollaborationReport, describeCollaborationReport } from '../build/server/products/chat/state/orchestratorCollaborationReport.js';
 import { collaborationSnapshot, executeCollaborationRead, collaborationToolDescriptors,
   DISCOVER_COLLABORATION_CATS as discover, INSPECT_COLLABORATION_CONTEXT as inspect,
@@ -604,7 +604,7 @@ test('metadata persists in existing snapshots; restart stops bridged work and ne
   const root = await mkdtemp(join(tmpdir(), 'cats-k3-store-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const h = fixture(); const c = clients(h); const file = join(root, 'state.json');
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   await store.write(h.state);
   const old = JSON.parse(await readFile(file, 'utf8'));
   const s = await service(h, c, store);
@@ -612,18 +612,18 @@ test('metadata persists in existing snapshots; restart stops bridged work and ne
   const original = readCollaborationIntent(await store.readCore(), s.port.intentId);
   await store.updateCore(core => writeCollaborationIntent(core, { ...original, status: 'running',
     stages: { ...original.stages, implementation: { ...original.stages.implementation, status: 'starting' } } }));
-  const reloaded = new FileChatStore(file);
+  const reloaded = new LegacyJsonChatStore(file);
   await recoverCollaborations(reloaded, c.runtime);
   const recovered = readCollaborationIntent(await reloaded.readCore(), original.id);
   assert.equal(recovered.status, 'blocked');
   assert.equal(recovered.stages.implementation.status, 'blocked');
   assert.equal(recovered.channelId, original.channelId);
   assert.equal(c.calls.create.length, 0);
-  assert.equal((await new FileChatStore(file).readCore()).version, old.version);
+  assert.equal((await new LegacyJsonChatStore(file).readCore()).version, old.version);
   const backup = JSON.parse(await readFile(`${file}.bak`, 'utf8'));
   assert.ok(backup.tasks.some(task => task.id === original.id));
   await assert.rejects(store.updateSnapshot(() => { throw new Error('refuse'); }), /refuse/u);
-  assert.equal(readCollaborationIntent(await new FileChatStore(file).readCore(), original.id).status, 'blocked');
+  assert.equal(readCollaborationIntent(await new LegacyJsonChatStore(file).readCore(), original.id).status, 'blocked');
 });
 
 async function waitUntil(check) {

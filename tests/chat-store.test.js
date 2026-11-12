@@ -26,13 +26,13 @@ import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtur
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { buildChatWorkItemId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
 import { normalizeMessage } from '../build/server/products/chat/state/chat-snapshot/entities.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 import { CATS_CORE_STATE_VERSION } from '../build/server/core/types.js';
 
-test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
+test('LegacyJsonChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
 
   let state = await store.read();
   state = createChannel(
@@ -125,7 +125,7 @@ test('normalizeMessage returns owned metadata objects', () => {
 });
 
 test('removing the coordinator clears the binding and the last participant stays', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -220,10 +220,10 @@ test('channel topology infers direct lanes and participant chat rooms independen
   assert.equal(toChannelSummary(state.channels[0]).channelKind, 'chat_channel');
 });
 
-test('FileChatStore repairs legacy active snapshots that are missing setupCompleteAt', async () => {
+test('LegacyJsonChatStore repairs legacy active snapshots that are missing setupCompleteAt', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const now = new Date('2026-03-26T00:00:00.000Z');
 
   let state = await store.read();
@@ -242,7 +242,7 @@ test('FileChatStore repairs legacy active snapshots that are missing setupComple
   brokenSnapshot.setupCompleteAt = null;
   await writeFile(statePath, `${JSON.stringify(brokenSnapshot, null, 2)}\n`, 'utf-8');
 
-  const reloaded = new FileChatStore(statePath);
+  const reloaded = new LegacyJsonChatStore(statePath);
   const repairedCore = await reloaded.readCore();
   const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
 
@@ -250,10 +250,10 @@ test('FileChatStore repairs legacy active snapshots that are missing setupComple
   assert.equal(repairedSnapshot.setupCompleteAt, repairedCore.setupCompleteAt);
 });
 
-test('FileChatStore keeps the last known snapshot when the on-disk file is temporarily malformed', async () => {
+test('LegacyJsonChatStore keeps the last known snapshot when the on-disk file is temporarily malformed', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const now = '2026-03-26T12:00:00.000Z';
 
   let state = await store.read();
@@ -286,11 +286,11 @@ test('FileChatStore keeps the last known snapshot when the on-disk file is tempo
   assert.equal(recoveredCore.setupCompleteAt, now);
 });
 
-test('FileChatStore cold-start recovers from backup when the primary snapshot is malformed', async () => {
+test('LegacyJsonChatStore cold-start recovers from backup when the primary snapshot is malformed', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const backupPath = `${statePath}.bak`;
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const now = '2026-03-27T00:00:00.000Z';
 
   let state = await store.read();
@@ -318,7 +318,7 @@ test('FileChatStore cold-start recovers from backup when the primary snapshot is
   await writeFile(backupPath, await readFile(statePath, 'utf-8'), 'utf-8');
   await writeFile(statePath, '{\n', 'utf-8');
 
-  const recoveredStore = new FileChatStore(statePath);
+  const recoveredStore = new LegacyJsonChatStore(statePath);
   const recoveredCore = await recoveredStore.readCore();
   const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
 
@@ -327,13 +327,13 @@ test('FileChatStore cold-start recovers from backup when the primary snapshot is
   assert.equal(repairedSnapshot.ownerProfile.displayName, 'Kenneth');
 });
 
-test('FileChatStore recreates a default snapshot when the primary file is empty and no backup exists', async () => {
+test('LegacyJsonChatStore recreates a default snapshot when the primary file is empty and no backup exists', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
 
   await writeFile(statePath, '', 'utf-8');
 
-  const recoveredStore = new FileChatStore(statePath);
+  const recoveredStore = new LegacyJsonChatStore(statePath);
   const recoveredState = await recoveredStore.read();
   const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
 
@@ -525,10 +525,10 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
   );
 });
 
-test('FileChatStore normalizes contaminated direct lanes back to the direct-recipient topology', async () => {
+test('LegacyJsonChatStore normalizes contaminated direct lanes back to the direct-recipient topology', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const now = new Date('2026-03-27T00:00:00.000Z');
 
   let state = await store.read();
@@ -608,7 +608,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
   });
   await writeFile(statePath, `${JSON.stringify(rawSnapshot, null, 2)}\n`, 'utf-8');
 
-  const recoveredStore = new FileChatStore(statePath);
+  const recoveredStore = new LegacyJsonChatStore(statePath);
   const recoveredState = await recoveredStore.read();
   const recoveredChannel = recoveredState.channels.find((candidate) => candidate.id === channelId);
   assert.ok(recoveredChannel);
@@ -620,8 +620,8 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
   assert.equal('orchestratorLease' in recoveredChannel, false);
 });
 
-test('FileChatStore round-trips per-message execution provenance', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+test('LegacyJsonChatStore round-trips per-message execution provenance', async () => {
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:10:00.000Z');
 
@@ -663,8 +663,8 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   assert.equal(lastMessage?.metadata.executionLabelSnapshot, 'Antigravity-CLI');
 });
 
-test('FileChatStore preserves first-class choices, embedded-json extraction, and choice responses', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+test('LegacyJsonChatStore preserves first-class choices, embedded-json extraction, and choice responses', async () => {
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-24T09:00:00.000Z');
 
@@ -734,7 +734,7 @@ test('FileChatStore preserves first-class choices, embedded-json extraction, and
 });
 
 test('exportChannel returns assigned cats with the selected transcript', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   const initialState = await store.read();
   const state = createChannel(
     initialState,
@@ -754,7 +754,7 @@ test('exportChannel returns assigned cats with the selected transcript', async (
 });
 
 test('ChatStore exposes a derived Cats Core view that stays in sync with chat state', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
   state = createChannel(
@@ -790,7 +790,7 @@ test('ChatStore exposes a derived Cats Core view that stays in sync with chat st
 });
 
 test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes into core records', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-22T00:00:00.000Z');
 
@@ -993,7 +993,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
 });
 
 test('ChatStore projects retryable workflow-continuation replay metadata for max-continuations blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-26T10:00:00.000Z');
 
@@ -1150,7 +1150,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
 });
 
 test('ChatStore projects retryable workflow-continuation replay metadata for max-dispatch blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-26T10:30:00.000Z');
 
@@ -1307,7 +1307,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
 });
 
 test('routeChannelMessage sends choice responses back to the originating cat session without mentions', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-24T10:00:00.000Z');
 
@@ -1457,10 +1457,10 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
   assert.equal(dispatched.results[0]?.sessionId, 'session-designer');
 });
 
-test('FileChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {
+test('LegacyJsonChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -1517,10 +1517,10 @@ test('FileChatStore preserves null room route targets when reloading persisted r
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.fallbackTarget, null);
 });
 
-test('FileChatStore drops malformed assistant turn deliveries when reloading persisted routing state', async () => {
+test('LegacyJsonChatStore drops malformed assistant turn deliveries when reloading persisted routing state', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   let state = await store.read();
   const now = new Date('2026-04-12T00:00:00.000Z');
 
@@ -1609,7 +1609,7 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
 });
 
 test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
   state = createCat(
@@ -1643,13 +1643,13 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
-test('FileChatStore preserves core-owned shared records across reloads and chat projection sync', async () => {
+test('LegacyJsonChatStore preserves core-owned shared records across reloads and chat projection sync', async () => {
   const fixtures = createSharedCoreFixtureBundle();
   const statePath = path.join(
     await mkdtemp(path.join(os.tmpdir(), 'cats-store-core-')),
     'chat-state.json',
   );
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const initialCore = await store.readCore();
 
   await store.writeCore({
@@ -1829,7 +1829,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
     approvalBindings: [fixtures.approvalBinding],
   });
 
-  const reloadedStore = new FileChatStore(statePath);
+  const reloadedStore = new LegacyJsonChatStore(statePath);
   let chatState = await reloadedStore.read();
   chatState = createChannel(
     chatState,
@@ -1883,7 +1883,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
 });
 
 test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {
-  const store = new FileChatStore(
+  const store = new LegacyJsonChatStore(
     path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
   );
   let state = await store.read();
@@ -1913,7 +1913,7 @@ test('updateGlobalOrchestrator preserves the existing model when model is omitte
 });
 
 test('ChatStore rebinds Telegram bot bindings when the Boss Cats change', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  const store = new LegacyJsonChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
   state = createCat(
@@ -1966,7 +1966,7 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cats change', async 
 
 test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {
   let state = createChannel(
-    await new FileChatStore(
+    await new LegacyJsonChatStore(
       path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
     ).read(),
     {
@@ -2001,7 +2001,7 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
 });
 
 test('createChannel defaults empty draft fields to a neutral new-chat label', async () => {
-  const initialState = await new FileChatStore(
+  const initialState = await new LegacyJsonChatStore(
     path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
   ).read();
 
@@ -2025,7 +2025,7 @@ test('snapshot rewrites never leave the primary file missing for concurrent read
     await mkdtemp(path.join(os.tmpdir(), 'cats-store-atomic-')),
     'chat-state.json',
   );
-  const store = new FileChatStore(filePath);
+  const store = new LegacyJsonChatStore(filePath);
   const state = await store.read();
 
   let missingObservations = 0;
@@ -2062,7 +2062,7 @@ test('recovers from the backup snapshot when the primary file goes missing', asy
     await mkdtemp(path.join(os.tmpdir(), 'cats-store-recover-')),
     'chat-state.json',
   );
-  const seedStore = new FileChatStore(filePath);
+  const seedStore = new LegacyJsonChatStore(filePath);
   const seeded = createChannel(
     await seedStore.read(),
     {
@@ -2078,18 +2078,18 @@ test('recovers from the backup snapshot when the primary file goes missing', asy
 
   await rm(filePath, { force: true });
 
-  const recoveredState = await new FileChatStore(filePath).read();
+  const recoveredState = await new LegacyJsonChatStore(filePath).read();
   assert.equal(recoveredState.channels.length, 1);
   assert.equal(recoveredState.channels[0].title, 'Survives restart');
 });
 
-test('FileChatStore never lets a read-triggered repair revert a concurrent save', async () => {
+test('LegacyJsonChatStore never lets a read-triggered repair revert a concurrent save', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-chat-store-race-'));
   const filePath = path.join(tempDir, 'chat-state.json');
   const now = new Date('2026-09-29T08:00:00.000Z');
   try {
     // A Cat exists but setup completion was never persisted, so a read wants a repair.
-    await new FileChatStore(filePath).writeSnapshot(
+    await new LegacyJsonChatStore(filePath).writeSnapshot(
       createCat(createDefaultChatState(), { name: 'Smelly', provider: 'claude' }, now),
       createDefaultCoreState(now),
     );
@@ -2097,7 +2097,7 @@ test('FileChatStore never lets a read-triggered repair revert a concurrent save'
     seeded.setupCompleteAt = null;
     await writeFile(filePath, JSON.stringify(seeded), 'utf-8');
 
-    const store = new FileChatStore(filePath);
+    const store = new LegacyJsonChatStore(filePath);
     // The read starts first, as the webhook's context read did; then a save takes the lock.
     const reading = store.read();
     let readSettled = false;
@@ -2122,19 +2122,19 @@ test('FileChatStore never lets a read-triggered repair revert a concurrent save'
   }
 });
 
-test('FileChatStore reads a clean snapshot without writing to disk', async () => {
+test('LegacyJsonChatStore reads a clean snapshot without writing to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-chat-store-clean-read-'));
   const filePath = path.join(tempDir, 'chat-state.json');
   const now = new Date('2026-09-29T08:00:00.000Z');
   try {
-    await new FileChatStore(filePath).writeSnapshot(
+    await new LegacyJsonChatStore(filePath).writeSnapshot(
       createCat(createDefaultChatState(), { name: 'Smelly', provider: 'claude' }, now),
       createDefaultCoreState(now),
     );
     // The first read persists the setup repair; after that the snapshot is clean.
-    await new FileChatStore(filePath).read();
+    await new LegacyJsonChatStore(filePath).read();
     const before = await readFile(filePath, 'utf-8');
-    const store = new FileChatStore(filePath);
+    const store = new LegacyJsonChatStore(filePath);
     await Promise.all([store.read(), store.readCore(), store.read()]);
     assert.equal(await readFile(filePath, 'utf-8'), before);
   } finally {

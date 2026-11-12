@@ -450,6 +450,7 @@ export interface ManagedServiceSnapshot {
   logPath: string | null;
   lastOutput: string | null;
   lastOutputAt: string | null;
+  stateProgress?: { stage: string; completed?: number } | null;
 }
 
 export interface DesktopProviderSummary {

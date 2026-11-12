@@ -23,7 +23,7 @@ import {
   routeChannelMessage,
 } from '../build/server/products/chat/state/runtimeActions.js';
 import { ensureTargetSession } from '../build/server/products/chat/state/runtime-session/wake.js';
-import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
   buildChatConversationId,
@@ -1400,7 +1400,7 @@ test('routeChannelMessage forwards planning metadata into chat session creation 
 test('Code continuation after disk round trips retains the session, cwd and artifact; real controls changes still restart', async (t) => {
   const fixture = await mkdtemp(path.join(tmpdir(), 'cats-code-continuity-'));
   t.after(() => rm(fixture, { recursive: true, force: true }));
-  const store = new FileChatStore(path.join(fixture, 'state.json'));
+  const store = new LegacyJsonChatStore(path.join(fixture, 'state.json'));
   const selection = (revision, effort = 'medium') => ({
     entryMode: 'explicit', entryId: 'opus', catalogRevision: revision,
     controls: { 'claude.reasoning_effort': effort },

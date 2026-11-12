@@ -24,7 +24,7 @@ import {
 } from '../build/server/products/chat/state/model/index.js';
 import { keepRaisedProductScopes } from '../build/server/products/chat/state/model/productScope.js';
 import { mergeCompletedDispatchState } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
-import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
 // SPEC-141 FR-20 to FR-26 (PLAN-134 Phase 5): the raise on the server.
@@ -242,7 +242,7 @@ test('D2: a writer holding a copy from before the raise does not lower it', asyn
     async (state) => {
       const dir = await mkdtemp(path.join(os.tmpdir(), 'cats-raise-store-'));
       t.after(() => rm(dir, { recursive: true, force: true }));
-      const store = new FileChatStore(path.join(dir, 'state.json'));
+      const store = new LegacyJsonChatStore(path.join(dir, 'state.json'));
       await store.write(state);
       return store;
     },

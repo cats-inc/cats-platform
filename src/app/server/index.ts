@@ -376,45 +376,49 @@ export function createServer(dependencies: ServerDependencies) {
       const [state, core] = await Promise.all([chat.chatStore.read(), chat.chatStore.readCore()]);
       if (state.channels.some(channel => channel.roomRouting?.workflow.activeTurn)
         || core.runs.some(run => run.status === 'running')) throw new PlatformResetBusyError();
-      // End authenticated streams cleanly before revoking their tunnel sockets.
-      await Promise.all([...openStreams].map(response => new Promise<void>(resolve => {
-        if (response.writableFinished || response.destroyed) { resolve(); return; }
-        const timer = setTimeout(resolve, 1000);
-        response.end(() => { clearTimeout(timer); resolve(); });
-      })));
-      await ingress?.resetForDataReset();
-      await operation(async () => {
-        // Streaming handlers return after subscribing. Close their responses as
-        // well as revoking auth, so close handlers remove listeners/heartbeats.
-        for (const response of openStreams) response.end();
-        knowledge.revoke();
-        catImageTools.revoke();
-        desktopControl.reset();
-        await catImages?.clearForReset();
-        hostTools.clearForReset();
-        getDefaultArtifactCanvasRenderIntentHub().clearForReset();
-        await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
-        if (resolvedDependencies.code.livePreviewStore !== resolvedDependencies.code.livePreviewSupervisor) {
-          await resolvedDependencies.code.livePreviewStore?.clearForReset?.();
-        }
-        await clearProviderCachesForReset(providerSelectorClient);
-        resolvedDependencies.shared.runtimeClientDiagnosticSink?.clearForReset?.();
-        resolvedDependencies.shared.providerCapabilityBootstrapDiagnosticSink.clearForReset?.();
-        resolvedDependencies.shared.providerCapabilityBootstrapDiagnostics = [];
-        await chat.memoryStore.clearForReset?.();
-        await chat.companionStore.clearForReset?.();
-        await chat.companionActivityStore.clearForReset?.();
-        chat.telegramRelay.clearForReset?.();
-        chat.pollingSupervisor.clearForReset?.();
-        golden?.clearForReset();
-        await resolvedDependencies.work.scheduleStore?.writeState(createEmptySchedulerState());
-        resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
-        resolvedDependencies.shared.actionGrantStore.clearForReset?.();
-        resolvedDependencies.shared.googleProofStore?.clearForReset();
-        if (resolvedDependencies.shared.nativeGoogleStore !== resolvedDependencies.shared.googleProofStore) {
-          resolvedDependencies.shared.nativeGoogleStore?.clearForReset();
-        }
-        await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
+      const withStorageReset = chat.chatStore.withDataReset?.bind(chat.chatStore)
+        ?? (async <T>(operation: () => Promise<T>) => operation());
+      await withStorageReset(async () => {
+        // End authenticated streams cleanly before revoking their tunnel sockets.
+        await Promise.all([...openStreams].map(response => new Promise<void>(resolve => {
+          if (response.writableFinished || response.destroyed) { resolve(); return; }
+          const timer = setTimeout(resolve, 1000);
+          response.end(() => { clearTimeout(timer); resolve(); });
+        })));
+        await ingress?.resetForDataReset();
+        await operation(async () => {
+          // Streaming handlers return after subscribing. Close their responses as
+          // well as revoking auth, so close handlers remove listeners/heartbeats.
+          for (const response of openStreams) response.end();
+          knowledge.revoke();
+          catImageTools.revoke();
+          desktopControl.reset();
+          await catImages?.clearForReset();
+          hostTools.clearForReset();
+          getDefaultArtifactCanvasRenderIntentHub().clearForReset();
+          await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
+          if (resolvedDependencies.code.livePreviewStore !== resolvedDependencies.code.livePreviewSupervisor) {
+            await resolvedDependencies.code.livePreviewStore?.clearForReset?.();
+          }
+          await clearProviderCachesForReset(providerSelectorClient);
+          resolvedDependencies.shared.runtimeClientDiagnosticSink?.clearForReset?.();
+          resolvedDependencies.shared.providerCapabilityBootstrapDiagnosticSink.clearForReset?.();
+          resolvedDependencies.shared.providerCapabilityBootstrapDiagnostics = [];
+          await chat.memoryStore.clearForReset?.();
+          await chat.companionStore.clearForReset?.();
+          await chat.companionActivityStore.clearForReset?.();
+          chat.telegramRelay.clearForReset?.();
+          chat.pollingSupervisor.clearForReset?.();
+          golden?.clearForReset();
+          await resolvedDependencies.work.scheduleStore?.writeState(createEmptySchedulerState());
+          resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
+          resolvedDependencies.shared.actionGrantStore.clearForReset?.();
+          resolvedDependencies.shared.googleProofStore?.clearForReset();
+          if (resolvedDependencies.shared.nativeGoogleStore !== resolvedDependencies.shared.googleProofStore) {
+            resolvedDependencies.shared.nativeGoogleStore?.clearForReset();
+          }
+          await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
+        });
       });
     } finally {
       resetting = false;

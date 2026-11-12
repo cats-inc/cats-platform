@@ -8,7 +8,7 @@ import { MemoryCoreStore } from '../src/core/store.ts';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { FileChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore } from '../src/products/chat/state/store.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 
@@ -74,13 +74,13 @@ test('removed orphan links stay removed after a Chat save and backup recovery', 
   core = { ...core, projects: [] };
   const file = path.join(dir, 'state.json');
   await writeFile(file, JSON.stringify(buildPersistedChatSnapshot(createDefaultChatState(), core)));
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   const preview = previewOrphanLinks(await store.readCore(), ['removed']);
   await store.updateCore(core => applyOrphanLinks(core, { ids: ['removed'], token: preview.token }));
   await store.write(await store.read());
   assert.equal(JSON.parse(await readFile(file + '.bak', 'utf8')).workGraphLinks.length, 0);
   await writeFile(file, '{damaged');
-  const recovered = await new FileChatStore(file).readCore();
+  const recovered = await new LegacyJsonChatStore(file).readCore();
   assert.equal(recovered.workGraphLinks.length, 0);
   assert.deepEqual(recovered.ownerLifecycle?.removedLinkIds, ['removed']);
 });

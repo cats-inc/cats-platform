@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
@@ -31,6 +31,9 @@ for (const noOpen of [false, true]) {
       await cli.waitFor(({ stdout, stderr }) => stdout.includes('q  stop service') && (noOpen || stderr.includes('TEST_BROWSER')));
       assert.match(cli.stdout, new RegExp(`Open Cats: http://127\\.0\\.0\\.1:${cli.port}/\\s`));
       assert.equal((await fetch(`http://127.0.0.1:${cli.port}/health`)).ok, true);
+      const profile = join(cli.root, '.cats/platform/state/chat-state.local.json');
+      assert.equal(JSON.parse(await readFile(profile, 'utf8')).version, 8);
+      assert.ok((await stat(profile.replace(/\.json$/u, '.sqlite'))).size > 0);
       for (const pathname of ['/', '/setup']) {
         const page = await fetch(`http://127.0.0.1:${cli.port}${pathname}`);
         assert.equal(page.status, 200);
@@ -51,12 +54,48 @@ for (const noOpen of [false, true]) {
       assert.equal((await cli.done).code, 0);
       assert.match(cli.stdout, new RegExp(`cats stopped \\(${noOpen ? 'sigint' : 'keyboard'}\\)`));
       assert.match(cli.stderr, /TEST_RAW false/);
+      assert.deepEqual(await readdir(`${profile}.leases`), []);
       await assert.rejects(fetch(`http://127.0.0.1:${cli.port}/health`, { signal: AbortSignal.timeout(1000) }));
     } finally {
       await cli.close();
     }
   });
 }
+
+test('unrecognized persisted state exits 78 without readiness or resetting source bytes', { timeout: 60_000 }, async () => {
+  const source = '{"private":"DO_NOT_LOG_THIS_SENTINEL",broken';
+  const cli = await launchCli({ entry: resolve('build/server/index.js'),
+    args: ['--startup-mode=app-managed', '--ready-output=json'], tty: false,
+    environment: async root => {
+      const state = join(root, '.cats/platform/state'); await mkdir(state, { recursive: true });
+      await writeFile(join(state, 'chat-state.local.json'), source);
+      return {};
+    },
+  });
+  try {
+    assert.equal((await cli.done).code, 78, cli.stderr);
+    assert.equal(await readFile(join(cli.root, '.cats/platform/state/chat-state.local.json'), 'utf8'), source);
+    assert.doesNotMatch(cli.stdout, /"ready":true/);
+    assert.doesNotMatch(cli.stderr, /DO_NOT_LOG_THIS_SENTINEL/);
+  } finally { await cli.close(); }
+});
+
+test('a wrapped fatal storage error preserves exit 78 through extension shutdown', { timeout: 60_000 }, async () => {
+  const cli = await launchCli({ args: ['--ready-output=json'], entry: async root => {
+    const entry = join(root, 'storage-failure.mjs');
+    await writeFile(entry, `import { startApp } from ${JSON.stringify(pathToFileURL(resolve('build/server/index.js')).href)};
+      import { writeFile } from 'node:fs/promises';
+      await startApp({ async ready({ config, chatStore }) {
+        await writeFile(config.chatStatePath, '{broken profile');
+        try { await chatStore.readCore(); } catch { throw Error('wrapped storage failure'); }
+      } });`);
+    return entry;
+  } });
+  try {
+    assert.equal((await cli.done).code, 78, cli.stderr);
+    assert.doesNotMatch(cli.stdout, /"ready":true/);
+  } finally { await cli.close(); }
+});
 
 test('Platform exits cleanly if its parent disconnects before startup finishes', { timeout: 60_000 }, async () => {
   const cli = await launchCli({ entry: resolve('build/server/index.js') });

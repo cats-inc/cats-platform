@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 import { buildCodeTaskDetailProjection, buildCodeArtifactDetailProjection } from '../build/server/products/code/api/projection.js';
 import { authorKnowledge, inspectAuthoring, recoverAuthoring } from '../tools/knowledge-practice/managedAuthoring.mjs';
 import { stopRun } from '../build/server/platform/supervision/runCancellation.js';
@@ -28,7 +28,7 @@ async function fixture(t, overrides = {}) {
     entryFile: join(runtimeRoot, 'runtime-skills/preview/cats-practice-and-distill/SKILL.md') };
   await writeNew(join(runtimeRoot, 'build/runtime/core/skills/catalog.js'),
     `export function listRuntimeSkillCatalog() { return ${JSON.stringify([skill])}; }`);
-  const coreStore = new FileChatStore(join(root, 'state/chat-state.json'));
+  const coreStore = new LegacyJsonChatStore(join(root, 'state/chat-state.json'));
   const runtimeWorkspaceRoot = join(root, 'sessions');
   const cwd = join(runtimeWorkspaceRoot, 'author/workspace'); await mkdir(cwd, { recursive: true });
   const baseline = JSON.parse(await readFile(new URL('../config/catlas-knowledge.json', import.meta.url), 'utf8'));

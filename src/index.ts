@@ -31,7 +31,8 @@ import {
   createRuntimeClientDiagnosticSink,
   resolveRuntimeClientDiagnosticsPath,
 } from './platform/runtime/clientDiagnostics.js';
-import { FileChatStore } from './products/chat/state/store.js';
+import { DatabaseChatStore } from './products/chat/state/databaseStore.js';
+import { ProfileStorageError, STATE_STORAGE_FAILURE_EXIT_CODE } from './products/chat/state/database/profileFormat.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 import { browserUrl, startCliInteraction } from './shared/cliInteraction.js';
 import {
@@ -50,7 +51,7 @@ let startup = createAppStartupState();
 export async function startApp(extension: {
   ready?(context: {
     config: ReturnType<typeof loadConfig>;
-    chatStore: FileChatStore;
+    chatStore: DatabaseChatStore;
     runtimeClient: CatsRuntimeClient;
     server: ReturnType<typeof createServer>;
   }): Promise<void>;
@@ -103,193 +104,223 @@ export async function startApp(extension: {
     },
   });
   startupTrace.trace('runtime.client.created');
-  const chatStore = new FileChatStore(config.chatStatePath);
-  const desktopAppsKey = process.env.CATS_DESKTOP_APPS_KEY;
-  const desktopSecretChannel = process.env.CATS_DESKTOP_INGRESS_SECRETS === '1' && process.connected
-    && /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '');
-  delete process.env.CATS_DESKTOP_INGRESS_SECRETS;
-  const ingressSecrets = desktopSecretChannel ? createIngressSecretClient() : undefined;
-  const appComponents = /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
-    ? new AppComponentHost({ chatStatePath: config.chatStatePath, ownerId: 'desktop-owner' }) : undefined;
-  if (process.env.CATS_APP_BUNDLE_PATH?.trim()) {
-    try {
-      await installBundledApps(config.chatStatePath, process.env.CATS_APP_BUNDLE_PATH.trim(), appComponents);
-    } catch (error) { await appComponents?.close(); throw error; }
-  }
-  startupTrace.trace('chat.store.created', {
-    chatStatePath: config.chatStatePath,
+  let fatalStorageError: Error | undefined;
+  let stopForStorageFailure: (() => void) | undefined;
+  const chatStore = new DatabaseChatStore(config.chatStatePath, {
+    lockTimeoutMs: 10 * 60_000,
+    progress(stage, completed) {
+      startupTrace.trace('chat.store.progress', { stage, completed });
+      if (!startup.ready && startup.readyOutput === 'json') process.stdout.write(`${JSON.stringify({
+        event: 'app.state_progress', service: 'cats-platform', phase: 'starting',
+        ready: false, stage, ...(completed === undefined ? {} : { completed }),
+      })}\n`);
+    },
+    onFatal(error) {
+      fatalStorageError = error;
+      process.exitCode = STATE_STORAGE_FAILURE_EXIT_CODE;
+      stopForStorageFailure?.();
+    },
   });
-  const server = createServer({
-    shared: { config, runtimeClient, startup, appComponents, desktopAppsKey, ingressSecrets, runtimeClientDiagnosticSink },
-    chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },
-  });
-  startupTrace.trace('server.created');
-  if (desktopSecretChannel) process.on('message', (message: unknown) => {
-    const input = message as { type?: string; event?: string } | null;
-    if (input?.type === 'cats.ingress.lifecycle'
-      && ['suspend', 'resume', 'offline', 'online'].includes(input.event ?? '')) {
-      void server.reconcileRemoteAccess(input.event as 'suspend' | 'resume' | 'offline' | 'online');
-    }
-  });
-
-  // Seed provider/catalog caches from disk before we start accepting requests
-  // so the first /api/providers (or /api/providers/:id/models*) call lands on
-  // the snapshot SWR path instead of paying the cold-runtime diagnostics
-  // timeout.
   try {
-    await seedProviderSelectorFromSnapshot(
-      runtimeClient,
-      resolveProviderSnapshotPathFromChatState(config.chatStatePath),
-      { connectionIdentity: createHash('sha256').update(JSON.stringify([config.runtimeBaseUrl, config.runtimeApiKey])).digest('hex') },
-    );
-    startupTrace.trace('provider.selector.snapshot.seeded');
-  } catch (error) {
-    startupTrace.trace('provider.selector.snapshot.seed_failed', {
-      message: error instanceof Error ? error.message : String(error),
+    await chatStore.initialize();
+    const desktopAppsKey = process.env.CATS_DESKTOP_APPS_KEY;
+    const desktopSecretChannel = process.env.CATS_DESKTOP_INGRESS_SECRETS === '1' && process.connected
+      && /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '');
+    delete process.env.CATS_DESKTOP_INGRESS_SECRETS;
+    const ingressSecrets = desktopSecretChannel ? createIngressSecretClient() : undefined;
+    const appComponents = /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
+      ? new AppComponentHost({ chatStatePath: config.chatStatePath, ownerId: 'desktop-owner' }) : undefined;
+    if (process.env.CATS_APP_BUNDLE_PATH?.trim()) {
+      try {
+        await installBundledApps(config.chatStatePath, process.env.CATS_APP_BUNDLE_PATH.trim(), appComponents);
+      } catch (error) { await appComponents?.close(); throw error; }
+    }
+    startupTrace.trace('chat.store.created', {
+      chatStatePath: config.chatStatePath,
     });
-  }
-
-  // Kick off the runtime warm-up *before* server.listen so a first-launch user
-  // request — which lands without a disk snapshot — joins the inflight probe
-  // instead of triggering its own. With a snapshot, this just refreshes the
-  // SWR baseline in the background. Errors are swallowed: the on-demand
-  // request path will retry as usual.
-  void warmProviderSelectorCache(runtimeClient).catch(() => {});
-  let shutdownPromise: Promise<void> | null = null;
-  let stopInteraction = () => {};
-
-  const writeLifecycle = (line: string | null) => {
-    if (line) {
-      process.stdout.write(line);
-    }
-  };
-
-  const shutdown = (reason: AppShutdownReason): Promise<void> => {
-    if (shutdownPromise) {
-      return shutdownPromise;
-    }
-
-    markAppStopping(startup, reason);
-    stopInteraction();
-    writeLifecycle(formatAppStoppingMessage(startup, reason));
-
-    const reportShutdownError = (error: unknown) => {
-      process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
-      process.exitCode = 1;
-    };
-    shutdownPromise = Promise.resolve()
-      .then(async () => {
-        try { await extension.shutdown?.(); } catch (error) { reportShutdownError(error); }
-        try { await closeAppServerGracefully(server); } catch (error) { reportShutdownError(error); }
-        try { await server.closeAppHosting(); } catch (error) { reportShutdownError(error); }
-        // Flush any pending provider snapshot before exiting so a recent
-        // successful refresh isn't lost when the debounce timer hadn't fired
-        // yet. Best-effort: failures must not block the lifecycle event.
-        await flushProviderSnapshotPersistence(runtimeClient).catch(() => {});
-        markAppStopped(startup, reason);
-        writeLifecycle(formatAppStoppedMessage(startup, reason));
-      })
-      .catch(reportShutdownError)
-      .finally(() => {
-        process.exit(process.exitCode ?? 0);
-      });
-
-    return shutdownPromise;
-  };
-
-  const requestShutdown = (reason: AppShutdownReason) => {
-    void shutdown(reason);
-  };
-
-  process.on('SIGINT', () => {
-    requestShutdown('sigint');
-  });
-  process.on('SIGTERM', () => {
-    requestShutdown('sigterm');
-  });
-
-  // cats-one owns this private IPC channel. It requests cleanup instead of
-  // process.kill(), which forcibly terminates Node children on Windows.
-  if (process.send) {
-    process.on('message', (message: unknown) => {
-      if (message && typeof message === 'object'
-          && 'type' in message && message.type === 'cats.shutdown') {
-        requestShutdown('parent_requested');
+    const server = createServer({
+      shared: { config, runtimeClient, startup, appComponents, desktopAppsKey, ingressSecrets, runtimeClientDiagnosticSink },
+      chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },
+    });
+    startupTrace.trace('server.created');
+    if (desktopSecretChannel) process.on('message', (message: unknown) => {
+      const input = message as { type?: string; event?: string } | null;
+      if (input?.type === 'cats.ingress.lifecycle'
+        && ['suspend', 'resume', 'offline', 'online'].includes(input.event ?? '')) {
+        void server.reconcileRemoteAccess(input.event as 'suspend' | 'resume' | 'offline' | 'online');
       }
     });
-    process.on('disconnect', () => requestShutdown('parent_disconnected'));
-    // Disconnect can precede this handler while asynchronous startup work runs.
-    if (!process.connected) {
-      await shutdown('parent_disconnected');
+
+    // Seed provider/catalog caches from disk before we start accepting requests
+    // so the first /api/providers (or /api/providers/:id/models*) call lands on
+    // the snapshot SWR path instead of paying the cold-runtime diagnostics
+    // timeout.
+    try {
+      await seedProviderSelectorFromSnapshot(
+        runtimeClient,
+        resolveProviderSnapshotPathFromChatState(config.chatStatePath),
+        { connectionIdentity: createHash('sha256').update(JSON.stringify([config.runtimeBaseUrl, config.runtimeApiKey])).digest('hex') },
+      );
+      startupTrace.trace('provider.selector.snapshot.seeded');
+    } catch (error) {
+      startupTrace.trace('provider.selector.snapshot.seed_failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // Kick off the runtime warm-up *before* server.listen so a first-launch user
+    // request — which lands without a disk snapshot — joins the inflight probe
+    // instead of triggering its own. With a snapshot, this just refreshes the
+    // SWR baseline in the background. Errors are swallowed: the on-demand
+    // request path will retry as usual.
+    void warmProviderSelectorCache(runtimeClient).catch(() => {});
+    let shutdownPromise: Promise<void> | null = null;
+    let stopInteraction = () => {};
+
+    const writeLifecycle = (line: string | null) => {
+      if (line) {
+        process.stdout.write(line);
+      }
+    };
+
+    const shutdown = (reason: AppShutdownReason): Promise<void> => {
+      if (shutdownPromise) {
+        return shutdownPromise;
+      }
+
+      markAppStopping(startup, reason);
+      stopInteraction();
+      writeLifecycle(formatAppStoppingMessage(startup, reason));
+
+      const reportShutdownError = (error: unknown) => {
+        process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+        if (process.exitCode !== STATE_STORAGE_FAILURE_EXIT_CODE) process.exitCode = 1;
+      };
+      shutdownPromise = Promise.resolve()
+        .then(async () => {
+          try { await extension.shutdown?.(); } catch (error) { reportShutdownError(error); }
+          try { await closeAppServerGracefully(server); } catch (error) { reportShutdownError(error); }
+          try { await server.closeAppHosting(); } catch (error) { reportShutdownError(error); }
+          try { await chatStore.close(); } catch (error) { reportShutdownError(error); }
+          // Flush any pending provider snapshot before exiting so a recent
+          // successful refresh isn't lost when the debounce timer hadn't fired
+          // yet. Best-effort: failures must not block the lifecycle event.
+          await flushProviderSnapshotPersistence(runtimeClient).catch(() => {});
+          markAppStopped(startup, reason);
+          writeLifecycle(formatAppStoppedMessage(startup, reason));
+        })
+        .catch(reportShutdownError)
+        .finally(() => {
+          process.exit(process.exitCode ?? 0);
+        });
+
+      return shutdownPromise;
+    };
+
+    const requestShutdown = (reason: AppShutdownReason) => {
+      void shutdown(reason);
+    };
+    stopForStorageFailure = () => {
+      process.stderr.write(formatAppStartupError(startup, fatalStorageError));
+      void shutdown('startup_failed');
+    };
+    if (fatalStorageError) { await shutdown('startup_failed'); return; }
+
+    process.on('SIGINT', () => {
+      requestShutdown('sigint');
+    });
+    process.on('SIGTERM', () => {
+      requestShutdown('sigterm');
+    });
+
+    // cats-one owns this private IPC channel. It requests cleanup instead of
+    // process.kill(), which forcibly terminates Node children on Windows.
+    if (process.send) {
+      process.on('message', (message: unknown) => {
+        if (message && typeof message === 'object'
+            && 'type' in message && message.type === 'cats.shutdown') {
+          requestShutdown('parent_requested');
+        }
+      });
+      process.on('disconnect', () => requestShutdown('parent_disconnected'));
+      // Disconnect can precede this handler while asynchronous startup work runs.
+      if (!process.connected) {
+        await shutdown('parent_disconnected');
+        return;
+      }
+    }
+
+    if (startup.mode === 'app-managed' && process.stdin.readable && !process.stdin.isTTY) {
+      process.stdin.resume();
+      process.stdin.on('end', () => {
+        requestShutdown('stdin_closed');
+      });
+    }
+
+    startupTrace.trace('server.listen.begin', {
+      host: config.host,
+      port: config.port,
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(config.port, config.host, () => {
+        server.off('error', reject);
+        resolve();
+      });
+    });
+    startupTrace.trace('server.listen.ready', {
+      host: config.host,
+      port: config.port,
+    });
+
+    const address = server.address();
+    if (shutdownPromise) {
+      await shutdownPromise;
       return;
     }
-  }
-
-  if (startup.mode === 'app-managed' && process.stdin.readable && !process.stdin.isTTY) {
-    process.stdin.resume();
-    process.stdin.on('end', () => {
-      requestShutdown('stdin_closed');
-    });
-  }
-
-  startupTrace.trace('server.listen.begin', {
-    host: config.host,
-    port: config.port,
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(config.port, config.host, () => {
-      server.off('error', reject);
-      resolve();
-    });
-  });
-  startupTrace.trace('server.listen.ready', {
-    host: config.host,
-    port: config.port,
-  });
-
-  const address = server.address();
-  if (shutdownPromise) {
-    await shutdownPromise;
-    return;
-  }
-  if (!address || typeof address === 'string') {
-    throw new Error('Cats app failed to resolve its listening address.');
-  }
-
-  const listeningAddress = {
-    host: config.host,
-    port: address.port,
-    healthUrl: `http://${config.host}:${address.port}/health`,
-  };
-  try {
-    if (extension.ready) {
-      await server.startupRecovery;
-      if (shutdownPromise) { await shutdownPromise; return; }
-      await extension.ready({ config, chatStore, runtimeClient, server });
+    if (!address || typeof address === 'string') {
+      throw new Error('Cats app failed to resolve its listening address.');
     }
+
+    const listeningAddress = {
+      host: config.host,
+      port: address.port,
+      healthUrl: `http://${config.host}:${address.port}/health`,
+    };
+    try {
+      if (extension.ready) {
+        await server.startupRecovery;
+        if (shutdownPromise) { await shutdownPromise; return; }
+        await extension.ready({ config, chatStore, runtimeClient, server });
+      }
+    } catch (error) {
+      process.stderr.write(formatAppStartupError(startup, error));
+      if (process.exitCode !== STATE_STORAGE_FAILURE_EXIT_CODE) {
+        process.exitCode = error instanceof ProfileStorageError ? STATE_STORAGE_FAILURE_EXIT_CODE : 1;
+      }
+      await shutdown('startup_failed');
+      return;
+    }
+    if (shutdownPromise) { await shutdownPromise; return; }
+    markAppReady(startup, listeningAddress);
+    startupTrace.trace('ready.message.emitted', {
+      host: listeningAddress.host,
+      port: listeningAddress.port,
+    });
+    writeLifecycle(
+      formatAppReadyMessage(startup, listeningAddress),
+    );
+    stopInteraction = startCliInteraction({
+      url: browserUrl(config.host, address.port),
+      mode: startup.mode,
+      readyOutput: startup.readyOutput,
+      noOpen: cliOptions.noOpen,
+      onQuit: requestShutdown,
+    });
   } catch (error) {
-    process.stderr.write(formatAppStartupError(startup, error));
-    process.exitCode = 1;
-    await shutdown('startup_failed');
-    return;
+    await chatStore.close().catch(() => {});
+    throw error;
   }
-  if (shutdownPromise) { await shutdownPromise; return; }
-  markAppReady(startup, listeningAddress);
-  startupTrace.trace('ready.message.emitted', {
-    host: listeningAddress.host,
-    port: listeningAddress.port,
-  });
-  writeLifecycle(
-    formatAppReadyMessage(startup, listeningAddress),
-  );
-  stopInteraction = startCliInteraction({
-    url: browserUrl(config.host, address.port),
-    mode: startup.mode,
-    readyOutput: startup.readyOutput,
-    noOpen: cliOptions.noOpen,
-    onQuit: requestShutdown,
-  });
 }
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
@@ -299,7 +330,9 @@ if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
       message: error instanceof Error ? error.message : String(error),
     });
     process.stderr.write(formatAppStartupError(startup, error));
-    process.exitCode = 1;
-    process.exit(1);
+    if (process.exitCode !== STATE_STORAGE_FAILURE_EXIT_CODE) {
+      process.exitCode = error instanceof ProfileStorageError ? STATE_STORAGE_FAILURE_EXIT_CODE : 1;
+    }
+    process.exit(process.exitCode);
   });
 }

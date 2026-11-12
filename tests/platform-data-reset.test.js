@@ -7,7 +7,8 @@ import { createServer as createHttpServer, request as httpRequest } from 'node:h
 import { loadConfig } from '../build/server/config.js';
 import { createServer } from '../build/server/app/server/index.js';
 import { createAppStartupState } from '../build/server/app/server/startup.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
+import { DatabaseChatStore } from '../build/server/products/chat/state/databaseStore.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { createChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
@@ -74,11 +75,12 @@ test('reset rejects redirected ancestor directories before deleting any owned da
   assert.equal(await readFile(path.join(external, 'runtime-history/private.txt'), 'utf8'), 'external');
 });
 
-for (const resetRuntime of [false, true]) test(`real reset route purges Platform data, rejects busy work, and records Runtime opt-in=${resetRuntime}`, async t => {
+for (const Store of [LegacyJsonChatStore, DatabaseChatStore])
+for (const resetRuntime of [false, true]) test(`${Store.name} reset route purges Platform data, rejects busy work, and records Runtime opt-in=${resetRuntime}`, async t => {
   const home = await mkdtemp(path.join(tmpdir(), 'cats-reset-route-'));
   const config = loadConfig({ HOME: home, CATS_PLATFORM_DIR: path.join(home, 'platform'),
     CATS_AUTH_SESSION_SECRET: 'isolated-reset-test-session-secret' });
-  const store = new FileChatStore(config.chatStatePath);
+  const store = new Store(config.chatStatePath);
   const relayStore = createFileBackedTelegramRelayStore(config.chatStatePath);
   relayStore.markProcessedUpdate(101);
   const activity = createFileCompanionActivityStore(path.join(config.platformStateDir, 'companion-activity.json'));
@@ -97,6 +99,7 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   t.after(async () => {
     await server.closeAppHosting();
     await new Promise(resolve => server.close(resolve));
+    await store.close?.();
     await rm(home, { recursive: true, force: true });
   });
   const url = `http://127.0.0.1:${server.address().port}`;
@@ -137,6 +140,16 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   if (!resetRuntime) assert.equal((await reset({ confirmation: 'RESET', resetRuntime: true })).status, 409,
     'a standalone Platform cannot authorize erasing a separately managed Runtime');
   assert.ok((await store.readCore()).setupCompleteAt);
+  if (Store === DatabaseChatStore) {
+    const competing = new DatabaseChatStore(config.chatStatePath); await competing.initialize();
+    try {
+      const before = await readFile(config.chatStatePath);
+      const authBefore = await readFile(path.join(config.platformStateDir, 'auth-state.local.json'));
+      assert.equal((await reset()).status, 409);
+      assert.deepEqual(await readFile(config.chatStatePath), before);
+      assert.deepEqual(await readFile(path.join(config.platformStateDir, 'auth-state.local.json')), authBefore);
+    } finally { await competing.close(); }
+  }
   await seed(`${config.chatStatePath}.pre-companion-role.bak`);
   await seed(path.join(config.platformStateDir, 'chat-state.local.memory.json'), '{"version":1,"records":[]}');
   await seed(path.join(config.platformDir, 'evidence/old.jsonl'));
@@ -170,6 +183,11 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
     claudeInChromeEnabled: true, desktopControlEnabled: true, desktopControlConversations: ['channel-old'] });
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
+  if (Store === DatabaseChatStore) {
+    assert.equal((await readdir(config.platformStateDir)).some(file => file.includes('.pre-state-db-')), false);
+    assert.equal((await store.read()).channels.length, 0);
+    assert.equal((await store.readCore()).setupCompleteAt, null);
+  }
   assert.equal(await readFile(runtimeConfig, 'utf8'), customRuntime,
     'Platform never deletes Runtime files; only an opted-in offline Desktop completion may erase them');
   const journal = path.join(config.platformStateDir, 'platform-data-reset.pending.json');
@@ -220,14 +238,14 @@ test('partial purge survives restart and rediscovers owned attachment targets fr
   await seed(path.join(attachment, 'private.txt'));
   await seed(path.join(root, 'state/chat-state.local.memory.json'));
   await preparePlatformOwnedDataReset(state, { attachmentDirectories: [attachment] });
-  const store = new FileChatStore(state);
+  const store = new LegacyJsonChatStore(state);
   await store.writeSnapshot(createDefaultChatState(), createDefaultCoreState());
   await assert.rejects(removePlatformOwnedData(state, { remove: async (target, options) => {
     if (target.endsWith('chat-state.local.memory.json')) throw new Error('injected locked file');
     return rm(target, options);
   } }), /locked file/);
   assert.equal(await readFile(path.join(attachment, 'private.txt'), 'utf8'), 'pre-reset-private-data');
-  assert.deepEqual((await new FileChatStore(state).read()).channels, []);
+  assert.deepEqual((await new LegacyJsonChatStore(state).read()).channels, []);
   // Like a retry in a fresh process: no old ChatState/options/closure is supplied.
   await preparePlatformOwnedDataReset(state, {});
   await removePlatformOwnedData(state);

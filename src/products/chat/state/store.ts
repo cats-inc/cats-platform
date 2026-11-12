@@ -74,6 +74,10 @@ export interface ChatStore extends CoreStore {
   writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot>;
   /** Pure, atomic Chat/Core mutation. Callers must not perform external work in the callback. */
   updateSnapshot?(mutator: ChatSnapshotMutator): Promise<PersistedChatSnapshot>;
+  /** Stop disk connections before the authorized reset removes their files. */
+  removeOwnedState?(remove: () => Promise<void>): Promise<void>;
+  /** Admit a data reset before mutation and coordinate every store call through erasure. */
+  withDataReset?<T>(operation: () => Promise<T>): Promise<T>;
 }
 
 export type ChatSnapshotMutator = (snapshot: { chat: ChatState; core: CatsCoreState })
@@ -251,7 +255,31 @@ function repairPersistedSetupCompletion(
   });
 }
 
-export class FileChatStore implements ChatStore {
+/** Pure admission/upgrade on an already backed-up import, never the user's source file. */
+export function normalizeImportedChatSnapshot(raw: unknown): PersistedChatSnapshot {
+  const repaired = repairPersistedSetupCompletion(normalizePersistedChatSnapshot(raw));
+  return migrateCompanionSkillProfiles(repaired)?.snapshot ?? repaired;
+}
+
+/** The persistent backends share lifecycle, scope, proposal and Project invariants. */
+export function prepareChatSnapshot(stored: ChatState, incoming: ChatState, core: CatsCoreState,
+  source: string): PersistedChatSnapshot {
+  if (core.version !== CATS_CORE_STATE_VERSION) throw new OwnerLifecycleFormatError();
+  normalizeOwnerLifecycle(core.ownerLifecycle);
+  for (const channel of incoming.channels) {
+    const policy = parseProviderExecutionPolicy(channel.runtimeExecutionPolicy);
+    assertProviderPolicyBoundary(policy, {
+      workspaceAccess: channel.runtimeWorkspaceAccess, permissionMode: channel.runtimePermissionMode,
+    });
+  }
+  const chat = compactOwnerWorkflowHistory(
+    structuredClone(keepStoredProductScopes(source, stored, incoming)), core);
+  const projected = syncCoreStateWithChatState(chat, structuredClone(core));
+  return repairPersistedSetupCompletion(buildPersistedChatSnapshot(chat, { ...core, ...projected }));
+}
+
+/** Legacy import/baseline fixture backend; live startup uses DatabaseChatStore. */
+export class LegacyJsonChatStore implements ChatStore {
   private mutationQueue: Promise<void> = Promise.resolve();
   private lastKnownSnapshot: PersistedChatSnapshot | null = null;
   /**
@@ -657,8 +685,7 @@ export class MemoryChatStore implements ChatStore {
   constructor(
     initialState: ChatState | CatsCoreState | PersistedChatSnapshot = createDefaultChatState(),
   ) {
-    const repaired = repairPersistedSetupCompletion(normalizePersistedChatSnapshot(initialState));
-    const snapshot = migrateCompanionSkillProfiles(repaired)?.snapshot ?? repaired;
+    const snapshot = normalizeImportedChatSnapshot(initialState);
     this.chatState = snapshot.chat;
     this.coreState = extractCoreState(snapshot);
   }

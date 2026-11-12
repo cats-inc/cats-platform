@@ -114,3 +114,20 @@ test('readiness before the deadline cancels the pending timeout', async t => {
   await page.advance(80_000);
   assert.equal(page.document.getElementById('error-area').classList.contains('visible'), false);
 });
+
+test('state import has one bounded ten minute wait and truthful loading copy', async t => {
+  const page = await loadingPage(t);
+  const progress = { services: [
+    { name: 'cats-runtime', ready: true, status: 'ready' },
+    { name: 'cats-platform', ready: false, status: 'starting', stateProgress: { stage: 'importing_conversations', completed: 80 } },
+  ] };
+  await page.publish(progress);
+  assert.match(page.document.body.textContent, /Preparing your saved conversations/);
+  await page.advance(80_000);
+  assert.equal(page.document.getElementById('error-area').classList.contains('visible'), false);
+  await page.publish(progress);
+  await page.advance(519_999);
+  assert.equal(page.document.getElementById('error-area').classList.contains('visible'), false);
+  await page.advance(1);
+  assert.equal(page.document.getElementById('error-area').classList.contains('visible'), true);
+});

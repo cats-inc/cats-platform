@@ -17,7 +17,7 @@ import {
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 import {
-  FileChatStore,
+  LegacyJsonChatStore,
   MemoryChatStore,
 } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
@@ -2300,7 +2300,7 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
     await withServerConfig(
       createRuntimeStub(),
       config,
-      new FileChatStore(chatStatePath),
+      new LegacyJsonChatStore(chatStatePath),
       async (baseUrl) => {
         await configureTelegramBossCat(baseUrl);
 
@@ -2328,7 +2328,7 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
     await withServerConfig(
       createRuntimeStub(),
       config,
-      new FileChatStore(chatStatePath),
+      new LegacyJsonChatStore(chatStatePath),
       async (baseUrl) => {
         const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
         assert.equal(statusResponse.status, 200);

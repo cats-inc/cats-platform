@@ -9,7 +9,7 @@ import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { CATS_CORE_STATE_VERSION } from '../build/server/core/types.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createChannel, raiseChannelProductScope } from '../build/server/products/chat/state/model/index.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 import { normalizePersistedChatSnapshot } from '../build/server/products/chat/state/chat-snapshot/index.js';
 
 // SPEC-141 D9 (PLAN-134 Phase 5): the state version rises to 7 with the raise. Version 6 files
@@ -48,13 +48,13 @@ test('a version 6 profile upgrades to 7, keeping its exact bytes, and only the v
   const file = await isolated(t);
   // Write through this build first, so the version 6 bytes are what a version 6 build writes,
   // then stamp version 6 on them.
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   await store.writeSnapshot(snapshot(CATS_CORE_STATE_VERSION).chat, snapshot(CATS_CORE_STATE_VERSION));
   const written = JSON.parse(await readFile(file, 'utf8'));
   const raw = `${JSON.stringify({ ...written, version: 6, setupCompleteAt: NOW.toISOString() }, null, 2)}\n`;
   await writeFile(file, raw);
 
-  const state = await new FileChatStore(file).read();
+  const state = await new LegacyJsonChatStore(file).read();
   assert.equal(await readFile(`${file}.pre-product-scope.bak`, 'utf8'), raw, 'the original bytes are kept');
   const upgraded = JSON.parse(await readFile(file, 'utf8'));
   assert.equal(upgraded.version, 7);
@@ -67,7 +67,7 @@ test('a version 6 profile upgrades to 7, keeping its exact bytes, and only the v
   assert.equal(state.channels.length, 2);
 
   // A second start reads the upgraded file as it is and leaves the backup alone.
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(await readFile(`${file}.pre-product-scope.bak`, 'utf8'), raw);
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
 });
@@ -79,7 +79,7 @@ test('a profile that went through the version 6 upgrade can go to 7', async (t) 
   await writeFile(`${file}.pre-provider-policy.bak`, older);
   const raw = `${JSON.stringify(snapshot(6))}\n`;
   await writeFile(file, raw);
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
   assert.equal(await readFile(`${file}.pre-provider-policy.bak`, 'utf8'), older, 'the earlier backup is untouched');
   assert.equal(await readFile(`${file}.pre-product-scope.bak`, 'utf8'), raw);
@@ -89,7 +89,7 @@ test('a version 5 profile goes straight to 7 under the version 6 backup name', a
   const file = await isolated(t);
   const raw = `${JSON.stringify(snapshot(5))}\n`;
   await writeFile(file, raw);
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
   assert.equal(await readFile(`${file}.pre-provider-policy.bak`, 'utf8'), raw);
   await assert.rejects(readFile(`${file}.pre-product-scope.bak`, 'utf8'), { code: 'ENOENT' });
@@ -101,10 +101,10 @@ test('a failed upgrade leaves the original in place, and a retry finishes', asyn
   await writeFile(file, raw);
   // Something that is not a file holds the backup's name, so the backup cannot be kept.
   await mkdir(`${file}.pre-product-scope.bak`);
-  await assert.rejects(new FileChatStore(file).read(), /Product scope profile upgrade failed/u);
+  await assert.rejects(new LegacyJsonChatStore(file).read(), /Product scope profile upgrade failed/u);
   assert.equal(await readFile(file, 'utf8'), raw, 'the original is untouched');
   await rm(`${file}.pre-product-scope.bak`, { recursive: true });
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
   assert.equal(await readFile(`${file}.pre-product-scope.bak`, 'utf8'), raw);
 });
@@ -115,7 +115,7 @@ test('recovery from a version 6 `.bak` keeps its bytes, beside an earlier upgrad
   // rotating `.bak` cannot lose the only copy of them.
   const file = await isolated(t);
   await writeFile(file, `${JSON.stringify(snapshot(6))}\n`);
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   const state = await store.read();
   const onChat = state.channels.find((channel) => channel.title === 'On Chat');
   await store.write(raiseChannelProductScope(state, onChat.id, 'code', NOW));
@@ -123,7 +123,7 @@ test('recovery from a version 6 `.bak` keeps its bytes, beside an earlier upgrad
   await writeFile(`${file}.bak`, backup);
   await writeFile(file, '{ damaged');
   const firstBackup = await readFile(`${file}.pre-product-scope.bak`, 'utf8');
-  const reopened = new FileChatStore(file);
+  const reopened = new LegacyJsonChatStore(file);
   const recovered = await reopened.read();
   assert.equal(recovered.channels.length, 2);
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7, 'the recovered primary is written at 7');
@@ -143,13 +143,13 @@ test('going back with the restore recipe and saving does not block the next upgr
   const file = await isolated(t);
   const first = `${JSON.stringify(snapshot(6))}\n`;
   await writeFile(file, first);
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   await store.write(await store.read());
   // The recipe: copy the kept bytes over the primary and `.bak`, then the older build saves.
   const saved = `${JSON.stringify({ ...snapshot(6), chat: { ...snapshot(6).chat, title: 'changed under 0.15' } })}\n`;
   await writeFile(file, saved);
   await writeFile(`${file}.bak`, saved);
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
   assert.equal(await readFile(`${file}.pre-product-scope.bak`, 'utf8'), first, 'the first backup is kept');
   assert.equal(await readFile(digestBackup(file, saved), 'utf8'), saved, 'the new bytes are kept beside it');
@@ -161,7 +161,7 @@ test('a backup name holding a partial file does not block the upgrade', async (t
   const raw = `${JSON.stringify(snapshot(6))}\n`;
   await writeFile(file, raw);
   await writeFile(`${file}.pre-product-scope.bak`, raw.slice(0, 40));
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 7);
   assert.equal(await readFile(digestBackup(file, raw), 'utf8'), raw);
 });
@@ -174,7 +174,7 @@ test('a file newer than this build is refused, primary or backup, and left as it
     const raw = JSON.stringify(primary), savedBackup = JSON.stringify(backup);
     await writeFile(file, raw);
     await writeFile(`${file}.bak`, savedBackup);
-    await assert.rejects(async () => { const store = new FileChatStore(file); await store.write(await store.read()); });
+    await assert.rejects(async () => { const store = new LegacyJsonChatStore(file); await store.write(await store.read()); });
     assert.equal(await readFile(file, 'utf8'), raw, which);
     assert.equal(await readFile(`${file}.bak`, 'utf8'), savedBackup, which);
   }

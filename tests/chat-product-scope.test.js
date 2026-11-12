@@ -35,7 +35,7 @@ import {
 } from '../build/server/products/chat/state/model/index.js';
 import { mergeCompletedDispatchState } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
-import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   PRODUCT_SCOPES,
   compareProductScopes,
@@ -165,7 +165,7 @@ async function exists(filePath) {
 /** A file written by this build: rooms of all three origins, a lane and a group started on Code. */
 async function writeFixtureFile() {
   const statePath = await newStatePath();
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   let state = createCat(
     await store.read(),
     { name: 'Milo', provider: 'claude', instance: null, model: 'claude-sonnet-4', products: ['chat', 'code', 'work'] },
@@ -190,7 +190,7 @@ async function writeFixtureFile() {
   ids.members = [...state.parallelChatGroups[0].memberChannelIds];
   await store.write(state);
   // A first read marks setup complete and writes that back; take the file after it has settled.
-  await new FileChatStore(statePath).read();
+  await new LegacyJsonChatStore(statePath).read();
   return { ids, text: await readFile(statePath, 'utf8') };
 }
 
@@ -198,7 +198,7 @@ async function loadFile(file) {
   const statePath = await newStatePath();
   const text = `${JSON.stringify(file, null, 2)}\n`;
   await writeFile(statePath, text, 'utf8');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const state = await store.read();
   return { statePath, store, state, text };
 }
@@ -515,7 +515,7 @@ test('a valid stored scope is kept as stored, below the origin and above it', as
   assert.equal(channelOf(state, ids.chat).originSurface, 'chat');
 
   await store.write(state);
-  const reloaded = await new FileChatStore(statePath).read();
+  const reloaded = await new LegacyJsonChatStore(statePath).read();
   assert.equal(channelOf(reloaded, ids.code).productScope, 'chat');
   assert.equal(channelOf(reloaded, ids.chat).productScope, 'work');
 });
@@ -663,8 +663,8 @@ test('no other change to a conversation moves its scope', async () => {
   });
 
   const statePath = await newStatePath();
-  await new FileChatStore(statePath).write(next);
-  const reloaded = await new FileChatStore(statePath).read();
+  await new LegacyJsonChatStore(statePath).write(next);
+  const reloaded = await new LegacyJsonChatStore(statePath).read();
   assert.equal(channelOf(reloaded, channelId).productScope, 'work');
   assert.equal(channelOf(reloaded, channelId).originSurface, 'chat');
 });
@@ -828,7 +828,7 @@ test('a conversation object without the field still reads as its derived scope',
 
 test('Core records projected from a conversation carry the scope beside the origin', async () => {
   const statePath = await newStatePath();
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   let state = createCat(await store.read(), { name: 'Smelly', provider: 'claude', roles: ['boss'] }, NOW);
   const smellyId = state.cats.find((cat) => cat.name === 'Smelly').id;
   state.cats.find((cat) => cat.id === smellyId).group = 'admin';

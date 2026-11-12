@@ -5,13 +5,13 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createChannel } from '../build/server/products/chat/state/model/index.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 
 async function createStoreWithChannel(t) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-cache-'));
   t.after(() => rm(tempDir, { recursive: true, force: true }));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
   const state = createChannel(await store.read(), {
     originSurface: 'chat',
     title: 'Original title',
@@ -41,7 +41,7 @@ async function countSnapshotParses(statePath, run) {
   return parses;
 }
 
-test('FileChatStore reuses the normalized snapshot while the file text is unchanged', async (t) => {
+test('LegacyJsonChatStore reuses the normalized snapshot while the file text is unchanged', async (t) => {
   const { store, statePath } = await createStoreWithChannel(t);
   await store.read();
 
@@ -53,7 +53,7 @@ test('FileChatStore reuses the normalized snapshot while the file text is unchan
   assert.equal(parses, 0);
 });
 
-test('FileChatStore sees a change another writer made to the file', async (t) => {
+test('LegacyJsonChatStore sees a change another writer made to the file', async (t) => {
   const { store, statePath, channelId } = await createStoreWithChannel(t);
   assert.equal((await store.read()).channels.find((channel) => channel.id === channelId).title, 'Original title');
 
@@ -62,14 +62,14 @@ test('FileChatStore sees a change another writer made to the file', async (t) =>
   await writeFile(statePath, `${JSON.stringify(persisted, null, 2)}\n`, 'utf8');
 
   assert.equal((await store.read()).channels.find((channel) => channel.id === channelId).title, 'Edited elsewhere');
-  const fresh = new FileChatStore(statePath);
+  const fresh = new LegacyJsonChatStore(statePath);
   assert.deepEqual(
     (await store.readCore()).conversations.map((conversation) => conversation.id),
     (await fresh.readCore()).conversations.map((conversation) => conversation.id),
   );
 });
 
-test('FileChatStore never hands out the cached snapshot itself', async (t) => {
+test('LegacyJsonChatStore never hands out the cached snapshot itself', async (t) => {
   const { store, channelId } = await createStoreWithChannel(t);
 
   const firstRead = await store.read();
@@ -84,7 +84,7 @@ test('FileChatStore never hands out the cached snapshot itself', async (t) => {
   assert.ok((await store.readCore()).conversations.length > 0);
 });
 
-test('FileChatStore reads its own writes after the cache was filled', async (t) => {
+test('LegacyJsonChatStore reads its own writes after the cache was filled', async (t) => {
   const { store, channelId } = await createStoreWithChannel(t);
   await store.read();
 

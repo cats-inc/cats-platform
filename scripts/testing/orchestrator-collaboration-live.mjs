@@ -382,7 +382,7 @@ assert.equal(add(-2, 3), 1);
   const delivery = createRuntimeDeliveryClient({ baseUrl, apiKey: key });
   const { createDefaultChatState } = await load('products/chat/state/defaults.js');
   const { createChannel, createCat, appendMessage } = await load('products/chat/state/model/index.js');
-  const { FileChatStore } = await load('products/chat/state/store.js');
+  const { LegacyJsonChatStore } = await load('products/chat/state/store.js');
   const { appendCollaborationReport } = await load('products/chat/state/orchestratorCollaborationReport.js');
   const operations = await load('products/chat/state/orchestratorCollaboration.js');
   const execution = await load('products/chat/state/collaborationExecutionSurface.js');
@@ -456,7 +456,7 @@ assert.equal(add(-2, 3), 1);
       submittedAt: now.toISOString() };
     state = appendMessage(published.state, channelId, { body: 'Execute the confirmed proposal.', senderKind: 'user',
       senderName: 'Fixture owner' }, now, { choiceResponse }).state;
-    const store = new FileChatStore(path.join(root, 'platform/state/chat-state.local.json'));
+    const store = new LegacyJsonChatStore(path.join(root, 'platform/state/chat-state.local.json'));
     await store.write(state);
     const requester = createChatProviderAgentDecisionRequester({ chatStore: store, readState: () => store.read(), deliveryClient: delivery });
     await requester({ state, channelId, observation: observe(execution.collaborationExecutionDescriptors()), now,

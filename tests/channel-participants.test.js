@@ -14,7 +14,7 @@ import {
   buildChatConversationId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 
 test('createChannel keeps channel-only temporary participants outside cat assignments', () => {
   const state = createChannel(
@@ -77,10 +77,10 @@ test('createChannel keeps channel-only temporary participants outside cat assign
   assert.equal(summary.defaultRecipientCatId, null);
 });
 
-test('FileChatStore round-trips temporary participants through persisted snapshots', async () => {
+test('LegacyJsonChatStore round-trips temporary participants through persisted snapshots', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-participants-'));
   const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
+  const store = new LegacyJsonChatStore(statePath);
 
   const state = createChannel(
     await store.read(),

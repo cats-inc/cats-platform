@@ -63,11 +63,15 @@ async function handleSetupReset(
       return;
     }
     const withReset = context.dependencies.withPlatformDataReset
-      ?? (async (operation: (clear: () => Promise<void>) => Promise<void>) => operation(async () => {}));
+      ?? (async (operation: (clear: () => Promise<void>) => Promise<void>) => {
+        const execute = () => operation(async () => {});
+        if (context.dependencies.chatStore.withDataReset) await context.dependencies.chatStore.withDataReset(execute);
+        else await execute();
+      });
+    // Drain asynchronous assist writers before taking the coordinated storage lock.
+    await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
+    await waitForCatlasTitlesIdle(context.dependencies.config.chatStatePath);
     await withReset(async clearCaches => {
-      // Assist refreshes can write after their initiating HTTP request finishes.
-      await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
-      await waitForCatlasTitlesIdle(context.dependencies.config.chatStatePath);
       const chatState = await context.dependencies.chatStore.read();
       const previousCore = await context.dependencies.chatStore.readCore();
       const removal = {
@@ -92,7 +96,9 @@ async function handleSetupReset(
       // Build the fresh shell before removing snapshots, so read-time helpers
       // cannot regenerate reset backups or memory files after the purge.
       const payload = await buildAppShellPayload(context.dependencies);
-      await removePlatformOwnedData(context.dependencies.config.chatStatePath, removal);
+      const remove = async () => { await removePlatformOwnedData(context.dependencies.config.chatStatePath, removal); };
+      if (context.dependencies.chatStore.removeOwnedState) await context.dependencies.chatStore.removeOwnedState(remove);
+      else await remove();
       sendJson(context.response, 200, payload, { 'Set-Cookie': clearAuthSessionCookie() });
     });
   } catch (error) {

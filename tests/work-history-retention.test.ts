@@ -8,7 +8,7 @@ import { createDefaultCoreState, upsertCoreRun, upsertCoreArtifact, upsertCoreCh
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { emptyOwnerLifecycle, normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../src/core/ownerLifecycle.ts';
 import { applyHistoryRetention, historyRetentionView, tickHistoryRetention, updateHistoryRetention } from '../src/products/work/state/historyRetention.ts';
-import { FileChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 import { routeHistoryRetention } from '../src/products/work/api/historyRetentionRoutes.ts';
@@ -73,14 +73,14 @@ test('retention persists atomically; failed backup preserves detail, retry and r
   const file = path.join(dir, 'state.json');
   await writeFile(file, JSON.stringify(buildPersistedChatSnapshot(createDefaultChatState(), enabled())));
   const bytes = await readFile(file, 'utf8'); await mkdir(`${file}.bak`);
-  const store = new FileChatStore(file);
+  const store = new LegacyJsonChatStore(file);
   await assert.rejects(tickHistoryRetention(store, now)); assert.equal(await readFile(file, 'utf8'), bytes);
   assert.ok((await store.readCore()).traces.some(trace => trace.message === 'private-detail'));
   await rm(`${file}.bak`, { recursive: true }); await tickHistoryRetention(store, now);
   for (const filename of [file, `${file}.bak`]) assert.ok(!(await readFile(filename, 'utf8')).includes('private-detail'));
-  const restarted = new FileChatStore(file); await restarted.write(await restarted.read());
+  const restarted = new LegacyJsonChatStore(file); await restarted.write(await restarted.read());
   assert.equal((await restarted.readCore()).ownerLifecycle?.retention.enabled, true);
-  await writeFile(file, '{broken'); const recovered = await new FileChatStore(file).readCore();
+  await writeFile(file, '{broken'); const recovered = await new LegacyJsonChatStore(file).readCore();
   assert.equal(recovered.ownerLifecycle?.retention.enabled, false); assert.match(recovered.ownerLifecycle!.retention.lastError!, /recovery/);
   assert.ok(!JSON.stringify(recovered).includes('private-detail')); assert.equal(recovered.runs[0].summary, 'Outcome kept');
 });

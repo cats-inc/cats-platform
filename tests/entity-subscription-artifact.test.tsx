@@ -10,7 +10,7 @@ import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { createParallelChatGroup } from '../src/products/chat/state/model/index.ts';
-import { FileChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { LegacyJsonChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
 import {
   buildArtifactSubscriptionPatches,
   buildArtifactSubscriptionState,
@@ -186,12 +186,12 @@ test('MemoryChatStore notifies core subscribers only when chat writes change pro
   assert.equal(notifications, 1);
 });
 
-test('FileChatStore notifies core subscribers only when chat writes change projected core', async (t) => {
+test('LegacyJsonChatStore notifies core subscribers only when chat writes change projected core', async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'cats-platform-chat-store-'));
   t.after(async () => {
     await rm(directory, { recursive: true, force: true });
   });
-  const store = new FileChatStore(path.join(directory, 'chat.json'));
+  const store = new LegacyJsonChatStore(path.join(directory, 'chat.json'));
   await store.read();
   let notifications = 0;
   store.subscribeCore(() => {

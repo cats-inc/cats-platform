@@ -3,7 +3,7 @@ import test from 'node:test';
 import { mkdtemp, readFile, writeFile, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { LegacyJsonChatStore } from '../build/server/products/chat/state/store.js';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createChannel, createParallelChatGroup } from '../build/server/products/chat/state/model/index.js';
@@ -25,7 +25,7 @@ async function isolated(run) {
 test('version 5 upgrade keeps exact backup bytes and legacy access, then round-trips a restrictive policy', async () => isolated(async file => {
   const old = snapshot(); old.version = 5;
   const raw = JSON.stringify(old, null, 3) + '\n'; await writeFile(file, raw);
-  const store = new FileChatStore(file); const state = await store.read();
+  const store = new LegacyJsonChatStore(file); const state = await store.read();
   assert.equal(await readFile(`${file}.pre-provider-policy.bak`, 'utf8'), raw);
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, CATS_CORE_STATE_VERSION);
   assert.equal(CATS_CORE_STATE_VERSION, 7, 'a version 5 profile goes straight to the current version');
@@ -33,7 +33,7 @@ test('version 5 upgrade keeps exact backup bytes and legacy access, then round-t
   assert.equal(channel.runtimeExecutionPolicy, undefined);
   assert.equal(channel.runtimeWorkspaceAccess, 'read_write'); assert.equal(channel.runtimePermissionMode, 'skip');
   channel.runtimeExecutionPolicy = policy; await store.write(state);
-  const reopened = await new FileChatStore(file).read();
+  const reopened = await new LegacyJsonChatStore(file).read();
   assert.deepEqual(reopened.channels.find(c => c.id === channel.id).runtimeExecutionPolicy, policy);
   assert.equal(await readFile(`${file}.pre-provider-policy.bak`, 'utf8'), raw);
 }));
@@ -45,7 +45,7 @@ test('future primary/backup policy and outer schema are preserved instead of fal
     else target.chat.channels[0].runtimeExecutionPolicy = { version: 999 };
     const raw = JSON.stringify(primary), savedBackup = JSON.stringify(backup);
     await writeFile(file, raw); await writeFile(`${file}.bak`, savedBackup);
-    const store = new FileChatStore(file);
+    const store = new LegacyJsonChatStore(file);
     await assert.rejects(async () => { const s = await store.read(); await store.write(s); });
     assert.equal(await readFile(file, 'utf8'), raw); assert.equal(await readFile(`${file}.bak`, 'utf8'), savedBackup);
   });
@@ -54,10 +54,10 @@ test('future primary/backup policy and outer schema are preserved instead of fal
 test('upgrade backup failure preserves the original and a retry can finish atomically', async () => isolated(async file => {
   const old = snapshot(); old.version = 5; const raw = JSON.stringify(old); await writeFile(file, raw);
   await mkdir(`${file}.pre-provider-policy.bak`);
-  await assert.rejects(new FileChatStore(file).read());
+  await assert.rejects(new LegacyJsonChatStore(file).read());
   assert.equal(await readFile(file, 'utf8'), raw);
   await rm(`${file}.pre-provider-policy.bak`, { recursive: true });
-  await new FileChatStore(file).read();
+  await new LegacyJsonChatStore(file).read();
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, CATS_CORE_STATE_VERSION);
 }));
 

@@ -90,7 +90,7 @@ async function measure(scale, samples) {
   const { createDefaultChatState } = await load('products/chat/state/defaults.js');
   const { createChannel } = await load('products/chat/state/model/index.js');
   const { normalizePersistedChatSnapshot } = await load('products/chat/state/chat-snapshot/index.js');
-  const { FileChatStore } = await load('products/chat/state/store.js');
+  const { LegacyJsonChatStore } = await load('products/chat/state/store.js');
   const scratch = await mkdtemp(join(tmpdir(), 'cats-desktop-state-measure-'));
   try {
     let state = createChannel(createDefaultChatState(), {
@@ -126,7 +126,7 @@ async function measure(scale, samples) {
     const snapshot = normalizePersistedChatSnapshot(state);
     if (snapshot.chat.channels.length !== 40 * scale || snapshot.chat.parallelChatGroups.length !== 10 * scale
       || snapshot.turns.length < 5 * 40 * scale) throw new Error('Synthetic workload did not survive normalization');
-    // Benchmark a current, initialized profile. Otherwise FileChatStore's setup repair
+    // Benchmark a current, initialized profile. Otherwise LegacyJsonChatStore's setup repair
     // writes the entire snapshot during the supposed cold-read measurement.
     snapshot.setupCompleteAt = '2026-01-01T00:00:00.000Z';
     state = null;
@@ -135,9 +135,9 @@ async function measure(scale, samples) {
     await writeFile(file, text);
     const timed = async work => { const started = performance.now(); await work(); return performance.now() - started; };
     const normalizationMs = await timed(() => normalizePersistedChatSnapshot(JSON.parse(text)));
-    const coldReadMs = await timed(() => new FileChatStore(file).read());
+    const coldReadMs = await timed(() => new LegacyJsonChatStore(file).read());
     if (await readFile(file, 'utf8') !== text) throw new Error('Cold-read benchmark unexpectedly changed its source');
-    const store = new FileChatStore(file);
+    const store = new LegacyJsonChatStore(file);
     const changes = [];
     for (let index = 0; index < samples; index++) {
       changes.push(await timed(async () => {

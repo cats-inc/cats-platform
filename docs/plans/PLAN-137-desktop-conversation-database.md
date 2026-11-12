@@ -41,13 +41,15 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 ## Phase 2 — Migration and live store (FR-4–FR-6, FR-10–FR-13)
 
 - [x] Operation-lock primitive with recoverable dead-holder/dead-reclaimer handling,
-  cancelable FIFO waits and explicit deadlines. New coordinated-store integration remains.
-- [ ] Enforce synchronous SQLite transactions throughout the coordinated live store.
-- [ ] Version-8 metadata envelope and durable handoff recovery; Core version stays 7 in memory.
-- [ ] Legacy admission, exact backup/manifest, staged import and final transactional verification.
-- [ ] Switch live startup to database store; retire JSON from live execution.
-- [ ] Keep Core subscriptions and lifecycle/scope/proposal/Project semantics.
-- [ ] Restore command and failure/restart/concurrent-start matrix.
+  cancelable FIFO waits and explicit deadlines, integrated with the coordinated store.
+- [x] Enforce synchronous SQLite transactions throughout the coordinated live store.
+- [x] Version-8 metadata envelope and durable handoff recovery; Core version stays 7 in memory.
+- [x] Legacy admission, exact backup/manifest, staged import and final transactional verification.
+- [x] Switch live startup to database store; rename the JSON backend for legacy test/baseline tooling.
+- [x] Keep Core subscriptions and lifecycle/scope/proposal/Project semantics.
+- [x] Offline restore engine and failure/restart/concurrent-start matrix. Command routing remains Phase 4.
+- [x] Coordinate authorized data reset before mutation, close connections before removal and
+  resume interrupted purges before ordinary database admission, including custom/default profiles.
 
 ## Phase 3 — Product consumers and cold storage (FR-8, FR-9, FR-15)
 
@@ -59,7 +61,7 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
 - [ ] Killable child check/snapshot; paired metadata and valid snapshot retention.
-- [ ] Initialize before readiness; migration progress/deadline and fatal-state restart behavior.
+- [x] Initialize before readiness; migration progress/deadline and fatal-state restart behavior.
 - [ ] Close workers/connections during shutdown; offline command help and read-only behavior.
 - [ ] Sidecar/bundle worker entrypoint, notices and host runtime acceptance.
 
@@ -68,7 +70,8 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [ ] Affected builds/typechecks and Core/Chat/Work/Code/lifecycle/startup/packaging suites.
 - [ ] Node and Electron measurements after port, compared with Phase 0 under the same workload.
 - [ ] Independent review; resolve findings and rerun checks affected by fixes.
-- [ ] Three-platform CI on exact candidate; real-data export equality on an isolated copy.
+- [x] Real-data export equality on an isolated copy, with exact source-byte preservation and rollback readback.
+- [ ] Three-platform CI on exact candidate.
 - [ ] Isolated Desktop candidate and manual acceptance of paging/search/live/group/parallel.
 - [ ] Requirement-by-requirement audit; document release boundary and restore instructions.
 
@@ -99,14 +102,27 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Isolated worktree at `355a9469a`; Bot source pinned to `a8c1193806fcb8934b1dd03324e0c65b85d0682c`. Phase 0 timings/capacity limits and counts-only owner observation recorded. No user data written. |
 | 2026-11-12 | Foundation server build passed (`npm run build:server -- --incremental --tsBuildInfoFile ./build/server.tsbuildinfo`). `node scripts/testing/run-desktop-state-host.mjs`: **48/48 Node 26.13.0 and 48/48 Electron 41.2.0 / Node 24.14.0**, zero skipped. Includes separate processes, killed holder/reclaimer, stale indexes, order cursors, WAL read consistency, canonical export and preserved Bot Unicode cases. These are focused foundation checks, not a full application suite or live-store migration validation. |
 | 2026-11-12 | Independent foundation review completed after fixes. Findings resolved: Windows import URLs, valid representative benchmark, cold-read fixture repair exclusion, content-safe failures/timeouts, license attribution, stale FTS stamps, mutable cursors, reclaimer crashes, cleanup/queue/deadline holes, mixed Unicode writes and identity/query snapshot race. No blocking foundation finding remains; the reviewer did not run tests and did not approve the unimplemented full port. |
+| 2026-11-12 | Live store/migration/restore implementation passed **101/101 Node and 101/101 Electron** focused cases at the integration checkpoint. Later reset regressions passed **38/38** Node store/reset cases. Full current host rerun follows the final review fixes; these counts are successive checkpoints, not additive totals. Startup/supervisor/bootstrap checks passed **52/52**, then expanded supervisor/bootstrap **37/37**, CLI **9/9**, and affected JSON/Core/reset consumers **71/71**. Server and host builds passed. |
+| 2026-11-12 | The explicit real-copy command verified four source files, one channel and 51 messages: canonical exports were byte equal with digest `afca1579a4b19928f1ed1fbc0967dcf08a265310af1c29b1b86742cd60af9235`; migration 858 ms, rollback readable as version 7 and original bytes unchanged. The first attempt exposed volatile projected timestamps; source timestamps and deterministic persisted fallbacks corrected this before the passing proof. See the [report](../research/desktop-state-baseline/2026-11-12-desktop-state-real-copy.json). |
+| 2026-11-12 | Independent migration/restore and startup/reset reviews have no remaining blocking P1/P2 in their implemented scope. Resolved findings include Core-shape/no-drop admission, retention opt-out, group alias preservation, dead lease-candidate reclamation, selected-buffer digest, pre-mutation offline admission, shared-operation coordination, interrupted purge recovery, custom journal ownership, Windows filename aliases/discovery/primary-last deletion, nested caller errors, actionable runtime/schema errors, fatal exit preservation and bounded progress-only startup extension. These reviews do not approve the unimplemented full port. |
+| 2026-11-12 | Test bundling passed after allowing esbuild outside the Windows filesystem sandbox; the sandboxed attempt could not read ancestor directories. The test-fixture typecheck (`tsconfig.test.json`) passed after reusing main's installed mobile dependencies through a worktree-owned junction and verifying identical mobile lockfiles. Its first attempt lacked those dependencies. This is not a claim that the full `npm run typecheck` or full application suite ran. No dependency, version or release change was made. |
+| 2026-11-12 | Final local live-store checkpoint: **111/111 Node and 111/111 Electron**, zero skipped on Windows; **51/51** bundled affected typed Core/Work/history/ingress/Google consumers and **11/11** reset tests passed. Windows case-alias cases cover fresh/imported reopen, recovery-artifact and upgrade-backup discovery, reset primary-last ordering and interrupted restore through another spelling. Earlier build/CLI/host results remain applicable. Hosted three-OS CI and product paging/search/archive/maintenance acceptance are still pending. |
 
 *Created and last updated: 2026-11-12*
 
-## Next integration checkpoint (not implemented yet)
+## Next integration checkpoint
 
-The active goal is the entire SPEC-144 port; this foundation is not completion. Live startup
-still constructs `FileChatStore` and the user's profile is untouched. Keep the worktree and
-continue Phase 2, then product consumers, maintenance/archive, host packaging and acceptance.
+The active goal is the entire SPEC-144 port; the live-store checkpoint is not completion.
+Live startup now constructs `DatabaseChatStore`; nothing has been deployed or written to the
+owner's actual profile. Keep the worktree and continue product consumers, maintenance/archive,
+host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
+state progress event extends it once to ten minutes, and subsequent events cannot renew it.
+
+Next work: genuine scoped live writes and indexed API/renderer paging/search; explicit compressed
+archives; killable maintenance children and paired snapshot retention; offline CLI commands;
+split/bundled entrypoints; then post-port measurements, hosted CI and isolated Desktop acceptance.
+The existing global snapshot APIs still materialize all transcripts and must not be advertised
+as meeting the final performance goal. Preserve these implementation constraints as work continues:
 
 - Database location: derive a fixed sibling `.sqlite` path from the configured profile,
   never trust an arbitrary path supplied by envelope JSON. Give each installation a UUID.
@@ -137,4 +153,6 @@ continue Phase 2, then product consumers, maintenance/archive, host packaging an
   mismatches defer/retry without holding the operation lock during long SQLite work.
 - The new host acceptance helper and workflow are prepared but no hosted run is evidenced yet.
   Current local dependency setup extracted the exact vendor UI tarball into worktree node_modules;
-  other local dependencies resolve from the parent checkout. CI must use the locked `npm ci`.
+  other local dependencies resolve from the parent checkout. A worktree-owned mobile node_modules
+  junction points to the matching-lockfile main installation; remove that junction during final
+  worktree cleanup. CI must use the locked `npm ci`.

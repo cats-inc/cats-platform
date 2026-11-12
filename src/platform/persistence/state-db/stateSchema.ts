@@ -42,6 +42,7 @@ create table parallel_groups(
 create table metadata_handoff(
   singleton integer primary key check(singleton = 1),
   revision text not null,
+  previous_digest text,
   json text not null
 ) strict;
 `;
