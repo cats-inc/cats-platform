@@ -178,6 +178,12 @@ jobs:
           path: .ci-green
           key: ci-green-v1-${{ needs.changes.outputs.fingerprint }}
 
+  desktop-state:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/desktop-state-database.yml
+
   validate:
     runs-on: ubuntu-latest
     steps:

@@ -21,7 +21,6 @@ import { sendSupervisedRuntimeMessage } from '../../../platform/supervision/runt
 import {
   appendMessage,
   buildChannelView,
-  requireChannel,
   resolveLeadParticipantLease,
   setChannelParticipantLease,
 } from '../state/model/index.js';
@@ -38,7 +37,12 @@ import {
   readRuntimeErrorSignal,
 } from '../state/runtime-dispatch/recovery.js';
 import { runWithSessionTurnGate } from '../state/runtime-dispatch/sessionTurnGate.js';
-import { updateChatState } from '../state/store.js';
+import type { ChatStore } from '../state/store.js';
+import type { ChatState } from './contracts.js';
+import { readConversationMetadata, readConversationsState, updateConversationsState } from './scopedConversationState.js';
+import { ChatApiError } from './routeErrors.js';
+import { isCatChatConversation } from '../companion/life/review.js';
+import { isBossCatGroupConversation, isHiddenFromBossCat } from '../state/bossCatBoard.js';
 import type { ChannelActivationResult } from './contracts.js';
 import {
   activateChannelLocked,
@@ -48,6 +52,7 @@ import {
 } from './resources/channelActivation.js';
 import type { ChatApiDependencies } from './routeSupport.js';
 import { buildRoomMessageMutationDetail, publishRoomMutation } from './transportEventPublisher.js';
+import { findCompanionDirectLane } from '../companion/life/presence.js';
 import { withoutBossCatJoinRequests } from '../shared/ownerStarted.js';
 
 export type ChatCompanionLifeLoopDependencies = ChannelLifecycleDependencies
@@ -62,13 +67,9 @@ async function markCompanionLaneProviderSessionUnavailable(
 ): Promise<void> {
   let changed = false;
   await dependencies.mutationGate.run(request.laneId, async () => {
-    await updateChatState(dependencies.chatStore, (latest) => {
-      const current = latest.channels.find((row) => row.id === request.laneId);
-      const lease = current ? resolveLeadParticipantLease(current) : null;
-      // Only the session this heartbeat used: a replacement must not be marked.
-      if (!current || lease?.participantId !== request.catId || lease.sessionId !== request.sessionId) {
-        return latest;
-      }
+    await updateConversationsState(dependencies.chatStore, [request.laneId], (latest) => {
+      // A replacement or deliberately sleeping session must not be marked.
+      if (!ownsHeartbeatLane(latest, request)) return latest;
       changed = true;
       const now = dependencies.now?.() ?? new Date();
       return setChannelParticipantLease(latest, request.laneId, request.catId, {
@@ -76,7 +77,7 @@ async function markCompanionLaneProviderSessionUnavailable(
         lastError: describeProviderSessionUnavailableError(error),
         lastUsedAt: now.toISOString(),
       }, now);
-    });
+    }, { excludeArchived: true });
   });
   if (changed) publishChannelLifecycleEvents(dependencies, request.laneId);
 }
@@ -89,13 +90,14 @@ async function markCompanionLaneProviderSessionUnavailable(
 export function createCompanionHeartbeatSpeaker(
   dependencies: ChatCompanionLifeLoopDependencies,
 ): (request: CompanionHeartbeatRequest) => Promise<CompanionHeartbeatResult> {
-  return async (request) => {
-    const state = await dependencies.chatStore.read();
+  async function speak(request: CompanionHeartbeatRequest): Promise<CompanionHeartbeatResult> {
+    const state = await readConversationsState(dependencies.chatStore, [request.laneId], { excludeArchived: true });
     const cat = state.cats.find((candidate) => candidate.id === request.catId);
     if (!cat || cat.status !== 'active' || !isCompanionCat(cat)) {
       return 'failed';
     }
-    const lane = requireChannel(state, request.laneId);
+    const lane = state.channels.find(row => row.id === request.laneId);
+    if (!lane) return 'failed';
     const channel = buildChannelView(state, lane.id);
     const participant = findAssignedParticipant(channel, request.catId);
     const lease = resolveLeadParticipantLease(lane);
@@ -133,7 +135,10 @@ export function createCompanionHeartbeatSpeaker(
         review: request.review,
         ...(request.peers ? { peers: true } : {}),
       });
-      const result = await runWithSessionTurnGate(request.sessionId, () => sendSupervisedRuntimeMessage({
+      const result = await runWithSessionTurnGate(request.sessionId, async () => {
+        const latest = await readConversationMetadata(dependencies.chatStore, request.laneId);
+        if (!ownsHeartbeatLane(latest, request)) throw new ChatApiError(409, 'conversation_changed', 'The companion session changed.');
+        return sendSupervisedRuntimeMessage({
         runtimeClient: dependencies.runtimeClient,
         sessionId: request.sessionId,
         content,
@@ -154,7 +159,8 @@ export function createCompanionHeartbeatSpeaker(
           actorRef: request.catId,
           reason: 'companion_heartbeat',
         },
-      }));
+        });
+      });
       replyText = resolveFullResponseText(result.segments);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -172,16 +178,15 @@ export function createCompanionHeartbeatSpeaker(
     // reviving a lane the owner closed, or overwriting a replacement session.
     let becameReady = false;
     await dependencies.mutationGate.run(request.laneId, async () => {
-      await updateChatState(dependencies.chatStore, (latest) => {
+      await updateConversationsState(dependencies.chatStore, [request.laneId], (latest) => {
         const current = latest.channels.find((row) => row.id === request.laneId);
         const lease = current ? resolveLeadParticipantLease(current) : null;
-        if (current?.status !== 'active' || lease?.participantId !== request.catId
-          || lease.sessionId !== request.sessionId || lease.status !== 'initializing') return latest;
+        if (!ownsHeartbeatLane(latest, request) || lease?.status !== 'initializing') return latest;
         becameReady = true;
         const now = dependencies.now?.() ?? new Date();
         return setChannelParticipantLease(latest, request.laneId, request.catId,
           { status: 'ready', lastUsedAt: now.toISOString() }, now);
-      });
+      }, { excludeArchived: true });
     });
     if (becameReady) publishChannelLifecycleEvents(dependencies, request.laneId);
 
@@ -194,8 +199,10 @@ export function createCompanionHeartbeatSpeaker(
       return published ? 'spoke' : 'quiet';
     }
     const text = reply.quiet ? '' : reply.body;
+    const photoState = await readConversationMetadata(dependencies.chatStore, request.laneId);
+    if (!ownsHeartbeatLane(photoState, request)) return 'failed';
     const photo = await attachCompanionAlbumPhoto({
-      state: await dependencies.chatStore.read(),
+      state: photoState,
       laneId: request.laneId,
       album: companionSession?.photoAlbum ?? null,
       requested: directive.requested,
@@ -207,11 +214,13 @@ export function createCompanionHeartbeatSpeaker(
     }
     const message = await dependencies.mutationGate.run(request.laneId, async () => {
       let appended: ReturnType<typeof appendMessage>['message'] | null = null;
-      await updateChatState(dependencies.chatStore, (latest) => {
+      await updateConversationsState(dependencies.chatStore, [request.laneId], (latest) => {
+        if (!ownsHeartbeatLane(latest, request)) return latest;
+        const currentCat = latest.cats.find(row => row.id === request.catId)!;
         const next = appendMessage(
           latest,
           request.laneId,
-          { senderKind: 'agent', senderName: cat.name, body },
+          { senderKind: 'agent', senderName: currentCat.name, body },
           dependencies.now?.() ?? new Date(),
           {
             metadata: {
@@ -229,7 +238,7 @@ export function createCompanionHeartbeatSpeaker(
         );
         appended = next.message;
         return next.state;
-      });
+      }, { excludeArchived: true });
       return appended;
     });
     if (message) {
@@ -245,8 +254,54 @@ export function createCompanionHeartbeatSpeaker(
         timestamp: new Date().toISOString(),
       });
     }
-    return 'spoke';
+    return message ? 'spoke' : 'failed';
+  }
+  return async request => {
+    let release: (() => Promise<void>) | null | undefined;
+    try {
+      if (dependencies.chatStore.reserveConversationOperation) {
+        try { release = await dependencies.chatStore.reserveConversationOperation(request.laneId); }
+        catch (error) {
+          if (error && typeof error === 'object' && 'code' in error && error.code === 'conversation_archived') return 'failed';
+          throw error;
+        }
+        if (!release) return 'failed';
+      }
+      return await speak(request);
+    } finally { await release?.(); }
   };
+}
+
+/** Every post-await effect belongs to the same active Cat and Runtime session. */
+function ownsHeartbeatLane(state: ChatState, request: CompanionHeartbeatRequest): boolean {
+  const cat = state.cats.find(row => row.id === request.catId);
+  const lane = state.channels.find(row => row.id === request.laneId);
+  if (!cat || cat.status !== 'active' || !isCompanionCat(cat) || lane?.status !== 'active') return false;
+  const lease = resolveLeadParticipantLease(lane);
+  return !!findAssignedParticipant(buildChannelView(state, lane.id), cat.id) && lease?.participantId === cat.id
+    && lease.sessionId === request.sessionId && ['ready', 'initializing'].includes(lease.status);
+}
+
+/** Life/review needs actual related history; preserve every header in canonical database order. */
+export async function readCompanionLifeState(store: ChatStore): Promise<ChatState> {
+  if (!store.readCatalog || !store.readChannelStates) return store.read();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const catalog = await store.readCatalog();
+    const state: ChatState = { ...catalog.metadata, channels: catalog.headers.map(header => ({ ...header, messages: [] })) };
+    const cats = state.cats.filter(cat => cat.status === 'active' && isCompanionCat(cat));
+    const hasBoss = cats.some(cat => cat.group === 'admin');
+    const lanes = new Set((hasBoss ? state.cats.filter(cat => cat.status === 'active' && !isHiddenFromBossCat(cat)) : cats)
+      .map(cat => findCompanionDirectLane(state, cat.id)?.id).filter((id): id is string => !!id));
+    const ids = state.channels.filter(channel => channel.status !== 'archived' && (lanes.has(channel.id)
+      || cats.some(cat => isCatChatConversation(channel, cat.id)) || (hasBoss && isBossCatGroupConversation(channel)))).map(channel => channel.id);
+    const selected = await store.readChannelStates(ids, { excludeArchived: true });
+    const after = await store.readCatalog();
+    if (!catalog.revision || !after.revision) throw new TypeError('Versioned Companion context is required');
+    if (catalog.revision !== after.revision) continue;
+    const byId = new Map(selected.channels.map(channel => [channel.id, channel]));
+    return { ...state, channels: state.channels.map(channel => byId.get(channel.id) ?? channel) };
+  }
+  throw new ChatApiError(409, 'conversation_changed', 'Companion conversations changed. Retry on the next tick.');
 }
 
 /**
@@ -264,7 +319,7 @@ export async function activateCompanionLaneForLife(
 ): Promise<ChannelActivationResult[]> {
   const activation = await activateChannelLocked(dependencies, channelId);
   publishChannelLifecycleEvents(dependencies, channelId);
-  const lane = (await dependencies.chatStore.read()).channels.find((row) => row.id === channelId);
+  const lane = (await readConversationMetadata(dependencies.chatStore, channelId)).channels.find((row) => row.id === channelId);
   const lease = lane ? resolveLeadParticipantLease(lane) : null;
   if (lease?.status === 'ready' || lease?.status === 'initializing') {
     return activation.results;
@@ -285,7 +340,7 @@ export function startChatCompanionLifeLoop(
   dependencies: ChatCompanionLifeLoopDependencies,
 ): (() => void) & { isIdle(): boolean } {
   const loop = createCompanionLifeLoop({
-    readChatState: () => dependencies.chatStore.read(),
+    readChatState: () => readCompanionLifeState(dependencies.chatStore),
     readCompanionSnapshot: () => dependencies.companionStore.readSnapshot(),
     runtimeClient: dependencies.runtimeClient,
     isImagePending: catId => dependencies.catImages?.hasPending(catId) ?? false,

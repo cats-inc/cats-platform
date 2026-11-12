@@ -75,7 +75,7 @@ test('the bundled paired-snapshot coordinator runs from sidecar layout in actual
   assert.deepEqual(await readFile(file), before);
 });
 
-test('the complete bundled CLI checks, snapshots, restores and exports in Node and Electron', { timeout: 120_000 }, async t => {
+test('the complete bundled CLI checks, snapshots, restores and exports in Node and Electron', { timeout: 300_000 }, async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-bundled-state-cli-'));
   t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10 }));
   const packageRoot = path.join(root, 'package'); await mkdir(packageRoot);

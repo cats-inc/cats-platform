@@ -1,3 +1,4 @@
+import { readConversationCatalog } from './scopedConversationState.js';
 import { stat } from 'node:fs/promises';
 import { routeCompanionPublicationApi } from './companionPublicationRoutes.js';
 
@@ -54,7 +55,7 @@ import {
 } from './routeSupport.js';
 
 async function resolveCatContext(context: ChatApiRouteContext, catId: string) {
-  const state = await context.dependencies.chatStore.read();
+  const state = await readConversationCatalog(context.dependencies.chatStore);
   const cat = requireCat(state, catId);
   return { state, cat };
 }

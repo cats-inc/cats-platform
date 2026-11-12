@@ -11,6 +11,7 @@ import { archiveJobDirectory, assertArchiveIdle, assertArchiveJob, reserveArchiv
   ConversationArchiveError, type ArchiveAction, type ArchiveErrorCode, type ArchiveWorkerPayload, type ConversationArchiveJob } from './archiveJobs.js';
 import type { ConversationArchiveResult } from '../../shared/conversationArchive.js';
 import { envelopeCore } from './profileFormat.js';
+import { assertNoLiveConversationOperations } from './conversationOperations.js';
 
 export interface ConversationArchiveOptions {
   signal?: AbortSignal;
@@ -73,6 +74,7 @@ export async function performConversationArchive(host: ConversationArchiveHost, 
       const stat = await lstat(root);
       if (!stat.isDirectory() || stat.isSymbolicLink()) throw new ConversationArchiveError('archive_invalid');
       await syncDirectory(path.dirname(root));
+      await assertNoLiveConversationOperations(host.profile, session.database, channelId);
       const selected = reserveArchiveJob(session.database, session.leaseToken, channelId, kind, envelopeCore(envelope));
       const archive = conversationArchive(session.database, channelId);
       return { job: selected, result: { channelId, archived: Boolean(archive), archiveId: archive?.archiveId ?? null,
@@ -91,6 +93,7 @@ export async function performConversationArchive(host: ConversationArchiveHost, 
       const prepared = validatePreparedArchive(JSON.parse(bytes.toString('utf8')), job!);
       const header = session.conversations.header(channelId);
       if (!header) throw new ConversationArchiveError('archive_missing');
+      await assertNoLiveConversationOperations(host.profile, session.database, channelId);
       assertArchiveIdle(header, envelopeCore(previous));
       const next = structuredClone(previous), now = new Date().toISOString(), conversationId = buildChatConversationId(channelId);
       next.storage.revision = randomUUID();

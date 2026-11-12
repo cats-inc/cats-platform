@@ -110,7 +110,7 @@ test('paired restore never resurrects an older automatic-cleanup opt-in', async 
   assert.equal((await create().read()).channels.length, source.chat.channels.length);
 });
 
-for (const [schema, enabled] of [[1, false], [2, true], [3, false], [3, true], [4, false], [4, true]]) test(`an older-schema pair ${schema} restores complete state with cleanup opt-in ${enabled}`, async t => {
+for (const [schema, enabled] of [[1, false], [2, true], [3, false], [3, true], [4, false], [4, true], [5, false], [5, true]]) test(`an older-schema pair ${schema} restores complete state with cleanup opt-in ${enabled}`, async t => {
   const source = snapshot(); source.ownerLifecycle = emptyOwnerLifecycle(); source.ownerLifecycle.retention.enabled = enabled;
   const { file, before, create, manifest } = await fixture(t, source);
   const metadata = JSON.parse(await readFile(path.join(path.dirname(manifest), path.basename(file)), 'utf8'));

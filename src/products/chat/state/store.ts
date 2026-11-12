@@ -108,12 +108,15 @@ export interface ChatStore extends CoreStore {
     options?: ChatChannelsMutationOptions): Promise<ChatState>;
   /** One target's streaming presentation; no global Chat projection or transcript hydration. */
   writeConversationPresentation?(id: string, segment: CoreSegmentWriteInput, now: Date): Promise<void>;
+  /** Live execution guard against archive/offline replacement; release survives store close. */
+  reserveConversationOperation?(id: string): Promise<(() => Promise<void>) | null>;
   /** Explicit product maintenance. Production performs compression/index preparation off-thread. */
   archiveConversation?(id: string, action: 'archive' | 'restore', options?: { signal?: AbortSignal }): Promise<ConversationArchiveResult>;
 }
 
 export type ChatMetadata = Omit<ChatState, 'channels'>;
 export interface ChatChannelMutationContext {
+  readonly revision?: string;
   readonly chat: ChatMetadata;
   readonly core: CatsCoreState;
   readonly channelCatalog: ChannelProjectionMetadata[];

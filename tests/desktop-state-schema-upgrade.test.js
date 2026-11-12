@@ -45,7 +45,7 @@ function version(file) {
   try { return database.meta('schema_version'); } finally { database.close(); }
 }
 
-for (const sourceSchema of [1, 2, 3, 4]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
+for (const sourceSchema of [1, 2, 3, 4, 5]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema);
   const metadata = await readFile(file);
   const store = create(); await store.initialize();
@@ -60,20 +60,20 @@ for (const sourceSchema of [1, 2, 3, 4]) test(`schema ${sourceSchema} upgrades o
   try { assert.equal(saved.meta('schema_version'), String(sourceSchema)); } finally { saved.close(); }
 });
 
-test('schema 4 cold profiles receive a standalone asset backup before staging-schema upgrade', async t => {
+for (const sourceSchema of [4, 5]) test(`schema ${sourceSchema} cold profiles receive a standalone asset backup before upgrade`, async t => {
   const { file, create, channelId } = await archivedProfile(t);
   const first = create(), expected = await first.logicalDigest(); await first.close();
   const raw = new (sqliteDriver().DatabaseSync)(databasePath(file));
-  try { downgradeDatabaseSchema(raw, 4); } finally { raw.close(); }
+  try { downgradeDatabaseSchema(raw, sourceSchema); } finally { raw.close(); }
   const metadata = await readFile(file), store = create(); await store.initialize();
   assert.equal(await store.logicalDigest(), expected);
   assert.equal((await store.readChannel(channelId)).messages.length, 401);
-  const directory = path.join(path.dirname(file), (await readdir(path.dirname(file))).find(name => name.includes('.pre-state-db-schema-4-')));
+  const directory = path.join(path.dirname(file), (await readdir(path.dirname(file))).find(name => name.includes(`.pre-state-db-schema-${sourceSchema}-`)));
   const manifest = JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8'));
-  assert.equal(manifest.sourceSchema, 4); assert.equal(manifest.targetSchema, STATE_SCHEMA_VERSION); assert.equal(manifest.archives.length, 2);
+  assert.equal(manifest.sourceSchema, sourceSchema); assert.equal(manifest.targetSchema, STATE_SCHEMA_VERSION); assert.equal(manifest.archives.length, 2);
   assert.deepEqual(await readFile(path.join(directory, path.basename(file))), metadata);
   const backup = openStateDatabase({ file: databasePath(path.join(directory, path.basename(file))), mode: 'reader' });
-  try { assert.equal(backup.meta('schema_version'), '4'); await verifyArchiveAssets(backup, manifest.archives, undefined, true); }
+  try { assert.equal(backup.meta('schema_version'), String(sourceSchema)); await verifyArchiveAssets(backup, manifest.archives, undefined, true); }
   finally { backup.close(); }
 });
 
@@ -86,7 +86,7 @@ test('an interruption after backup leaves schema 1 and retry reuses the verified
   assert.equal(await store.logicalDigest(), expected);
 });
 
-for (const sourceSchema of [1, 2, 3, 4]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
+for (const sourceSchema of [1, 2, 3, 4, 5]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema, 'manifest.json');
   const bytes = await readFile(file); const store = create(); await store.initialize();
   assert.equal(await store.logicalDigest(), expected); assert.equal(version(file), String(STATE_SCHEMA_VERSION));
@@ -136,6 +136,20 @@ test('a failed SQL upgrade rolls back every DDL change and keeps the original an
   try { assert.equal(database.get('select unexpected from channel_catalog').unexpected, 'preserve'); } finally { database.close(); }
   const directory = path.join(root, (await backups())[0]);
   assert.ok(await readFile(path.join(directory, schemaUpgradeManifestName(file))));
+});
+
+test('a failed schema-5 operation-table upgrade preserves unknown rows, metadata and its backup', async t => {
+  const { file, create, root, backups } = await fixture(t, false, 5), before = await readFile(file);
+  const raw = new (sqliteDriver().DatabaseSync)(databasePath(file));
+  raw.exec("create table conversation_operations(unexpected text); insert into conversation_operations values ('preserve')"); raw.close();
+  await assert.rejects(create().initialize());
+  assert.equal(version(file), '5'); assert.deepEqual(await readFile(file), before);
+  const db = openStateDatabase({ file: databasePath(file), mode: 'reader' });
+  try { assert.equal(db.get('select unexpected from conversation_operations').unexpected, 'preserve'); }
+  finally { db.close(); }
+  const directory = path.join(root, (await backups())[0]);
+  const manifest = JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8'));
+  assert.equal(manifest.sourceSchema, 5); assert.equal(manifest.targetSchema, 6);
 });
 
 test('an installation receipt mismatch is rejected before schema upgrade or backup admission', async t => {

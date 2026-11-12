@@ -8,7 +8,7 @@ import {
 export type StorageCheckpoint =
   | 'backup_complete' | 'import_verified' | 'database_published'
   | 'database_committed' | 'metadata_published' | 'handoff_acknowledged' | 'lease_prepared'
-  | 'schema_backup_complete' | 'schema_backup_preparing';
+  | 'schema_backup_complete' | 'schema_backup_preparing' | 'conversation_operation_reserved';
 
 export interface StorageHooks {
   signal?: AbortSignal;

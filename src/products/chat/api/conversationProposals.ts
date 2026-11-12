@@ -1,6 +1,6 @@
-import type { ChatState } from './contracts.js';
+import { updateCatalogConversation } from './scopedConversationState.js';
 import type { ChatStore } from '../state/store.js';
-import { updateChatState } from '../state/store.js';
+import { proposalContext, readProposalRecord } from './proposalState.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import {
   CONVERSATION_PROPOSAL_CONTENT_LIMIT,
@@ -11,12 +11,11 @@ import {
   type ConversationProposalRecord,
   type ConversationProposalStatus,
   type ConversationProposalView,
+  type ConversationProposalKind,
 } from '../../../platform/proposals/contracts.js';
 import { productScopeIncludes } from '../../../shared/productScope.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import { createAsyncKeyedGate } from '../shared/asyncControl.js';
-import { resolveChannelProductScope } from '../shared/channelTopology.js';
-import { channelWorkProjectRevision, readChannelWorkProjectId } from '../state/model/workProject.js';
 import {
   buildConversationProposalDigest,
   effectiveProposalStatus,
@@ -53,10 +52,6 @@ export type ConversationProposalDecision =
   | { status: ConversationProposalStatus; refusal: string | null; summary?: string }
   | { status: 'not_found' };
 
-function channelOf(state: ChatState, channelId: string) {
-  return state.channels.find((entry) => entry.id === channelId) ?? null;
-}
-
 export function createConversationProposalService(options: ConversationProposalServiceOptions): ConversationProposalPort & {
   read(channelId: string, proposalId: string): Promise<ConversationProposalDetails | null>;
   decide(channelId: string, proposalId: string, decision: 'confirm' | 'decline', ownerActorId: string): Promise<ConversationProposalDecision>;
@@ -67,20 +62,13 @@ export function createConversationProposalService(options: ConversationProposalS
   const gate = createAsyncKeyedGate();
   const gateKey = (channelId: string) => `proposals:${channelId}`;
 
-  async function contextFor(state: ChatState, channelId: string, conversationId: string): Promise<ConversationProposalContext | null> {
-    const channel = channelOf(state, channelId);
-    if (!channel) return null;
-    return {
-      channelId,
-      conversationId,
-      core: await options.chatStore.readCore(),
-      level: resolveChannelProductScope(channel),
-      parallelMember: state.parallelChatGroups.some((group) => group.status === 'active' && group.memberChannelIds.includes(channelId)),
-      workProjectId: readChannelWorkProjectId(channel),
-      workProjectRevision: channelWorkProjectRevision(channel),
-      otherConversationsInProject: (projectId) => state.channels
-        .filter((entry) => entry.id !== channelId && readChannelWorkProjectId(entry) === projectId).length,
-    };
+  async function contextFor(channelId: string, conversationId: string): Promise<ConversationProposalContext | null> {
+    const catalog = await options.chatStore.readCatalog?.();
+    if (catalog) return proposalContext(channelId, conversationId, catalog.headers.find(channel => channel.id === channelId),
+      catalog.metadata.parallelChatGroups, catalog.core, catalog.headers);
+    const state = await options.chatStore.read();
+    return proposalContext(channelId, conversationId, state.channels.find(channel => channel.id === channelId),
+      state.parallelChatGroups, await options.chatStore.readCore(), state.channels);
   }
 
   function digestOf(record: Pick<ConversationProposalRecord, 'kind' | 'channelId' | 'conversationId' | 'content'>,
@@ -97,55 +85,40 @@ export function createConversationProposalService(options: ConversationProposalS
       // The conversation is the grant's channel; its id is derived, never taken from the caller.
       const conversationId = buildChatConversationId(input.channelId);
       return gate.run(gateKey(input.channelId), async () => {
-        const state = await options.chatStore.read();
-        const context = await contextFor(state, input.channelId, conversationId);
-        if (!context) return { refusal: 'conversation_not_found', message: 'The conversation is gone.' };
-        if (!productScopeIncludes(context.level, kind.level)) {
-          return { refusal: 'level_too_narrow', message: `This conversation's level does not offer ${input.kind}.` };
-        }
-        let content: Record<string, unknown>;
         try {
-          content = kind.validate(input.content, context);
+          return await updateCatalogConversation<{ proposalId: string; expiresAt: string } | { refusal: string; message: string }>(
+            options.chatStore, input.channelId, (state, core, headers) => {
+              const context = proposalContext(input.channelId, conversationId, state.channels.find(channel => channel.id === input.channelId),
+                state.parallelChatGroups, core, headers)!;
+              if (!productScopeIncludes(context.level, kind.level)) return { state,
+                result: { refusal: 'level_too_narrow', message: `This conversation's level does not offer ${input.kind}.` } };
+              const content = kind.validate(input.content, context);
+              if (JSON.stringify(content).length > CONVERSATION_PROPOSAL_CONTENT_LIMIT) return { state,
+                result: { refusal: 'proposal_too_large', message: 'The proposal is too large.' } };
+              const digest = buildConversationProposalDigest({ kind: input.kind, channelId: input.channelId, conversationId,
+                content, binding: kind.binding(content, context) });
+              const stored = postConversationProposal(state, { channelId: input.channelId, conversationId,
+                kind: input.kind, content, digest, proposerParticipantId: input.proposerParticipantId, at: now() });
+              if ('refusal' in stored) return { state, result: { refusal: stored.refusal,
+                message: stored.refusal === 'proposal_limit' ? 'This conversation already has 3 proposals waiting for the owner.'
+                  : stored.refusal === 'proposal_rate_limited' ? 'This conversation reached 10 proposals in the last hour.'
+                    : 'The proposal could not be stored.' } };
+              return { state: stored.state, result: { proposalId: stored.record.id, expiresAt: stored.record.expiresAt } };
+            }) ?? { refusal: 'conversation_not_found', message: 'The conversation is gone.' };
         } catch (error) {
           if (error instanceof ConversationProposalRefusal) return { refusal: error.code, message: error.message };
+          if ((error as { code?: string })?.code === 'conversation_archived') return {
+            refusal: 'conversation_archived', message: 'Restore this conversation before posting a proposal.' };
           throw error;
-        }
-        if (JSON.stringify(content).length > CONVERSATION_PROPOSAL_CONTENT_LIMIT) {
-          return { refusal: 'proposal_too_large', message: 'The proposal is too large.' };
-        }
-        const digest = buildConversationProposalDigest({
-          kind: input.kind, channelId: input.channelId, conversationId,
-          content, binding: kind.binding(content, context),
-        });
-        const stored: { record: ConversationProposalRecord | null; refusal: string | null } = { record: null, refusal: null };
-        await updateChatState(options.chatStore, (latest) => {
-          const result = postConversationProposal(latest, {
-            channelId: input.channelId, conversationId, kind: input.kind, content, digest,
-            proposerParticipantId: input.proposerParticipantId, at: now(),
-          });
-          if ('refusal' in result) { stored.refusal = result.refusal; return latest; }
-          stored.record = result.record;
-          return result.state;
-        });
-        if (!stored.record) {
-          const code = stored.refusal ?? 'proposal_refused';
-          return { refusal: code, message: code === 'proposal_limit'
-            ? 'This conversation already has 3 proposals waiting for the owner.'
-            : code === 'proposal_rate_limited'
-              ? 'This conversation reached 10 proposals in the last hour.'
-              : 'The proposal could not be stored.' };
-        }
-        options.onChanged?.(input.channelId);
-        return { proposalId: stored.record.id, expiresAt: stored.record.expiresAt };
+        } finally { options.onChanged?.(input.channelId); }
       });
     },
 
     async read(channelId, proposalId) {
-      const state = await options.chatStore.read();
-      const record = readConversationProposal(state, channelId, proposalId);
+      const record = await readProposalRecord(options.chatStore, channelId, proposalId);
       if (!record) return null;
       const status = effectiveProposalStatus(record, now());
-      const context = await contextFor(state, channelId, record.conversationId);
+      const context = await contextFor(channelId, record.conversationId);
       const kind = options.kinds.get(record.kind);
       let view: ConversationProposalView | null = null;
       let outOfDate = false;
@@ -158,59 +131,57 @@ export function createConversationProposalService(options: ConversationProposalS
 
     async decide(channelId, proposalId, decision, ownerActorId) {
       return gate.run(gateKey(channelId), async () => {
-        const state = await options.chatStore.read();
-        const record = readConversationProposal(state, channelId, proposalId);
-        if (!record) return { status: 'not_found' } as const;
-        const at = now();
-        const close = async (status: ConversationProposalStatus, refusal: string | null) => {
-          await updateChatState(options.chatStore, (latest) =>
-            updateConversationProposal(latest, channelId, proposalId, { status, decidedAt: at.toISOString(), refusal }));
-          options.onChanged?.(channelId);
-        };
-        const status = effectiveProposalStatus(record, at);
-        // FR-18: closed once. An expiry that was only effective is stored now.
-        if (status !== 'open') {
-          if (status !== record.status) await close(status, 'card_expired');
-          return { status, refusal: status === 'expired' ? 'card_expired' : 'card_closed' };
-        }
-        if (decision === 'decline') {
-          await close('declined', null);
-          return { status: 'declined', refusal: null };
-        }
-        const kind = options.kinds.get(record.kind);
-        // A fresh read, just before the write, for the recheck the write is bound to.
-        const fresh = await options.chatStore.read();
-        const channel = channelOf(fresh, channelId);
-        const context = await contextFor(fresh, channelId, record.conversationId);
-        if (!channel || channel.status === 'archived' || !context) {
-          await close('stale', 'conversation_unavailable');
-          return { status: 'stale', refusal: 'conversation_unavailable' };
-        }
-        if (!kind) {
-          await close('failed', 'kind_unavailable');
-          return { status: 'failed', refusal: 'kind_unavailable' };
-        }
-        if (digestOf(record, context) !== record.digest) {
-          await close('stale', 'card_stale');
-          return { status: 'stale', refusal: 'card_stale' };
-        }
-        // Marked before the write, so a crash between the write and its outcome never writes twice.
-        await updateChatState(options.chatStore, (latest) =>
-          updateConversationProposal(latest, channelId, proposalId, { status: 'confirming', decidedAt: at.toISOString() }));
-        let result: { summary: string };
+        const release = decision === 'confirm' ? await options.chatStore.reserveConversationOperation?.(channelId) : undefined;
+        if (release === null) return { status: 'not_found' } as const;
         try {
-          // FR-19: the server writes the bound content; the model supplies nothing now.
-          result = await kind.perform(record.content, context, {
-            proposerParticipantId: record.proposerParticipantId, ownerActorId,
+          type Claim = { decision: ConversationProposalDecision }
+            | { record: ConversationProposalRecord; context: ConversationProposalContext; kind: ConversationProposalKind };
+          const claim = await updateCatalogConversation<Claim>(options.chatStore, channelId, (state, core, headers) => {
+            const record = readConversationProposal(state, channelId, proposalId), at = now();
+            if (!record) return { state, result: { decision: { status: 'not_found' } } };
+            const close = (status: ConversationProposalStatus, refusal: string | null) => ({
+              state: updateConversationProposal(state, channelId, proposalId, { status, decidedAt: at.toISOString(), refusal }),
+              result: { decision: { status, refusal } } as Claim,
+            });
+            const status = effectiveProposalStatus(record, at);
+            if (status !== 'open') return status !== record.status ? close(status, 'card_expired')
+              : { state, result: { decision: { status, refusal: status === 'expired' ? 'card_expired' : 'card_closed' } } };
+            if (decision === 'decline') return close('declined', null);
+            const kind = options.kinds.get(record.kind);
+            if (!kind) return close('failed', 'kind_unavailable');
+            const context = proposalContext(channelId, record.conversationId, state.channels.find(channel => channel.id === channelId),
+              state.parallelChatGroups, core, headers)!;
+            if (digestOf(record, context) !== record.digest) return close('stale', 'card_stale');
+            // Latest status, expiry and binding are admitted atomically with this claim.
+            return { state: updateConversationProposal(state, channelId, proposalId, { status: 'confirming', decidedAt: at.toISOString() }),
+              result: { record, context, kind } };
           });
-        } catch (error) {
-          const code = error instanceof ConversationProposalRefusal ? error.code : 'write_failed';
-          await close('failed', code);
-          return { status: 'failed', refusal: code };
+          if (!claim) return { status: 'not_found' } as const;
+          if ('decision' in claim) return claim.decision;
+          options.onChanged?.(channelId);
+          const close = async (status: ConversationProposalStatus, refusal: string | null) => {
+            await updateCatalogConversation(options.chatStore, channelId, state => {
+              const current = readConversationProposal(state, channelId, proposalId);
+              return { state: current?.status === 'confirming' && current.digest === claim.record.digest
+                ? updateConversationProposal(state, channelId, proposalId, { status, decidedAt: now().toISOString(), refusal }) : state,
+              result: undefined };
+            }, false);
+          };
+          let result: { summary: string };
+          try {
+            result = await claim.kind.perform(claim.record.content, claim.context, {
+              proposerParticipantId: claim.record.proposerParticipantId, ownerActorId,
+            });
+          } catch (error) {
+            const code = error instanceof ConversationProposalRefusal ? error.code : 'write_failed';
+            await close('failed', code); return { status: 'failed', refusal: code };
+          }
+          await close('confirmed', null);
+          return { status: 'confirmed', refusal: null, summary: result.summary };
+        } finally {
+          try { if (release) await release(); }
+          finally { options.onChanged?.(channelId); }
         }
-        // The write happened: what follows cannot turn it into a failure.
-        await close('confirmed', null);
-        return { status: 'confirmed', refusal: null, summary: result.summary };
       });
     },
   };

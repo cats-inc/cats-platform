@@ -1,15 +1,18 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { appendEvidenceEvent } from '../../../../platform/persistence/evidence.js';
-import type { BossCatJoinRequestRecord } from '../contracts.js';
-import { resolveOwnerStartedSurface, BOSS_CAT_JOIN_REQUEST_METADATA_KEY } from '../../shared/ownerStarted.js';
+import { resolveOwnerStartedSurface } from '../../shared/ownerStarted.js';
 import { resolveBossCatEvidenceDataDir } from '../../state/bossCatSurface.js';
 import {
   decideBossCatJoinRequest,
+  readBossCatJoinRequestRecord,
   readBossCatJoinRequestDetails,
   type BossCatJoinDecisionOutcome,
 } from '../../state/bossCatJoinRequests.js';
 import { resolveChannelCanonicalIdentity } from '../../state/model/index.js';
-import { updateChatState } from '../../state/store.js';
+import type { ChatStore } from '../../state/store.js';
+import type { ChatState } from '../contracts.js';
+import { readConversationCatalog, readConversationsState, updateConversationsState } from '../scopedConversationState.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import { shouldHydrateCompanionSession } from '../../companion/hydration.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
@@ -36,11 +39,11 @@ export async function routeBossCatResourceApi(context: ChatApiRouteContext): Pro
     if (details) {
       if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
       requireOwner(context);
-      const state = await context.dependencies.chatStore.read();
+      const state = await readJoinCardState(context.dependencies.chatStore, details[0]!, details[1]!);
       const now = nowFrom(context.dependencies);
       // What the Boss Cat brings in: the same predicate hydration uses, with its box.
       const record = state.channels.find((channel) => channel.id === details[0])?.messages
-        .map((message) => message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined)
+        .map(readBossCatJoinRequestRecord)
         .find((entry) => entry?.id === details[1]);
       const boss = record ? state.cats.find((cat) => cat.id === record.bossCatId) : undefined;
       const target = record ? state.channels.find((channel) => channel.id === record.conversationId) : undefined;
@@ -62,21 +65,35 @@ export async function routeBossCatResourceApi(context: ChatApiRouteContext): Pro
       throw new ChatApiError(400, 'invalid_decision', 'decision must be "approve" or "decline".');
     }
     const answer = body.decision;
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationsState(context.dependencies.chatStore, [laneId], { archivedMetadataOnly: true });
+    const lane = state.channels.find(channel => channel.id === laneId);
+    if (lane) assertConversationWritable(lane);
     const record = state.channels.find((channel) => channel.id === laneId)?.messages
-      .map((message) => message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined)
+      .map(readBossCatJoinRequestRecord)
       .find((entry) => entry?.id === requestId);
     if (!record) throw new ChatApiError(404, 'join_request_not_found', 'Join request not found.');
     let outcome: BossCatJoinDecisionOutcome = { status: 'not_found' };
     // The join writes the other conversation, so it runs under that conversation's gate.
+    let coldHeaders: ChatState['channels'] = [];
     await context.dependencies.mutationGate.run(record.conversationId, () =>
-      updateChatState(context.dependencies.chatStore, (latest) => {
-        const decided = decideBossCatJoinRequest(latest, {
+      updateConversationsState(context.dependencies.chatStore, [laneId, record.conversationId], (latest) => {
+        const current = latest.channels.find(channel => channel.id === laneId)?.messages
+          .map(readBossCatJoinRequestRecord)
+          .find(entry => entry?.id === requestId);
+        if (current && current.conversationId !== record.conversationId) {
+          throw new ChatApiError(409, 'conversation_changed', 'The join request changed. Reload and try again.');
+        }
+        const selected = new Set(latest.channels.map(channel => channel.id));
+        const decided = decideBossCatJoinRequest({ ...latest, channels: [...latest.channels, ...coldHeaders] }, {
           laneId, requestId, decision: answer, now: nowFrom(context.dependencies),
         });
         outcome = decided.outcome;
-        return decided.state;
-      }));
+        return { ...decided.state, channels: decided.state.channels.filter(channel => selected.has(channel.id)) };
+      }, { excludeArchived: true, preflight(headers) {
+        const lane = headers.channels.find(channel => channel.id === laneId);
+        if (lane) assertConversationWritable(lane);
+        coldHeaders = headers.channels.filter(channel => channel.status === 'archived');
+      } }));
     publishChannelMutation(context.dependencies.eventHub, laneId, 'updated');
     if (outcome.status === 'approved') publishChannelMutation(context.dependencies.eventHub, record.conversationId, 'updated');
     // FR-16: the owner's decision, ids only.
@@ -103,4 +120,22 @@ export async function routeBossCatResourceApi(context: ChatApiRouteContext): Pro
     handleRestError(context, error);
     return true;
   }
+}
+
+
+/** Owner details need only their card and routing headers, including cold card readback. */
+async function readJoinCardState(store: ChatStore, laneId: string, requestId: string): Promise<ChatState> {
+  const state = await readConversationsState(store, [laneId], { archivedMetadataOnly: true });
+  const lane = state.channels.find(channel => channel.id === laneId);
+  if (lane?.status === 'archived' && store.readMessagePage) {
+    let cursor: string | undefined;
+    do {
+      const page = await store.readMessagePage(laneId, 200, cursor);
+      const card = page.messages.find(message => readBossCatJoinRequestRecord(message)?.id === requestId);
+      if (card) lane.messages = [card];
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+  }
+  const catalog = await readConversationCatalog(store);
+  return { ...catalog, channels: catalog.channels.map(header => header.id === laneId && lane ? lane : header) };
 }

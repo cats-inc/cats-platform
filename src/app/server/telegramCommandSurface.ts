@@ -25,6 +25,8 @@ import type {
 } from '../../platform/transports/telegram/commandPort.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
+import { readConversationCatalog } from '../../products/chat/api/scopedConversationState.js';
+import { updateChatState } from '../../products/chat/state/store.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { setCatCompanion } from '../../products/chat/state/model/index.js';
 import { isCompanionCat } from '../../shared/companionRole.js';
@@ -66,10 +68,7 @@ async function setInteractionMode(
   catId: string,
   mode: TelegramInteractionMode,
 ): Promise<TelegramInteractionMode> {
-  const state = await chatStore.read();
-  const persisted = await chatStore.write(
-    setCatCompanion(state, catId, mode === 'companion'),
-  );
+  const persisted = await updateChatState(chatStore, latest => setCatCompanion(latest, catId, mode === 'companion'));
   const cat = persisted.cats.find((candidate) => candidate.id === catId);
   return resolveInteractionMode(cat);
 }
@@ -153,7 +152,7 @@ export function createTelegramCommandSurface(
     async handle(
       commandInput: TelegramCommandPortInput,
     ): Promise<TelegramCommandPortReply | null> {
-      const chatState = await input.chatStore.read();
+      const chatState = await readConversationCatalog(input.chatStore);
       const binding = commandInput.binding;
       const cat = binding ? findBindingChatCat(chatState, binding) : null;
 

@@ -14,7 +14,10 @@ import {
   createCat,
   createChannel,
 } from '../build/server/products/chat/state/model/index.js';
-import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { DatabaseChatStore } from '../build/server/products/chat/state/databaseStore.js';
+import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
+import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
+import { MemoryChatStore, normalizeImportedChatSnapshot } from '../build/server/products/chat/state/store.js';
 import {
   BOSS_CREATE_GROUP,
   BOSS_JOIN_CONVERSATION,
@@ -163,27 +166,29 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
   };
 }
 
-async function start(t, { withAuth = true, decisionEnabled = true, seed, ...runtimeOptions } = {}) {
+async function start(t, { withAuth = true, decisionEnabled = true, nativeStore = false, seed, ...runtimeOptions } = {}) {
   const platformDir = await mkdtemp(join(tmpdir(), 'cats-boss-tools-'));
   const authConfig = withAuth ? createTestAuthConfig() : undefined;
   const auth = withAuth
     ? await createAuthenticatedTestSession({ now: new Date(), sessionSecret: authConfig.sessionSecret, sessionTtlMs: authConfig.sessionTtlMs })
     : null;
-  const chatStore = new MemoryChatStore();
   const fixture = world(new Date());
   seed?.(fixture.state);
-  await chatStore.write(fixture.state);
-  // In the app `chatStatePath` is a file; evidence must not be written beneath it.
+  const chatStatePath = join(platformDir, 'state/chat-state.local.json');
   await mkdir(join(platformDir, 'state'), { recursive: true });
-  await writeFile(join(platformDir, 'state/chat.json'), '{}');
+  const chatStore = nativeStore ? new DatabaseChatStore(chatStatePath) : new MemoryChatStore();
+  if (nativeStore) {
+    await writeFile(chatStatePath, JSON.stringify(normalizeImportedChatSnapshot(fixture.state)));
+    await chatStore.initialize();
+  } else await chatStore.write(fixture.state);
   const runtimeClient = runtime(platformDir, runtimeOptions);
   const server = createServer({ shared: { config: { host: '127.0.0.1', port: 0, runtimeBaseUrl: 'http://127.0.0.1:3110',
-    runtimeApiKey: '', platformDir, chatStatePath: join(platformDir, 'state/chat.json'), runtimeDataDir: join(platformDir, 'runtime'),
+    runtimeApiKey: '', platformDir, chatStatePath, runtimeDataDir: join(platformDir, 'runtime'),
     chatProviderAgentDecisionEnabled: decisionEnabled, ...(authConfig ? { auth: authConfig } : {}) },
   ...(auth ? { authStore: auth.authStore } : {}), runtimeClient }, chat: { chatStore } });
   await server.startupRecovery;
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
-  t.after(async () => { server.close(); await once(server, 'close'); await rm(platformDir, { recursive: true, force: true }); });
+  t.after(async () => { server.close(); await once(server, 'close'); await chatStore.close?.(); await rm(platformDir, { recursive: true, force: true }); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const headers = { 'content-type': 'application/json', origin: 'http://127.0.0.1:8181',
     ...(auth ? { cookie: auth.cookie, 'x-cats-csrf-token': auth.csrfToken } : {}) };
@@ -943,3 +948,29 @@ test('SPEC-139 FR-15: each Cat\'s visibility switch, absent meaning visible', as
   assert.equal((await kiki()).hiddenFromBossCat, undefined);
   assert.equal((await setVisible('no')).status >= 400, true);
 });
+
+
+for (const coldTarget of [false, true]) {
+  test(`native owner join-card decision scopes its atomic target pair (cold target: ${coldTarget})`, async t => {
+    const hooks = { action: 'join' };
+    const h = await start(t, { nativeStore: true, seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
+    const { card } = await postCardRequest(h), record = card.metadata.bossCatJoinRequest;
+    const store = h.chatStore;
+    // A forged earlier metadata record must not choose the gate or target set.
+    await store.updateChannel(h.bossLane, channel => ({ channel: { ...channel, messages: [
+      { ...card, id: 'not-a-server-card', senderKind: 'user', metadata: { ...card.metadata, event: 'ordinary',
+        bossCatJoinRequest: { ...record, conversationId: h.mochiLane } } }, ...channel.messages] } }));
+    if (coldTarget) await store.archiveConversation(hooks.conversationId, 'archive');
+    const db = openStateDatabase({ file: databasePath(join(h.platformDir, 'state/chat-state.local.json')), mode: 'writer' });
+    try { db.run('update messages set json = ? where channel_id = ?', '{malformed unrelated', h.mochiLane); } finally { db.close(); }
+    store.read = store.updateSnapshot = async () => { throw Error('Join-card decision used global history'); };
+    const response = await decide(h, record.id, 'approve');
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.outcome.status, coldTarget ? 'refused' : 'approved');
+    if (coldTarget) assert.equal(response.body.outcome.refusal, 'conversation_archived');
+    const lane = await store.readChannel(h.bossLane);
+    const actual = lane.messages.find(message => message.id === card.id).metadata.bossCatJoinRequest;
+    assert.equal(actual.status, coldTarget ? 'refused' : 'approved');
+    if (!coldTarget) assert.ok(membershipOf({ channels: [await store.readChannel(hooks.conversationId)] }, hooks.conversationId, h.ids.boss));
+  });
+}

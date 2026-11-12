@@ -1,6 +1,6 @@
 /** SPEC-144: conversations and parallel groups; settings and Core remain JSON. */
 import { MESSAGE_PRESENTATION_INDEXES } from './messageIndex.js';
-export const STATE_SCHEMA_VERSION = 5;
+export const STATE_SCHEMA_VERSION = 6;
 /** "CPLT", deliberately different from the image ledger and Cats Bot. */
 export const STATE_APPLICATION_ID = 0x43504c54;
 const CHANNEL_CATALOG_SQL = `
@@ -14,6 +14,14 @@ create table channel_catalog(
   participant_assignments text not null
 ) strict;
 create index channel_catalog_position on channel_catalog(position);
+`;
+const CONVERSATION_OPERATIONS_SQL = `
+create table conversation_operations(
+  token text primary key not null,
+  channel_id text not null,
+  lease_token text not null
+) strict, without rowid;
+create index conversation_operations_channel on conversation_operations(channel_id);
 `;
 const COLD_ARCHIVES_SQL = `
 create table conversation_archives(
@@ -84,7 +92,7 @@ select id, position, json_extract(json, '$.title'), json_extract(json, '$.create
 `, 2: MESSAGE_PRESENTATION_INDEXES, 3: `
 alter table channels add column content_revision text not null default '';
 update channels set content_revision = lower(hex(randomblob(16)));
-${COLD_ARCHIVES_SQL}`, 4: ARCHIVE_STAGE_SQL };
+${COLD_ARCHIVES_SQL}`, 4: ARCHIVE_STAGE_SQL, 5: CONVERSATION_OPERATIONS_SQL };
 
 export const STATE_SCHEMA_SQL = `
 create table meta(key text primary key not null, value text not null) strict, without rowid;
@@ -132,4 +140,5 @@ create table metadata_handoff(
   json text not null
 ) strict;
 ${ARCHIVE_STAGE_SQL}
+${CONVERSATION_OPERATIONS_SQL}
 `;

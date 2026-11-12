@@ -5,6 +5,8 @@ import type { ChatMetadata } from './store.js';
 
 /** Read model only. Never feed headers or a window to a snapshot mutation. */
 export interface ChatCatalogSnapshot {
+  /** Native operation revision, captured with these headers/Core; never reused. */
+  revision?: string;
   metadata: ChatMetadata;
   headers: Omit<ChatChannelState, 'messages'>[];
   core: CatsCoreState;

@@ -1,3 +1,4 @@
+import { readConversationCatalog, readConversationCatalogWithCore } from '../api/scopedConversationState.js';
 import { createHash } from 'node:crypto';
 import type { CatImageCaller, CatImageJob } from '../../../platform/multimedia/catImagePolicy.js';
 import type { CatImageService } from '../../../platform/multimedia/catImages.js';
@@ -18,7 +19,7 @@ export class CompanionGenerationService {
   }) {}
 
   async authorize(caller: CatImageCaller, continuation = false) {
-    const cat = (await this.deps.chatStore.read()).cats.find(row => row.id === caller.catId && row.status === 'active');
+    const cat = (await readConversationCatalog(this.deps.chatStore)).cats.find(row => row.id === caller.catId && row.status === 'active');
     if (!cat) throw new CompanionPostError('cat_not_found', 404);
     if ('sourceIds' in caller && Array.isArray(caller.sourceIds)) {
       await this.authorizeReferences(cat.id, caller.sourceIds);
@@ -57,7 +58,7 @@ export class CompanionGenerationService {
     let references: string[] = supplied;
     const settings = await this.deps.media.settings(caller.catId);
     if (!references.length && settings.useProfileImages) {
-      const cat = (await this.deps.chatStore.read()).cats.find(row => row.id === caller.catId);
+      const cat = (await readConversationCatalog(this.deps.chatStore)).cats.find(row => row.id === caller.catId);
       if (cat?.avatarUrl?.startsWith('data:image/')) references = [(await this.deps.media.dataUrl(caller.catId, cat.avatarUrl, 'avatar')).id];
     }
     if (!references.length || references.length > (input.kind === 'video' ? 1 : 3)) throw new CompanionPostError('reference_image_required');
@@ -75,7 +76,7 @@ export class CompanionGenerationService {
   async ownerGenerate(catId: string, input: Record<string, unknown>) {
     if (typeof input.requestKey !== 'string' || !input.requestKey || input.requestKey.length > 200
       || typeof input.body !== 'string' || input.body.length > 4000) throw new CompanionPostError('invalid_generation_request');
-    const state = await this.deps.chatStore.read(); const core = await this.deps.chatStore.readCore();
+    const { state, core } = await readConversationCatalogWithCore(this.deps.chatStore);
     const lane = findCompanionDirectLane(state, catId);
     const caller: CatImageCaller = { catId, accountId: core.ownerProfile.actorId, ownerActorId: core.ownerProfile.actorId,
       conversationId: lane ? buildChatConversationId(lane.id) : `profile:${catId}`, runtimeSessionId: `owner-profile:${catId}`, trigger: 'manual' };

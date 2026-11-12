@@ -5,6 +5,7 @@ import type { ChatApiRouteContext } from '../routeSupport.js';
 import { isOwnerPrincipal } from './productScopeRoutes.js';
 import { cleanRecordValue, fenceRecordText } from '../../../shared/conversationRecordTools.js';
 import type { ConversationProposalView } from '../../../../platform/proposals/contracts.js';
+import { readConversationMetadata } from '../scopedConversationState.js';
 
 /**
  * A kind's view is built from agent-supplied content, so every text is cleaned and bounded here,
@@ -50,7 +51,7 @@ export async function routeConversationProposalResourceApi(context: ChatApiRoute
       requireOwner(context);
       const found = service ? await service.read(details[0]!, details[1]!) : null;
       if (!found) throw new ChatApiError(404, 'proposal_not_found', 'Proposal not found.');
-      const state = await context.dependencies.chatStore.read();
+      const state = await readConversationMetadata(context.dependencies.chatStore, details[0]!);
       const channel = state.channels.find((entry) => entry.id === details[0]);
       const proposer = channel && found.record.proposerParticipantId
         ? resolveChannelParticipantAssignments(channel)

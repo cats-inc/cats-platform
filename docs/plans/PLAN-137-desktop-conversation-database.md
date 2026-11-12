@@ -14,6 +14,11 @@ not authorize a version bump or publication. Worktree: `.claude/worktrees/deskto
 branch `feat/desktop-state-db`, initial Platform source `355a9469a`. Bot source is frozen
 at tag `state-db-p1`; do not take current Bot main, which intentionally reverted the feature.
 
+Owner update, 2026-11-13: "先跳過效能／百萬筆測試. 趕快做完交差給我."
+Post-port performance measurements and million-entry capacity runs are deferred and are not
+gates for this delivery. Preserve the completed baseline evidence. Functional bounded-query,
+transaction, migration/recovery and affected-consumer checks still apply.
+
 ## Phase 0 — Baseline and contracts (FR-1)
 
 - [x] Read ADR-152 and confirm the preserved Bot tag and reverted main.
@@ -37,8 +42,9 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [x] Expose scoped transactional mutation/read views through the live store; integrate runtime
   intake/stream/finalization writers without loading sibling transcripts. Derived shared memory
   uses a separately persisted compact channel catalog, not JSON extraction from workflow bodies.
-- [ ] Tests: real SQLite, multilingual/scoped queries, million-entry bounded operations,
+- [ ] Tests: real SQLite, multilingual/scoped queries,
   cursor/order edits, rollback, durable commit and multi-process contention.
+  Million-entry capacity testing is owner-deferred for this delivery.
 
 ## Phase 2 — Migration and live store (FR-4–FR-6, FR-10–FR-13)
 
@@ -62,7 +68,7 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
   The authenticated/redacted query endpoint, client and scoped/global Desktop dialog are
   implemented. Focused controls/cancellation checks pass; manual acceptance remains pending.
-- [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
+- [x] Finish scoped conversation write consumers, preserving group and parallel semantics.
   Runtime dispatch writers and REST send/retry, rename, coordinator, participant and product
   scope changes use target-only state. Metadata list/scope/Project readers and transport
   fanout avoid unrelated history. Prepared owner participant changes have independent
@@ -75,8 +81,12 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   avoid global history. Native Code inspection/activation, provider binding metadata and
   orchestrator plan/loop/initial dispatch reads now avoid unrelated history. Code creation
   plus intent admission and generic Core writes keep their global contract.
-  The remaining consumer audit is open; generic Core/global projections
-  retain their explicit cost.
+  Proposal claims and outcomes, Companion heartbeat/publication/image consumers and owner
+  join-card decisions are scoped. Metadata-only Companion/memory/Telegram readers use headers.
+  The bounded consumer audit is complete: global creation, pending-card uniqueness/usage,
+  rich Runtime effects, generic Core/replay and Cat role changes retain their global atomic
+  contract; the life/peer-board read model intentionally reads related histories. These costs
+  are explicit rather than a claim that all snapshot APIs became constant-time.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
   bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
@@ -109,6 +119,7 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 
 - [ ] Affected builds/typechecks and Core/Chat/Work/Code/lifecycle/startup/packaging suites.
 - [ ] Node and Electron measurements after port, compared with Phase 0 under the same workload.
+  **Owner-deferred; not a gate for this delivery.**
 - [ ] Independent review; resolve findings and rerun checks affected by fixes.
 - [x] Real-data export equality on an isolated copy, with exact source-byte preservation and rollback readback.
 - [ ] Three-platform CI on exact candidate.
@@ -198,6 +209,10 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-13 | Code/provider/orchestrator read checkpoint: server build and fixture typecheck passed. The five new real SQLite/HTTP cases passed **5/5 Node**; existing Code-session, product-scope, provider-control, orchestrator API/recovery and architecture consumers passed **206/206 Node**. The new five native cases and existing Code-session/provider consumers passed **42/42 actual Electron 41.2.0 / Node 24.14.0**, zero skipped/cancelled, in two explicitly awaited child runs (**5 + 37**). Counts overlap earlier checkpoints and are not additive. |
 | 2026-11-13 | New cases prove native Code inspect/activate with malformed unrelated messages and global Chat reads/snapshot writes forbidden; archive-race cleanup of an unattached new session; durable-commit recovery retaining its attached session; Code/provider metadata inspection beside both damaged hot messages and damaged cold evidence; preservation of an explicitly different CoreStore's owner authority; and target-only orchestrator plan/loop inspection plus cold dispatch refusal before Runtime. Both independent read-only reviews report no remaining P1/P2 in this delta. Code creation/intent admission and generic Core/replay writes retain global projections; this does not close proposal/companion consumer audit, live acceptance, measurements or hosted three-OS CI. |
 
+| 2026-11-13 | Owner deferred post-port performance and million-entry runs. Schema 6 adds independent conversation-operation leases; same-channel overlap, store-close/reset protection, failure cleanup, killed-owner reclaim, parent/native archive admission and source-5 backed-up upgrades are implemented. Foundation Node operation/schema/paired-restore matrix passed **51/51**, final expanded upgrade checks **22/22**; actual Electron final operation/upgrade/source-5-pair checks passed **33/33**, zero skipped/cancelled. Counts overlap. Bundled maintenance/coordinator/cold paging passed three cases; the complete CLI exceeded its former aggregate 120-second fixture deadline without an assertion failure. Its aggregate deadline is now 300 seconds (individual commands remain 30 seconds), and the isolated complete Node/Electron CLI passed **1/1**. |
+| 2026-11-13 | Proposal claims are once-only across independent stores/services, preserve complete Project counts, keep interrupted confirming cards non-replayable, block archive through actual perform and read cold details with bounded pages. Initial proposal consumers passed **14/14 Node**. After generic scoped-catalog reuse, affected proposal/Companion consumers passed **134/134 Node**. Final heartbeat/Companion/Boss/owner/memory consumer checks passed **41/41 Node**, including seven actual SQLite Companion cases; the initial new fixture failures were corrected (database-open options, supported state-file layout, canonical participant lease setter and message-count assumptions) without relaxing production guards. Final new native join-card HTTP cases passed **2/2 Node**, including hot approval, cold-target refusal, spoofed earlier non-card metadata and malformed unrelated history with global history reads/snapshot writes forbidden. Current-source typed Telegram checks passed **9/9** after rebuilding its bundle; an earlier denied bundle attempt's stale output is not validation. Server build, host build and fixture typecheck passed. |
+| 2026-11-13 | Independent read-only reviews closed proposal fallback/cold-capture and Companion gate/error ownership findings. The last join-card review closed valid-card predicate mismatch and two-lock initial cold admission. Final actual Electron consumer checks passed **15/15** in explicitly awaited runs (**13 native Companion/proposal + 2 native join-card HTTP**), zero skipped/cancelled. Hosted three-OS CI and remaining isolated Desktop acceptance are pending; this checkpoint is not the entire goal's completion. |
+
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
 ## Next integration checkpoint
@@ -208,14 +223,27 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: finish the remaining consumer audit (including proposal/control paths and
-companion operations, plus classification of remaining generic Core/global work), isolated
-live/active-parallel/group and cross-product paging/search acceptance, and the
+Next work: isolated live/active-parallel/group and cross-product paging/search acceptance, and the
 still-unexplained Electron multi-process startup failure (retain the
-new safe diagnostic evidence); then post-port
-measurements, hosted CI and isolated Desktop acceptance.
+new safe diagnostic evidence); then hosted CI and isolated Desktop acceptance.
+Post-port performance and million-entry runs remain owner-deferred.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
+
+- Proposal mutations keep complete Project header counts, including archived siblings,
+  and header-only cold admission. Re-read current status/expiry/binding under the writer;
+  only the successful `open -> confirming` claim performs, outside the transaction.
+  Interrupted confirming claims do not replay. Schema 6 conversation-operation rows are
+  backed by independent live leases through actual execution and reclaimed after owner death.
+- Companion tick retains related active Chat history for presence, unanswered counts,
+  greetings and assist redaction. Boss peer boards additionally retain non-archived group
+  histories across products and visible Cats' direct-lane times. Qualification uses canonical
+  headers in database order. Target writes preserve `active`/`watching` delivery, lane-free
+  owner-profile generation and full-history notification/job-ID deduplication. Heartbeats
+  recheck Cat/session ownership after envelope/gate/filesystem waits and under the writer.
+  Owner join cards atomically mutate their two related conversations, preserving missing/cold
+  target refusal and never hydrating a cold target; every reader uses the model's valid-card
+  predicate. Telegram role changes are atomic global metadata transactions.
 
 - Archive actions now prepare off-thread against a consistent snapshot and use a fixed trusted
   worker/reaper. Keep compression, full digest proofs and asset copying outside the serving
@@ -263,7 +291,8 @@ as meeting the final performance goal. Preserve these implementation constraints
 - Every domain commit, including scoped writes, sets a unique revision/digest. Maintenance can
   capture JSON then VACUUM, accepting the pair only if snapshot identity/revision/digest match;
   mismatches defer/retry without holding the operation lock during long SQLite work.
-- The new host acceptance helper and workflow are prepared but no hosted run is evidenced yet.
+- The host acceptance workflow is callable from manual CI on the exact candidate, including
+  three-OS Node/Electron functional checks. No hosted run is evidenced yet.
   Current local dependency setup extracted the exact vendor UI tarball into worktree node_modules;
   other local dependencies resolve from the parent checkout. A worktree-owned mobile node_modules
   junction points to the matching-lockfile main installation; remove that junction during final

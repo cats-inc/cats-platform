@@ -124,7 +124,11 @@ export function readConversationProposal(
   channelId: string,
   proposalId: string,
 ): ConversationProposalRecord | null {
-  return listConversationProposals(state, channelId).find((record) => record.id === proposalId) ?? null;
+  return readConversationProposalFromMessages(state.channels.find(channel => channel.id === channelId)?.messages ?? [], proposalId);
+}
+
+export function readConversationProposalFromMessages(messages: readonly ChatMessage[], proposalId: string): ConversationProposalRecord | null {
+  return messages.map(readRecord).find(record => record?.id === proposalId) ?? null;
 }
 
 /** Open, unexpired proposals: the ones a card still waits on (FR-20, and the Boss Cat board). */

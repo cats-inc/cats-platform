@@ -1,3 +1,4 @@
+import { readConversationCatalog } from '../scopedConversationState.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import {
   addDurableMemory,
@@ -130,7 +131,7 @@ async function handleListCanonicalCatMemory(
   catId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationCatalog(context.dependencies.chatStore);
     requireCat(state, catId);
     const records = await context.dependencies.memoryService.listCanonicalRecords({
       subjectKind: 'cat',
@@ -147,7 +148,7 @@ async function handleFlushCanonicalCatMemory(
   catId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationCatalog(context.dependencies.chatStore);
     requireCat(state, catId);
     const body = await readOptionalFlushBody(context);
     if (!validateFlushReason(body.reason)) {
@@ -174,7 +175,7 @@ async function handleGetCatRetrievalContext(
   catId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationCatalog(context.dependencies.chatStore);
     const cat = requireCat(state, catId);
     const channelId = context.url.searchParams.get('channelId')?.trim() ?? '';
     const channel = channelId

@@ -1,3 +1,4 @@
+import { readConversationCatalog } from './scopedConversationState.js';
 import { findCompanionDirectLane, recordCompanionOwnerPresence } from '../companion/life/presence.js';
 import type { ChatCompanionLifeLoopDependencies } from './companionLifeLoop.js';
 import {
@@ -21,7 +22,7 @@ export async function setCatDirectLanePresence(
   catId: string,
   presence: 'awake' | 'sleeping',
 ): Promise<CatPresenceChange> {
-  const lane = findCompanionDirectLane(await dependencies.chatStore.read(), catId);
+  const lane = findCompanionDirectLane(await readConversationCatalog(dependencies.chatStore), catId);
   if (!lane) {
     return { outcome: 'no_lane' };
   }
@@ -30,7 +31,7 @@ export async function setCatDirectLanePresence(
       const deactivation = await deactivateChannelLocked(dependencies, lane.id);
       const changed = deactivation.closedSessionCount > 0;
       await recordCompanionOwnerPresence({
-        state: await dependencies.chatStore.read(),
+        state: await readConversationCatalog(dependencies.chatStore),
         channelId: lane.id,
         presence,
         changed,
@@ -50,7 +51,7 @@ export async function setCatDirectLanePresence(
     }
     const changed = !activation.leadWasReady && result.status === 'started';
     await recordCompanionOwnerPresence({
-      state: await dependencies.chatStore.read(),
+      state: await readConversationCatalog(dependencies.chatStore),
       channelId: lane.id,
       presence,
       changed,

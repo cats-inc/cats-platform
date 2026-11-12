@@ -13,7 +13,8 @@ import { buildPersistedChatSnapshot, extractCoreState, type PersistedChatSnapsho
 import { prepareChatSnapshot, type ChatStore, type ChatSnapshotMutator, type ChatChannelMutator, type ChatChannelsMutator, type ChatChannelsMutationOptions, type ChatMetadata } from './store.js';
 import { mergeScopedCoreProjection, mergeScopedCoreProjections } from './core-projection/scoped.js';
 import { openProfile, type OpenProfile } from './database/openProfile.js';
-import { assertProfileOffline } from './database/profileLease.js';
+import { assertProfileOffline, createProfileLease } from './database/profileLease.js';
+import { reclaimConversationOperations, releaseConversationOperation } from './database/conversationOperations.js';
 import { logicalDatabaseSnapshot } from './database/logicalExport.js';
 import { type StorageHooks } from './database/metadataCommit.js';
 import {
@@ -228,6 +229,7 @@ export class DatabaseChatStore implements ChatStore {
 
   async readCatalog() {
     return this.run(async (session, envelope) => ({
+      revision: envelope.storage.revision,
       metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() },
       headers: session.conversations.headers(), core: structuredClone(envelopeCore(envelope)),
     }));
@@ -281,7 +283,7 @@ export class DatabaseChatStore implements ChatStore {
       const { channels: _channels, ...chatMetadata } = structuredClone(envelope.chat);
       const metadata = { ...chatMetadata, parallelChatGroups: session.conversations.groups() };
       const catalog = session.conversations.projectionMetadata();
-      const context = { chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
+      const context = { revision: envelope.storage.revision, chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
       let result: ReturnType<ChatChannelMutator>;
       try { result = mutator(structuredClone(stored), context); }
       catch (error) { throw new MutationFailure(error); }
@@ -289,7 +291,7 @@ export class DatabaseChatStore implements ChatStore {
         void Promise.resolve(result).catch(() => {});
         throw new TypeError('A channel mutation must be synchronous');
       }
-      if (!isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
+      if (context.revision !== envelope.storage.revision || !isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
         || !isDeepStrictEqual(context.channelCatalog, catalog)) {
         throw new TypeError('A channel mutation cannot edit global Chat or Core state');
       }
@@ -346,7 +348,7 @@ export class DatabaseChatStore implements ChatStore {
       const stored = { ...metadata, channels: selected.map(({ id }) => session.conversations.channel(id)!) };
       if (!selected.length) return stored;
       const core = envelopeCore(envelope), catalog = session.conversations.projectionMetadata();
-      const context = { chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
+      const context = { revision: envelope.storage.revision, chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
       let incoming: ChatState;
       try { incoming = mutator(structuredClone(stored), context); }
       catch (error) { throw new MutationFailure(error); }
@@ -354,7 +356,7 @@ export class DatabaseChatStore implements ChatStore {
         void Promise.resolve(incoming).catch(() => {});
         throw new TypeError('A channel batch mutation must be synchronous');
       }
-      if (!isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
+      if (context.revision !== envelope.storage.revision || !isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
         || !isDeepStrictEqual(context.channelCatalog, catalog)) {
         throw new TypeError('A channel batch mutation cannot edit global Chat or Core state');
       }
@@ -387,6 +389,27 @@ export class DatabaseChatStore implements ChatStore {
         }
       });
       return structuredClone(after.chat);
+    });
+  }
+
+  async reserveConversationOperation(id: string): Promise<(() => Promise<void>) | null> {
+    if (this.resetContext.getStore()?.active) throw new ProfileStorageError('profile_busy',
+      'Finish the current state reset before starting conversation work.');
+    return this.run(async session => {
+      const header = session.conversations.header(id);
+      if (!header) return null;
+      if (header.status === 'archived') throw new ProfileStorageError('conversation_archived',
+        'Restore this archived conversation before starting work.');
+      await reclaimConversationOperations(this.filePath, session.database, id);
+      // An independent lease protects pending external work even after this store closes.
+      const lease = await createProfileLease(this.filePath), token = randomUUID();
+      try {
+        session.database.transaction(() => session.database.run(
+          'insert into conversation_operations(token, channel_id, lease_token) values (?, ?, ?)', token, id, lease.token),
+        { durable: true });
+        await this.options.checkpoint?.('conversation_operation_reserved');
+        return () => releaseConversationOperation(this.filePath, lease);
+      } catch (error) { await lease(); throw error; }
     });
   }
 

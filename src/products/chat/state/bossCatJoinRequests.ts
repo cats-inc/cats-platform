@@ -147,7 +147,7 @@ export function applyBossCatJoin(
 }
 
 /** Only the server's own card message: a system notice with the card event. */
-function readCardRecord(message: ChatMessage): BossCatJoinRequestRecord | null {
+export function readBossCatJoinRequestRecord(message: ChatMessage): BossCatJoinRequestRecord | null {
   if (message.senderKind !== 'system' || message.metadata?.event !== BOSS_CAT_JOIN_REQUEST_EVENT) return null;
   return (message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined) ?? null;
 }
@@ -155,7 +155,7 @@ function readCardRecord(message: ChatMessage): BossCatJoinRequestRecord | null {
 function readCard(state: ChatState, laneId: string, requestId: string): { message: ChatMessage; record: BossCatJoinRequestRecord } | null {
   const lane = state.channels.find((entry) => entry.id === laneId);
   for (const message of lane?.messages ?? []) {
-    const record = readCardRecord(message);
+    const record = readBossCatJoinRequestRecord(message);
     if (record?.id === requestId) return { message, record };
   }
   return null;
@@ -176,7 +176,7 @@ function updateCard(
     channels: state.channels.map((channel) => channel.id !== laneId ? channel : {
       ...channel,
       messages: channel.messages.map((message) => {
-        const record = readCardRecord(message);
+        const record = readBossCatJoinRequestRecord(message);
         return record?.id === requestId
           ? { ...message, metadata: { ...message.metadata, [BOSS_CAT_JOIN_REQUEST_METADATA_KEY]: { ...record, ...patch } } }
           : message;
@@ -199,7 +199,7 @@ export function postBossCatJoinRequest(
 ): { state: ChatState; requestId: string } | { refusal: 'card_pending' | 'rate_limited' } {
   // One pending card per conversation, across every Boss Cat's lane.
   const pending = latest.channels.some((channel) => channel.messages.some((message) => {
-    const record = readCardRecord(message);
+    const record = readBossCatJoinRequestRecord(message);
     return record?.conversationId === input.conversationId && effectiveStatus(record, input.at) === 'pending';
   }));
   if (pending) return { refusal: 'card_pending' };

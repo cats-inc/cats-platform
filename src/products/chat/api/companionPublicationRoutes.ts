@@ -1,3 +1,4 @@
+import { readConversationCatalog } from './scopedConversationState.js';
 import { MEDIA_MAX_BYTES } from '../../../runtime/media.js';
 import { MediaImageError } from '../../../platform/multimedia/imageExecution.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -56,7 +57,7 @@ export async function routeCompanionPublicationApi(context: ChatApiRouteContext)
   // Existing DELETE owns the activity event and canonical-memory receipt.
   if (section === 'posts' && id && !action && context.method === 'DELETE') return false;
   try {
-    const cat = requireCat(await context.dependencies.chatStore.read(), catId);
+    const cat = requireCat(await readConversationCatalog(context.dependencies.chatStore), catId);
     const store = context.dependencies.companionStore;
     const media = new CompanionMediaStore(store, context.dependencies.config.chatStatePath, context.dependencies.now, context.dependencies.runtimeClient);
     const posts = new CompanionPostService(store, context.dependencies.now);

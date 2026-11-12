@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelState, ChatState } from './contracts.js';
 import type { ChatChannelMutationContext, ChatChannelsMutationOptions, ChatStore } from '../state/store.js';
 import { ChatApiError } from './routeErrors.js';
@@ -121,4 +122,48 @@ export function mergePreparedParticipantMutation(latest: ChatChannelState, basel
     else Reflect.defineProperty(merged, key, { value: structuredClone(desired), enumerable: true, configurable: true, writable: true });
   }
   return merged;
+}
+
+/** Full header context and target/Core must belong to the same native revision. */
+export async function updateCatalogConversation<T>(store: ChatStore, channelId: string,
+  mutate: (state: ChatState, core: CatsCoreState, headers: readonly Omit<ChatChannelState, 'messages'>[]) => { state: ChatState; result: T },
+  needsCatalog = true): Promise<T | undefined> {
+  const preflight = (state: ChatState) => {
+    const channel = state.channels.find(channel => channel.id === channelId);
+    if (channel) assertConversationWritable(channel);
+  };
+  if (store.updateChannels && (!needsCatalog || store.readCatalog)) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const catalog = needsCatalog ? await store.readCatalog!() : null;
+      let result: T | undefined, retry = false;
+      await store.updateChannels([channelId], (state, context) => {
+        if (catalog && (!catalog.revision || !context.revision)) throw new TypeError('Versioned conversation context is required');
+        if (catalog && catalog.revision !== context.revision) { retry = true; return state; }
+        const changed = mutate(state, structuredClone(context.core), catalog?.headers ?? []);
+        result = changed.result; return changed.state;
+      }, { preflight });
+      if (!retry) return result;
+    }
+    throw new ChatApiError(409, 'conversation_changed', 'The conversation context changed. Reload and try again.');
+  }
+  if (!store.updateSnapshot) throw new TypeError('Atomic conversation storage is required');
+  let result: T | undefined;
+  await store.updateSnapshot(({ chat, core }) => {
+    preflight(chat);
+    if (!chat.channels.some(channel => channel.id === channelId)) return { chat, core };
+    const changed = mutate(chat, structuredClone(core), chat.channels);
+    result = changed.result; return { chat: changed.state, core };
+  });
+  return result;
+}
+
+
+/** One catalog revision supplies both routing metadata and owner/binding identity. */
+export async function readConversationCatalogWithCore(store: ChatStore): Promise<{ state: ChatState; core: CatsCoreState }> {
+  if (!store.readCatalog) {
+    const [state, core] = await Promise.all([store.read(), store.readCore()]);
+    return { state, core };
+  }
+  const catalog = await store.readCatalog();
+  return { state: { ...catalog.metadata, channels: catalog.headers.map(header => ({ ...header, messages: [] })) }, core: catalog.core };
 }

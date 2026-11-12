@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { readConversationCatalog } from './scopedConversationState.js';
+import { readConversationCatalogWithCore, updateCatalogConversation } from './scopedConversationState.js';
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +18,6 @@ import { sendBinary, sendJson, sendMethodNotAllowed } from '../../../shared/http
 import type { TelegramConversationBinding, TelegramRelayContext } from '../../../platform/transports/telegram/contracts.js';
 import { resolveLeadParticipantLease, appendMessage } from '../state/model/index.js';
 import { findCompanionDirectLane } from '../companion/life/presence.js';
-import { updateChatState } from '../state/store.js';
 import { buildRoomMessageMutationDetail, publishRoomMutation } from './transportEventPublisher.js';
 import type { ChatApiDependencies, ChatApiRouteContext } from './routeSupport.js';
 
@@ -50,7 +49,7 @@ export function createChatCatImages(dependencies: Dependencies) {
   let closing = false;
 
   async function context(catId: string, bindingId?: string) {
-    const [state, core] = await Promise.all([dependencies.chatStore.read(), dependencies.chatStore.readCore()]);
+    const { state, core } = await readConversationCatalogWithCore(dependencies.chatStore);
     const cat = state.cats.find(row => row.id === catId);
     const lane = cat ? findCompanionDirectLane(state, cat.id) : null;
     const binding = core.botBindings.find(row => row.platform === 'telegram' && row.status === 'active'
@@ -121,15 +120,24 @@ export function createChatCatImages(dependencies: Dependencies) {
           let messageId = '';
           let appended: ReturnType<typeof appendMessage>['message'] | undefined;
           await dependencies.mutationGate.run(source.lane.id, async () => {
-            await updateChatState(dependencies.chatStore, latest => {
+            await updateCatalogConversation(dependencies.chatStore, source.lane!.id, (latest, core, headers) => {
               assertClaim();
               const lane = latest.channels.find(row => row.id === source.lane!.id);
-              if (!lane || !['active', 'watching'].includes(lane.status)) {
+              const cat = latest.cats.find(row => row.id === job.catId && row.status === 'active');
+              const canonical = findCompanionDirectLane({ channels: headers.map(header => ({ ...header, messages: [] })) }, job.catId);
+              const binding = core.botBindings.find(row => row.id === job.bindingId && row.platform === 'telegram'
+                && row.status === 'active' && (row.catActorId ?? row.bossCatActorId) === createCatActorId(job.catId));
+              const mapped = lane && binding ? dependencies.telegramRelay?.resolveBinding({ roomId: lane.id, bindingId: binding.id }) : null;
+              const policy = authorizeCatImagePolicy(ledger!.policy(job), job, now());
+              if (stopped || !cat || !lane || !['active', 'watching'].includes(lane.status) || canonical?.id !== lane.id
+                || core.ownerProfile.actorId !== job.ownerActorId || buildChatConversationId(lane.id) !== job.conversationId
+                || !binding || mapped?.bindingId !== binding.id || mapped.linkedRoomId !== lane.id
+                || fingerprint(binding, mapped) !== job.bindingRevision || policy.id !== job.policyId || policy.revision !== job.policyRevision) {
                 throw new MediaImageError('image_not_authorized', 403);
               }
               const existing = lane.messages.find(row => row.metadata.catImageJobId === job.id);
-              if (existing) { messageId = existing.id; return latest; }
-              const next = appendMessage(latest, lane.id, { senderKind: 'agent', senderName: source.cat!.name, body: job.caption }, now(), {
+              if (existing) { messageId = existing.id; return { state: latest, result: true }; }
+              const next = appendMessage(latest, lane.id, { senderKind: 'agent', senderName: cat.name, body: job.caption }, now(), {
                 origin: 'runtime', incrementUnread: true,
                 metadata: { event: 'cat_image_generated', catImageJobId: job.id, catImageCatId: job.catId,
                   catImageAttachment: { schemaVersion: 1, catId: job.catId, jobId: job.id, ...job.output },
@@ -137,9 +145,10 @@ export function createChatCatImages(dependencies: Dependencies) {
                   // This intent has its own durable transport dispatcher; ordinary fanout must skip it.
                   transportDeliveryManaged: true },
               });
-              appended = next.message; messageId = next.message.id; return next.state;
+              appended = next.message; messageId = next.message.id; return { state: next.state, result: true };
             });
           });
+          if (!messageId) throw new MediaImageError('image_not_authorized', 403);
           if (appended) publishRoomMutation(dependencies.eventHub, source.lane.id, 'message_added', buildRoomMessageMutationDetail(appended));
           return messageId;
         },
@@ -189,13 +198,12 @@ export function createChatCatImages(dependencies: Dependencies) {
         || !['runtime-dispatch', 'companion-heartbeat'].includes(String(meta.supervisionSurface))
         || meta.supervisionToolName !== 'cats.runtime.message.send' || typeof meta.supervisionRunId !== 'string'
         || typeof meta.supervisionActionId !== 'string') return null;
-      const { channels, cats } = await readConversationCatalog(dependencies.chatStore);
+      const { state: { channels, cats }, core } = await readConversationCatalogWithCore(dependencies.chatStore);
       const lane = channels.find(row => (row.id === meta.supervisionRunId || `chat:${row.id}` === meta.supervisionRunId)
         && resolveLeadParticipantLease(row)?.sessionId === sessionId);
       if (!lane || lane.status !== 'active') return null;
       const cat = cats.find(row => findCompanionDirectLane({ channels }, row.id)?.id === lane.id);
       if (!cat || cat.status !== 'active') return null;
-      const core = await dependencies.chatStore.readCore();
       const policies = open().policies().filter(row => row.catId === cat.id && row.ownerActorId === core.ownerProfile.actorId);
       const enabled = policies.filter(row => row.enabled);
       const policy = enabled.length === 1 ? enabled[0] : policies.length === 1 ? policies[0] : undefined;

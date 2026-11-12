@@ -135,6 +135,11 @@ version bump under this implementation authorization.
 
 ## Design overview
 
+Delivery validation update, 2026-11-13: the owner explicitly deferred post-port performance
+measurements and million-entry testing to accelerate completion. Those runs are not gates
+for this delivery; bounded-query behavior, data protection and functional acceptance remain
+required. Earlier baseline measurements remain recorded evidence.
+
 The database stores complete JSON per entity plus query columns, FTS terms and one pending
 metadata handoff. JSON remains the metadata store; the handoff is a crash-recovery journal,
 not a second ordinary metadata database. A cross-process operation lock encloses recovery,
@@ -198,6 +203,25 @@ both stores are the same; an explicitly separate CoreStore still supplies its ow
 authority. Orchestrator plans and execution-loop inspection read the requested conversation,
 and dispatch admits its writable target before hydration. Generic orchestrator replay/Core
 writes remain global operations.
+
+Proposal cards use target-scoped atomic transitions and matching catalog/Core revisions for
+complete Project counts, including archived siblings. Only the successful `open -> confirming`
+claim may perform, outside the lock; interrupted confirming claims never replay. Schema 6 adds
+operational conversation reservations backed by independent live-profile leases. They prevent
+archive/offline replacement through actual asynchronous execution, survive store close, and
+retire safely after settlement. Dead reservations are reclaimed; they are not logical exports.
+The existing validated/paired schema-upgrade backup path covers versions 1 through 5.
+
+Companion metadata qualification uses canonical headers in database order. Heartbeats hydrate
+only their target, recheck active Cat/session ownership after envelope/gate/filesystem waits,
+and publish through scoped transactions. The life loop retains real related Chat history for
+owner presence, greetings, unanswered counts and redacted assist reviews. Boss Cat peer boards
+also need non-archived group histories across products and visible Cats' direct-lane times;
+that explicit cross-conversation read model remains. Complete-history image/notification dedup,
+active/watching delivery and lane-free owner-profile generation are preserved. Owner join-card
+decisions atomically update their two related conversations, admit cold targets as headers for
+refusal, and never decode those targets. Telegram role changes remain global atomic metadata
+transactions rather than stale snapshot replacement.
 
 Activation tracks Runtime creations independently of returned leases, including failures
 before attachment setup or publication. Cleanup checks the recovering current header and

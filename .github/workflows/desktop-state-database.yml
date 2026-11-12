@@ -1,6 +1,7 @@
 name: Desktop state database
 
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     paths:

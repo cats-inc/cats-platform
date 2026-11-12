@@ -1,7 +1,7 @@
 import type { CompanionSnapshot } from '../companion/contracts.js';
 import { CompanionGenerationService } from '../companion/generationService.js';
 import { createHash } from 'node:crypto';
-import { readConversationCatalog } from './scopedConversationState.js';
+import { readConversationCatalog, readConversationCatalogWithCore, updateCatalogConversation } from './scopedConversationState.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { RuntimeSendMessageInput } from '../../../platform/runtime/client.js';
 import type { CatImageTurnResolution } from '../../../platform/multimedia/catImageTools.js';
@@ -17,7 +17,6 @@ import { CompanionNotificationService } from '../companion/notificationService.j
 import { projectCompanionProfile } from '../companion/profileReadModel.js';
 import { findCompanionDirectLane } from '../companion/life/presence.js';
 import { appendMessage, resolveLeadParticipantLease } from '../state/model/index.js';
-import { updateChatState } from '../state/store.js';
 import { buildRoomMessageMutationDetail, publishRoomMutation } from './transportEventPublisher.js';
 import type { ChatApiDependencies } from './routeSupport.js';
 import { MediaImageError } from '../../../platform/multimedia/imageExecution.js';
@@ -69,12 +68,11 @@ export function createCompanionPublications(dependencies: Dependencies) {
   const generation = new CompanionGenerationService({ store, media, posts, chatStore: dependencies.chatStore, runtime: dependencies.runtimeClient,
     service: () => dependencies.imageService?.(), now });
   const shares = new CompanionShareService(store, media, dependencies.publicOrigin, async catId => {
-    const cat = (await dependencies.chatStore.read()).cats.find(row => row.id === catId && row.status === 'active');
+    const cat = (await readConversationCatalog(dependencies.chatStore)).cats.find(row => row.id === catId && row.status === 'active');
     return cat?.name ?? null;
   }, now);
   async function recipient(catId: string, destination: 'dm' | 'telegram') {
-    const state = await dependencies.chatStore.read();
-    const core = await dependencies.chatStore.readCore();
+    const { state, core } = await readConversationCatalogWithCore(dependencies.chatStore);
     const cat = state.cats.find(row => row.id === catId && row.status === 'active');
     const lane = cat && findCompanionDirectLane(state, catId);
     if (!cat || !lane || !['active', 'watching'].includes(lane.status)) throw new CompanionPostError('owner_conversation_unavailable', 409);
@@ -108,19 +106,25 @@ export function createCompanionPublications(dependencies: Dependencies) {
         let message: ReturnType<typeof appendMessage>['message'] | null = null;
         await dependencies.mutationGate.run(source.lane.id, async () => {
           await assertCurrent();
-          await updateChatState(dependencies.chatStore, state => {
+          await updateCatalogConversation(dependencies.chatStore, source.lane.id, (state, core, headers) => {
             const lane = state.channels.find(row => row.id === source.lane.id);
-            if (!lane || !['active', 'watching'].includes(lane.status)) throw new CompanionPostError('owner_conversation_unavailable', 409);
+            const cat = state.cats.find(row => row.id === intent.catId && row.status === 'active');
+            const canonical = findCompanionDirectLane({ channels: headers.map(header => ({ ...header, messages: [] })) }, intent.catId);
+            if (!cat || !lane || !['active', 'watching'].includes(lane.status) || canonical?.id !== lane.id
+              || core.ownerProfile.actorId !== intent.target?.ownerId || intent.target?.channelId !== lane.id) {
+              throw new CompanionPostError('owner_conversation_unavailable', 409);
+            }
             const existing = lane.messages.find(row => row.metadata.companionNotificationId === intent.id);
-            if (existing) { messageId = existing.id; return state; }
-            const result = appendMessage(state, lane.id, { senderKind: 'agent', senderName: source.cat.name, body }, now(), {
+            if (existing) { messageId = existing.id; return { state, result: true }; }
+            const result = appendMessage(state, lane.id, { senderKind: 'agent', senderName: cat.name, body }, now(), {
               origin: 'runtime', incrementUnread: true, metadata: { event: 'companion_post_shared',
                 companionNotificationId: intent.id, companionPostId: intent.postId, transportDeliveryManaged: true,
                 targetKind: 'cat', targetId: intent.catId },
             });
-            message = result.message; messageId = result.message.id; return result.state;
+            message = result.message; messageId = result.message.id; return { state: result.state, result: true };
           });
         });
+        if (!messageId) throw new CompanionPostError('owner_conversation_unavailable', 409);
         if (message) publishRoomMutation(dependencies.eventHub, source.lane.id, 'message_added', buildRoomMessageMutationDetail(message));
         return { state: 'sent', transportMessageId: messageId };
       }
@@ -146,12 +150,12 @@ export function createCompanionPublications(dependencies: Dependencies) {
     if (meta?.supervisionBoundary !== RUNTIME_SUPERVISION_BOUNDARY || meta.supervisionProduct !== 'cats-chat'
       || !['runtime-dispatch', 'companion-heartbeat'].includes(String(meta.supervisionSurface))
       || meta.supervisionToolName !== 'cats.runtime.message.send' || typeof meta.supervisionActionId !== 'string') return null;
-    const state = await readConversationCatalog(dependencies.chatStore);
+    const { state, core } = await readConversationCatalogWithCore(dependencies.chatStore);
     const lane = state.channels.find(row => (row.id === meta.supervisionRunId || `chat:${row.id}` === meta.supervisionRunId)
       && row.status === 'active' && resolveLeadParticipantLease(row)?.sessionId === sessionId);
     const cat = lane && state.cats.find(row => row.status === 'active' && findCompanionDirectLane(state, row.id)?.id === lane.id);
     if (!cat || !lane) return null;
-    const ownerId = (await dependencies.chatStore.readCore()).ownerProfile.actorId;
+    const ownerId = core.ownerProfile.actorId;
     return { caller: { accountId: ownerId, ownerActorId: ownerId, catId: cat.id,
       conversationId: buildChatConversationId(lane.id), runtimeSessionId: sessionId,
       trigger: meta.supervisionSurface === 'companion-heartbeat' ? 'heartbeat' : 'manual' },
@@ -164,7 +168,7 @@ export function createCompanionPublications(dependencies: Dependencies) {
   }
   async function callTool(name: string, args: Record<string, unknown>, turn: CatImageTurnResolution, assertAllowed = () => {}) {
     try {
-      const state = await dependencies.chatStore.read();
+      const state = await readConversationCatalog(dependencies.chatStore);
       const cat = state.cats.find(row => row.id === turn.caller.catId && row.status === 'active');
       const lane = cat && findCompanionDirectLane(state, cat.id);
       if (!cat || !lane || lane.id !== turn.publication?.channelId || lane.status !== 'active'
@@ -244,7 +248,7 @@ export function createCompanionPublications(dependencies: Dependencies) {
       && row.followupState !== 'complete' && (row.share || row.notify.length))) {
       const settings = await media.settings(intent.catId);
       const life = await store.getLifeProfile(intent.catId);
-      const cat = (await dependencies.chatStore.read()).cats.find(row => row.id === intent.catId && row.status === 'active');
+      const cat = (await readConversationCatalog(dependencies.chatStore)).cats.find(row => row.id === intent.catId && row.status === 'active');
       const automatic = intent.trigger === 'heartbeat';
       const allowed = !!cat && (!automatic || (isCompanionCat(cat)
         && (life.mode === 'companion' || (life.mode === 'auto' && cat.group !== 'admin')) && settings.autoPost));

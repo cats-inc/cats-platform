@@ -2,6 +2,7 @@ import { isDirectCliEntrypoint } from '../../../../shared/cliEntrypoint.js';
 import { lstatSync, readFileSync } from 'node:fs';
 import { link, lstat, mkdir, readdir, rmdir, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { assertNoLiveConversationOperations } from './conversationOperations.js';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { withProfileLock } from '../../../../platform/persistence/state-db/profileLock.js';
@@ -127,6 +128,7 @@ async function prepare(profile: string, job: ConversationArchiveJob): Promise<vo
     if (job.kind === 'archive') {
       const database = openStateDatabase({ file, mode: 'reader' });
       try {
+        await assertNoLiveConversationOperations(profile, database, job.channelId, false);
         let captured: PreparedConversationArchive | undefined;
         for (let attempt = 0; attempt < 20; attempt++) {
           try {
@@ -280,6 +282,8 @@ async function commit(profile: string, payload: Extract<ArchiveWorkerPayload, { 
       if (row.prepared_digest !== payload.preparedDigest) throw changed();
       const channelRow = database.get('select json, position, order_revision from channels where id = ?', job.channelId)!;
       const channel = JSON.parse(String(channelRow.json)) as ChatChannelState;
+      await checkpoint('archive_before_operation_admission');
+      await assertNoLiveConversationOperations(profile, database, job.channelId);
       assertArchiveIdle(channel, envelopeCore(current));
       for (const proof of prepared.files) {
         const stat = await lstat(path.join(archiveDirectory(file), proof.name));
