@@ -220,8 +220,13 @@ function installFakeHost(spec) {
       const native = input.targets.filter((target) => !(target.endpoint && !/127\.0\.0\.1|localhost/.test(target.endpoint)) && target.provider !== 'openclaw');
       state.selection = { ...state.selection, state: input.targets.length ? 'selected' : 'empty', revision: `r${state.calls.length}`, targets: input.targets.map(({ provider, backend, instance }) => ({ provider, backend, instance })), nativeSetupTargets: native.map(({ provider, backend, instance }) => ({ provider, backend, instance })), diskChanged: false, error: null };
       for (const target of input.targets) {
-        if (!target.endpoint) continue;
-        state.connections = [...state.connections.filter((entry) => entry.provider !== target.provider), { provider: target.provider, backend: target.backend, instance: target.instance, endpoint: target.endpoint, editable: true }];
+        if (!target.endpoint && target.provider !== 'openclaw') continue;
+        const previous = state.connections.find((entry) => entry.provider === target.provider);
+        state.connections = [...state.connections.filter((entry) => entry.provider !== target.provider),
+          { provider: target.provider, backend: target.backend, instance: target.instance,
+            endpoint: target.endpoint || previous?.endpoint || 'ws://127.0.0.1:18789', editable: true,
+            ...(target.provider === 'openclaw' ? { tokenEditable: true,
+              tokenConfigured: target.authToken === undefined ? previous?.tokenConfigured === true : target.authToken !== null } : {}) }];
       }
       runEnd(run, { status: 'ready', applied: ['saved your selection'] });
       return snapshot();
@@ -376,8 +381,9 @@ async function openSettings(spec = {}, { size = [1280, 800], locale = 'zh-TW' } 
   return { page, close: () => context.close() };
 }
 const SELECTED = (...ids) => {
-  const targets = ids.map((provider) => (provider === 'ollama' ? { provider, backend: 'local', instance: 'local' } : { provider, backend: 'cli', instance: 'native' }));
-  return { state: 'selected', revision: 'r1', targets, nativeSetupTargets: targets, diskChanged: false, error: null };
+  const targets = ids.map((provider) => (provider === 'ollama' ? { provider, backend: 'local', instance: 'local' }
+    : provider === 'openclaw' ? { provider, backend: 'agent', instance: 'gateway' } : { provider, backend: 'cli', instance: 'native' }));
+  return { state: 'selected', revision: 'r1', targets, nativeSetupTargets: targets.filter((target) => target.provider !== 'openclaw'), diskChanged: false, error: null };
 };
 const settled = (page) => page.waitForFunction(() => {
   const button = document.querySelector('#recheck');
@@ -1052,6 +1058,59 @@ await check('English and Traditional Chinese switch in place, without losing tic
 });
 
 /* ------------------------------ Settings > Runtime (SPEC-138) ------------------------------ */
+
+await check('settings: first selecting OpenClaw immediately enables its token field', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED() });
+  await page.click('[data-act="choose"]');
+  await page.check('#pick-openclaw');
+  await page.click('#go-check');
+  await page.waitForSelector('#token-openclaw:not([disabled])', { timeout: 3000 });
+  await page.fill('#token-openclaw', 'first-setup-test-token');
+  await settled(page);
+  await page.click('#test-openclaw');
+  await page.waitForSelector('[data-row="openclaw"] .row-state.ok');
+  const saves = await calls(page, 'applyProviderSetup');
+  equal(saves.at(-1).args[0].targets[0].authToken, 'first-setup-test-token', 'new selection token saved');
+  await close();
+});
+
+await check('settings: OpenClaw token is masked, saved, preserved and explicitly removed without entering drafts or logs', async () => {
+  const gateway = { provider: 'openclaw', backend: 'agent', instance: 'gateway', endpoint: 'ws://127.0.0.1:18789',
+    editable: true, tokenConfigured: false, tokenEditable: true };
+  const { page, close } = await openSettings({ selection: SELECTED('openclaw'), connections: [gateway] });
+  equal(await page.locator('#token-openclaw').getAttribute('type'), 'password', 'masked input');
+  await page.fill('#token-openclaw', 'fake-gateway-test-token');
+  if (shotDir) await page.screenshot({ path: join(shotDir, 'openclaw-token-settings.png'), fullPage: true });
+  await page.click('#test-openclaw');
+  await page.waitForSelector('[data-row="openclaw"] .row-state.ok');
+  let saves = await calls(page, 'applyProviderSetup');
+  equal(saves.at(-1).args[0].targets[0].authToken, 'fake-gateway-test-token', 'token reaches write request');
+  equal(await page.locator('#token-openclaw').inputValue(), '', 'cleared after saving');
+  truthy(/已設定|Saved/.test(await page.locator('#token-openclaw').getAttribute('placeholder')), 'saved status');
+  const privateSurfaces = await page.evaluate(() => JSON.stringify([window.__settingsState, window.__host.wizardState, window.__host.runs]));
+  truthy(!privateSurfaces.includes('fake-gateway-test-token'), 'draft and log exclusion');
+  await page.click('#test-openclaw');
+  await page.waitForSelector('[data-row="openclaw"] .row-state.ok');
+  saves = await calls(page, 'applyProviderSetup');
+  truthy(!Object.hasOwn(saves.at(-1).args[0].targets[0], 'authToken'), 'blank preserves');
+  await page.click('[data-act="clear-gateway-token"]');
+  await page.click('#test-openclaw');
+  await page.waitForSelector('[data-row="openclaw"] .row-state.ok');
+  saves = await calls(page, 'applyProviderSetup');
+  equal(saves.at(-1).args[0].targets[0].authToken, null, 'explicit removal');
+  if (shotDir) await page.screenshot({ path: join(shotDir, 'openclaw-token-cleared.png'), fullPage: true });
+  await close();
+});
+
+await check('settings: unsupported and externally managed OpenClaw tokens cannot be edited', async () => {
+  for (const tokenEditable of [undefined, false]) {
+    const { page, close } = await openSettings({ selection: SELECTED('openclaw'), connections: [{ provider: 'openclaw',
+      backend: 'agent', instance: 'gateway', endpoint: 'ws://localhost:18789', editable: true, tokenEditable }] });
+    truthy(await page.locator('#token-openclaw').isDisabled(), 'disabled credential input');
+    truthy(new RegExp(tokenEditable === undefined ? '更新|Update' : '管理|managed').test(await textOf(page, '[data-row="openclaw"]')), 'explains unavailable editing');
+    await close();
+  }
+});
 
 await check('settings: opening runs nothing, reads in the settings context and shows the last scan without ticks', async () => {
   const { page, close } = await openSettings({

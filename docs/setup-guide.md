@@ -440,6 +440,13 @@ Notes:
 
 Current first-run behavior ([SPEC-136](specs/SPEC-136-desktop-first-run-wizard.md)):
 
+OpenClaw credentials are configured in Desktop under **Settings → Runtime → AI tools →
+OpenClaw**. Select OpenClaw with **Choose tools** if it is not listed, enter its WebSocket
+address and Gateway token, then choose **Save and test connection**. The token is stored
+locally by Runtime and applied without restarting Desktop. Leave the masked field empty to
+keep the saved value, or explicitly remove it before saving. No dotenv editing is required.
+The field exposes only saved status, and credentials do not enter setup drafts or logs.
+
 - On Desktop, first run is one five-step wizard. The host draws choose tools,
   this computer, and sign-in and models; Platform draws your account, and Catlas
   and start. A browser without the Desktop host sees the last two only.
