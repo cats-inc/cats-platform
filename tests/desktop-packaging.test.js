@@ -831,8 +831,31 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     (entry) => entry.from === 'build/desktop-packaging/shared/app-sidecar/node_modules'
       && entry.to === 'app-sidecar/node_modules'
       && Array.isArray(entry.filter)
-      && entry.filter.includes('!.bin{,/**/*}'),
+      && entry.filter.includes('!**/.bin{,/**/*}'),
   ), true);
+  // npm's .bin links are not needed at run time. Staging copies relative links as absolute
+  // ones, and a nested one (sharp/node_modules/.bin/semver) broke the macOS universal merge,
+  // so electron-builder's own filter must drop .bin at every depth, not only the top level.
+  const { FileMatcher } = createRequire(import.meta.url)('app-builder-lib/out/fileMatcher.js');
+  const tree = await mkdtemp(join(tmpdir(), 'cats-bin-filter-'));
+  try {
+    for (const file of ['.bin/semver', 'sharp/node_modules/.bin/semver', 'sharp/node_modules/semver/bin/semver.js',
+      'sharp/lib/index.js', '@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node']) {
+      await seedFile(join(tree, file));
+    }
+    for (const to of ['app-sidecar/node_modules', 'cats-runtime/node_modules']) {
+      const entry = packageJson.build.extraResources.find((resource) => resource.to === to);
+      const filter = new FileMatcher(tree, to, (value) => value, entry.filter).createFilter();
+      const kept = (file) => filter(join(tree, file), { isDirectory: () => false });
+      assert.equal(kept('.bin/semver'), false, `${to}: .bin/semver`);
+      assert.equal(kept('sharp/node_modules/.bin/semver'), false, `${to}: nested .bin`);
+      assert.equal(kept('sharp/node_modules/semver/bin/semver.js'), true, `${to}: nested package`);
+      assert.equal(kept('sharp/lib/index.js'), true, `${to}: package file`);
+      assert.equal(kept('@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node'), true, `${to}: native`);
+    }
+  } finally {
+    await rm(tree, { recursive: true, force: true });
+  }
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime'
       && entry.to === 'cats-runtime'
