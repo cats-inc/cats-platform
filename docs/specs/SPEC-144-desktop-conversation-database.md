@@ -145,6 +145,20 @@ Snapshot-shaped product APIs remain available for global operations during this 
 while conversation-specific reads/writes use the indexed adapter. They must not be cited
 as constant-time operations. Cold normalization and Core projection remain measurable costs.
 
+Single-conversation REST send/retry, rename, coordinator and participant operations now use
+target-only state and atomic channel writes. Metadata list/scope/Project read models use a
+header catalog without reading message bodies. A member rename may update only its related
+group's exact title/timestamp in that same transaction; it cannot change membership or other
+group fields. Prepared owner participant changes use a separate compare-and-swap merge,
+preserving concurrent appends and untouched fields rather than a Runtime dispatch lease merge.
+Conflicting membership/profile/lease changes return `conversation_changed` (409). Cleanup
+verifies the recovered current header before closing a newly created unreferenced session;
+attachment setup failures also track sessions created before their lease was recorded.
+Recovered participant continuations keep their actual replay reads/writes on the target
+channel. Transport fanout reads only that channel and uses catalog metadata for bindings.
+Generic Core writes and multi-conversation operations still retain complete projections;
+remaining session/control consumers and post-port measurements are open validation.
+
 The query API uses `GET /api/channels/:id/messages?limit=&before=` with newest-first
 windows presented chronologically, cached `total` and exclusive `nextCursor`. Invalid
 input returns 400, missing channels 404, stale cursors 409 with `reload: true`, and storage
@@ -272,6 +286,11 @@ recovers its handoff and Core notifications; terminal attempts notify other chan
 even when the initiating transport disappears. Send/retry/activation/wake reject archived
 channels before Runtime access. Desktop controls are implemented; full product acceptance
 remains pending. Backend/CLI/API checks alone do not satisfy FR-15.
+
+Parallel broadcast preflights the active channel and every nonempty recipient before any
+Runtime work or attachment copy. Relay checks its active/source/target channels before adding
+notes or dispatching. Attachment batches admit all targets before creating any workspace.
+Archived participant updates/removals refuse before closing or starting Runtime sessions.
 
 Cold transcript windows now use the same bounded page API/read models. A native reader
 verifies the manifest/header and requested gzip members outside the serving lock. Current

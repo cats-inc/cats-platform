@@ -6,6 +6,7 @@ import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
 import { publishChannelMutation } from '../transportEventPublisher.js';
 import { isOwnerPrincipal } from './productScopeRoutes.js';
 import { visibleWorkProjectFolder } from '../../../shared/workProjectDisplay.js';
+import { readConversationCatalog } from '../scopedConversationState.js';
 
 /**
  * SPEC-142 FR-23: the owner sets, changes or clears a conversation's Project here, or by
@@ -42,7 +43,7 @@ export async function routeWorkProjectResourceApi(context: ChatApiRouteContext):
       throw new ChatApiError(403, 'owner_required', "Only the owner can change a conversation's Project.");
     }
     if (context.method === 'GET') {
-      const state = await context.dependencies.chatStore.read();
+      const state = await readConversationCatalog(context.dependencies.chatStore);
       const core = await context.dependencies.chatStore.readCore();
       const channel = state.channels.find((entry) => entry.id === channelId);
       if (!channel) throw new ChatApiError(404, 'channel_not_found', 'Conversation not found.');

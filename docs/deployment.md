@@ -116,6 +116,11 @@ A failed reconciliation leaves Reload available and editing disabled until a cur
 accepted; it does not repeat the mutation. Restore returns the transcript to hot storage and
 search. Complete product acceptance remains pending; do not assume an older Desktop can display
 a cold transcript. Close/reset cancels and reaps workers before removing profile files.
+Parallel sends or relays that would write an archived member return `conversation_archived`
+(409) before Runtime dispatch or attachment copies; restore that member before retrying.
+Participant updates can return `conversation_changed` (409) when another operation changed
+the same participant while Runtime setup was in progress. Reload before retrying; concurrent
+messages and the newer participant state are preserved.
 
 Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
 failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native

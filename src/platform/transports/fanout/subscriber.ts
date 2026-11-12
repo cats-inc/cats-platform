@@ -12,7 +12,6 @@ import type {
 } from '../../../products/chat/api/contracts.js';
 import type { ChatEvent, ChatEventHub } from '../../../products/chat/api/chatEventHub.js';
 import { normalizeEffectiveBotBinding } from '../../../products/chat/state/botBindings.js';
-import { requireChannel } from '../../../products/chat/state/model/index.js';
 import type { ChatStore } from '../../../products/chat/state/store.js';
 import type { TelegramRelayContext } from '../telegram/contracts.js';
 import type { TelegramRelay } from '../telegram/relay/index.js';
@@ -181,6 +180,8 @@ export class TransportFanout {
     this.registry.register(createTelegramFanoutDeliverer({
       telegramRelay: options.telegramRelay,
       resolveContext: async (bindingId) => {
+        const catalog = await this.options.chatStore.readCatalog?.();
+        if (catalog) return buildTelegramRelayContext({ ...catalog.metadata, channels: [] }, catalog.core, bindingId);
         const [chatState, coreState] = await Promise.all([
           this.options.chatStore.read(),
           this.options.chatStore.readCore(),
@@ -205,11 +206,13 @@ export class TransportFanout {
       return;
     }
 
-    const [chatState, coreState] = await Promise.all([
-      this.options.chatStore.read(),
-      this.options.chatStore.readCore(),
-    ]);
-    const channel = requireChannel(chatState, channelId);
+    const knownOrigin = readEventOrigin(event);
+    if (knownOrigin === 'system' || knownOrigin === 'unknown') return;
+    const coreState = await this.options.chatStore.readCore();
+    if (!coreState.botBindings.some(binding => binding.status === 'active' && binding.outboundFanoutEnabled !== false)) return;
+    const chatState = await (this.options.chatStore.readChannelState?.(channelId) ?? this.options.chatStore.read());
+    const channel = chatState.channels.find(channel => channel.id === channelId);
+    if (!channel) return; // A queued event cannot resurrect a deleted conversation.
     const message = resolveCandidateMessage(event, channel);
     if (!message || message.metadata.transportDeliveryManaged === true) {
       return;

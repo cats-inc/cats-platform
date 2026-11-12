@@ -10,7 +10,7 @@ import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import type { MessagePage, MessageSearchHit, MessageSearchOptions } from '../shared/transcript.js';
 import { materializedMessagePage } from './materializedMessagePage.js';
-import type { ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
+import type { ChatCatalogSnapshot, ChatPresentationSnapshot, ChatMessageWindow } from './presentation.js';
 import type { ConversationArchiveResult } from '../shared/conversationArchive.js';
 
 import type { ChatState, ChatChannelState } from '../api/contracts.js';
@@ -93,8 +93,10 @@ export interface ChatStore extends CoreStore {
   /** Start nonblocking profile maintenance after application recovery. */
   startMaintenance?(): void;
   readPresentation?(channelId?: string): Promise<ChatPresentationSnapshot>;
+  /** Metadata-only product queries; no hot or cold message body is read. */
+  readCatalog?(): Promise<ChatCatalogSnapshot>;
   readMessageWindow?(id: string, limit?: number, before?: string): Promise<ChatMessageWindow>;
-  /** Synchronous existing-channel mutation; optional metadata is limited to derived memory. */
+  /** Existing-channel mutation; metadata permits derived memory and a related group rename. */
   updateChannel?(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null>;
   /** Explicit product maintenance. Production performs compression/index preparation off-thread. */
   archiveConversation?(id: string, action: 'archive' | 'restore', options?: { signal?: AbortSignal }): Promise<ConversationArchiveResult>;

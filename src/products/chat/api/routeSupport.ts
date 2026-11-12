@@ -3,6 +3,8 @@ import { enrichConversationPresentation } from '../shared/conversationPresentati
 import { presentationChat, presentedChannelWindow } from './presentationReadModels.js';
 import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.js';
 import { updateChatState } from '../state/store.js';
+import { readConversationState, updateConversationState, mergePreparedParticipantMutation } from './scopedConversationState.js';
+import { assertConversationWritable } from '../shared/conversationArchive.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { GuideCatRecord } from '../../../core/types.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
@@ -581,7 +583,7 @@ export async function persistRenamedChannel(
   channelId: string,
   title: string,
 ): Promise<ChatState> {
-  return updateChatState(context.dependencies.chatStore, (state) =>
+  return updateConversationState(context.dependencies.chatStore, channelId, (state) =>
     renameChannel(state, channelId, title, nowFrom(context.dependencies)));
 }
 
@@ -598,13 +600,15 @@ export async function persistUpdatedChannelParticipant(
     modelSelection?: ProviderModelSelection | null;
   },
 ): Promise<ChatState> {
-  return updateChatState(context.dependencies.chatStore, (state) => updateChannelParticipant(
+  return updateConversationState(context.dependencies.chatStore, channelId, (state) => {
+    assertConversationWritable(requireChannel(state, channelId));
+    return updateChannelParticipant(
     state,
     channelId,
     participantId,
     input,
     nowFrom(context.dependencies),
-  ));
+  ); });
 }
 
 export async function persistRenamedParallelChatGroup(
@@ -725,8 +729,9 @@ export async function persistCatAssignmentUpdate(
   input: AssignChannelCatInput,
 ): Promise<{ persisted: ChatState; isNew: boolean }> {
   const now = nowFrom(context.dependencies);
-  const currentState = await context.dependencies.chatStore.read();
+  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
   const currentChannel = requireChannel(currentState, channelId);
+  assertConversationWritable(currentChannel);
   const existingAssignment = currentChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
   );
@@ -829,6 +834,7 @@ export async function persistCatAssignmentUpdate(
     && Boolean(spawnCwd);
 
   if (needsSession) {
+    let createdSessionId: string | null = null;
     const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
     let conversationId: string | null = canonicalIdentity.conversationId;
     let containerId: string | null = canonicalIdentity.containerId;
@@ -895,6 +901,7 @@ export async function persistCatAssignmentUpdate(
           reason: 'channel_cat_assignment',
         },
       });
+      createdSessionId = session.id;
       const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
         channelId,
         repoPath: resolvedChannel.repoPath,
@@ -940,6 +947,7 @@ export async function persistCatAssignmentUpdate(
         },
       );
     } catch (sessionError) {
+      if (createdSessionId) await closeUnreferencedParticipantSessions(context, channelId, [createdSessionId]);
       const errorMessage = sessionError instanceof Error ? sessionError.message : 'Unknown runtime error';
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
         status: 'error',
@@ -967,8 +975,7 @@ export async function persistCatAssignmentUpdate(
     }
   }
 
-  const persisted = await updateChatState(context.dependencies.chatStore, (state) => ({ ...state,
-    channels: state.channels.map((channel) => channel.id === channelId ? requireChannel(nextState, channelId) : channel) }));
+  const persisted = await persistPreparedParticipantState(context, currentState, nextState, channelId);
   const persistedChannel = requireChannel(persisted, channelId);
   const persistedAssignment = persistedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
@@ -998,7 +1005,7 @@ export async function persistCatAssignmentUpdate(
   }
 
   return {
-    persisted: await context.dependencies.chatStore.read(),
+    persisted: await readConversationState(context.dependencies.chatStore, channelId),
     isNew,
   };
 }
@@ -1008,8 +1015,9 @@ export async function persistCatAssignmentRemoval(
   channelId: string,
   catId: string,
 ): Promise<void> {
-  const currentState = await context.dependencies.chatStore.read();
+  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
   const channel = requireChannel(currentState, channelId);
+  assertConversationWritable(channel);
   const assignment = channel.catAssignments.find(
     (candidate) => candidate.catId === catId,
   );
@@ -1031,8 +1039,9 @@ export async function persistChannelParticipantRemoval(
   channelId: string,
   participantId: string,
 ): Promise<void> {
-  const currentState = await context.dependencies.chatStore.read();
+  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
   const channel = requireChannel(currentState, channelId);
+  assertConversationWritable(channel);
   const participant = resolveChannelParticipantAssignments(channel)
     .find((candidate) => candidate.participantId === participantId && candidate.status === 'active');
   if (!participant) {
@@ -1092,8 +1101,48 @@ async function persistParticipantRemoval(
     }
   }
 
-  await updateChatState(context.dependencies.chatStore, (state) => ({ ...state,
-    channels: state.channels.map((entry) => entry.id === channelId ? requireChannel(nextState, channelId) : entry) }));
+  await persistPreparedParticipantState(context, currentState, nextState, channelId);
+}
+
+async function persistPreparedParticipantState(context: ChatApiRouteContext, baseline: ChatState,
+  prepared: ChatState, channelId: string): Promise<ChatState> {
+  const before = requireChannel(baseline, channelId), desired = requireChannel(prepared, channelId);
+  try {
+    return await updateConversationState(context.dependencies.chatStore, channelId, latest => {
+      const channel = requireChannel(latest, channelId);
+      assertConversationWritable(channel);
+      return { ...latest, channels: latest.channels.map(value => value.id === channelId
+        ? mergePreparedParticipantMutation(channel, before, desired) : value) };
+    });
+  } catch (error) {
+    const existing = new Set(collectLinkedChannelSessionIds(before));
+    await closeUnreferencedParticipantSessions(context, channelId,
+      collectLinkedChannelSessionIds(desired).filter(id => !existing.has(id)));
+    throw error;
+  }
+}
+
+async function closeUnreferencedParticipantSessions(context: ChatApiRouteContext, channelId: string,
+  sessionIds: string[]): Promise<void> {
+  if (!sessionIds.length) return;
+  // A publication error may follow a durable commit. Recover/read the current
+  // header before closing anything that may already have been attached.
+  let retained: Set<string>;
+  try {
+    const store = context.dependencies.chatStore;
+    const header = store.readChannelHeader ? await store.readChannelHeader(channelId)
+      : (await readConversationState(store, channelId)).channels.find(channel => channel.id === channelId);
+    retained = new Set(header ? collectLinkedChannelSessionIds({ ...header, messages: [] }) : []);
+  } catch {
+    process.stderr.write('[cats-participant-update] Runtime cleanup needs a verified current conversation\n');
+    return;
+  }
+  for (const id of new Set(sessionIds)) {
+    if (!retained.has(id)) {
+      try { await context.dependencies.runtimeClient.closeSession(id); }
+      catch { process.stderr.write('[cats-participant-update] failed to close an uncommitted Runtime session\n'); }
+    }
+  }
 }
 
 export function sendChannelExport(

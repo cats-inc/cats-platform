@@ -2,6 +2,7 @@ import { access, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { requireChannel } from './model/index.js';
+import { assertConversationWritable } from '../shared/conversationArchive.js';
 import {
   collectParticipantLeaseCwds,
 } from '../shared/channelParticipants.js';
@@ -115,6 +116,8 @@ export async function persistAttachmentsForChannels(options: {
   files: EncodedAttachmentInput[];
   runtimeDataDir?: string | null;
 }): Promise<Map<string, StoredChannelAttachment[]>> {
+  // Admit the whole batch before creating any workspace or writing any file.
+  for (const id of options.channelIds) assertConversationWritable(requireChannel(options.state, id));
   const attachmentPlans = new Map<string, { workspacePath: string; syncTargets: string[] }>();
   const workspaceChannelIds = new Map<string, string[]>();
 

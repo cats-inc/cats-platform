@@ -19,6 +19,7 @@ import {
   resolveParallelChatMemberTarget,
 } from '../../state/model/index.js';
 import { resolveTranscriptOrCanonicalChatMessage } from '../../state/chatCoreInterop.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import type {
   CancelParallelChatGroupInput,
   RelayParallelChatMessageInput,
@@ -249,6 +250,8 @@ async function handleRelayParallelChatGroupMessage(
         }
 
         const sourceChannel = requireChannel(state, body.sourceChannelId);
+        assertConversationWritable(requireChannel(state, body.activeChannelId));
+        assertConversationWritable(sourceChannel);
         const core = await context.dependencies.chatStore.readCore();
         const sourceMessage = resolveTranscriptOrCanonicalChatMessage({
           core,
@@ -283,6 +286,8 @@ async function handleRelayParallelChatGroupMessage(
           );
           throw new RelayResponseSentError();
         }
+
+        for (const id of normalizedTargetChannelIds) assertConversationWritable(requireChannel(state, id));
 
         const sourceMemberLabel = buildParallelChatMemberLabel(
           resolveParallelChatMemberTarget(state, sourceChannel),

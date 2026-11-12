@@ -4,11 +4,14 @@ import type { MessagePage, MessagePresentationPlacement } from '../shared/transc
 import type { ChatMetadata } from './store.js';
 
 /** Read model only. Never feed headers or a window to a snapshot mutation. */
-export interface ChatPresentationSnapshot {
+export interface ChatCatalogSnapshot {
   metadata: ChatMetadata;
   headers: Omit<ChatChannelState, 'messages'>[];
-  selected: { channel: ChatChannelState; page: MessagePage; placements: MessagePresentationPlacement[] } | null;
   core: CatsCoreState;
+}
+
+export interface ChatPresentationSnapshot extends ChatCatalogSnapshot {
+  selected: { channel: ChatChannelState; page: MessagePage; placements: MessagePresentationPlacement[] } | null;
   awaitingReplyChannelIds: string[];
 }
 

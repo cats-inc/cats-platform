@@ -196,6 +196,31 @@ test('transport fanout mirrors web-originated user messages to linked Telegram b
   }
 });
 
+test('transport fanout delivers through scoped conversation and metadata-only binding views', async () => {
+  const fixture = await createFanoutFixture();
+  try {
+    const read = fixture.chatStore.read.bind(fixture.chatStore);
+    const appended = appendMessage(await read(), fixture.channelId,
+      { senderKind: 'user', senderName: 'Owner', body: 'Scoped delivery' }, new Date('2026-04-22T00:01:00Z'), { origin: 'web' });
+    await fixture.chatStore.write(appended.state);
+    let channelReads = 0, catalogs = 0;
+    fixture.chatStore.readChannelState = async id => {
+      assert.equal(id, fixture.channelId); channelReads++;
+      const state = await read(); return { ...state, channels: state.channels.filter(channel => channel.id === id) };
+    };
+    fixture.chatStore.readCatalog = async () => {
+      catalogs++; const { channels, ...metadata } = await read();
+      return { metadata, headers: channels.map(({ messages, ...header }) => header), core: await fixture.chatStore.readCore() };
+    };
+    fixture.chatStore.read = async () => { throw Error('Fanout must not read all conversations'); };
+    fixture.eventHub.emit({ kind: 'room_updated', channelId: fixture.channelId, timestamp: appended.message.createdAt,
+      detail: { mutation: 'message_added', ...buildRoomMessageMutationDetail(appended.message) } });
+    await flushFanout();
+    assert.equal(fixture.deliveries.length, 1); assert.equal(fixture.deliveries[0].text, '[Owner] Scoped delivery');
+    assert.equal(channelReads, 1); assert.ok(catalogs > 0);
+  } finally { fixture.stop(); }
+});
+
 test('transport fanout links a recent unlinked Telegram conversation for first web delivery', async () => {
   const fixture = await createFanoutFixture({}, { linkRoom: false });
   try {

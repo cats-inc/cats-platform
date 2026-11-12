@@ -21,7 +21,8 @@ import {
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore, createLockedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
-import { updateChatState } from '../../state/store.js';
+import { readConversationCatalog, readConversationState, updateConversationState } from '../scopedConversationState.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
@@ -303,7 +304,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
   } catch (error) {
     try {
       await context.dependencies.mutationGate.run(channelId, async () => {
-        const latestState = await context.dependencies.chatStore.read();
+        const latestState = await readConversationState(context.dependencies.chatStore, channelId);
         if (!latestState.channels.some((channel) => channel.id === channelId)) {
           return;
         }
@@ -320,8 +321,8 @@ async function continueAcknowledgedChannelDispatchInBackground(
         if (settled.state.selectedChannelId === channelId) {
           requireChannel(settled.state, channelId).unreadCount = 0;
         }
-        await updateChatState(context.dependencies.chatStore, (latest) => latest.channels.some((channel) => channel.id === channelId)
-          ? mergeCompletedDispatchState(latest, latestState, settled.state, channelId, dispatchNow) : latest);
+        await updateConversationState(context.dependencies.chatStore, channelId, (latest, scope) =>
+          mergeCompletedDispatchState(latest, latestState, settled.state, channelId, dispatchNow, scope?.channelCatalog));
       });
     } catch (persistError) {
       logBackgroundDispatchPersistenceError(channelId, persistError);
@@ -332,7 +333,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
 
   try {
     await context.dependencies.mutationGate.run(channelId, async () => {
-      await updateChatState(context.dependencies.chatStore, (latestState) => {
+      await updateConversationState(context.dependencies.chatStore, channelId, (latestState) => {
         if (latestState.selectedChannelId === channelId && latestState.channels.some((channel) => channel.id === channelId)) {
           requireChannel(latestState, channelId).unreadCount = 0;
         }
@@ -353,7 +354,7 @@ async function handleRestListChannels(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationCatalog(context.dependencies.chatStore);
     sendJson(context.response, 200, {
       channels: state.channels.map((channel) => toChannelSummary(channel, state)),
     });
@@ -431,7 +432,7 @@ async function handleRestPatchChannel(
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<UpdateChannelInput>(context.request);
     await context.dependencies.mutationGate.run(channelId, async () => {
-      let persisted = await context.dependencies.chatStore.read();
+      let persisted = await readConversationState(context.dependencies.chatStore, channelId);
 
       if (body.title !== undefined) {
         const title = typeof body.title === 'string' ? body.title.trim() : '';
@@ -450,8 +451,10 @@ async function handleRestPatchChannel(
           });
           return;
         }
-        persisted = await updateChatState(context.dependencies.chatStore, (state) =>
-          bindChannelCoordinator(state, channelId, body.coordinatorParticipantId ?? null));
+        persisted = await updateConversationState(context.dependencies.chatStore, channelId, (state) => {
+          assertConversationWritable(requireChannel(state, channelId));
+          return bindChannelCoordinator(state, channelId, body.coordinatorParticipantId ?? null);
+        });
       }
 
       sendJson(context.response, 200, {
@@ -589,7 +592,7 @@ async function handleRestSendMessage(
       | null = null;
 
     await context.dependencies.mutationGate.run(channelId, async () => {
-      const stateBefore = await context.dependencies.chatStore.read();
+      const stateBefore = await readConversationState(context.dependencies.chatStore, channelId);
       if (messageLacksAudience(stateBefore, channelId, {
         body: body.body,
         recipientParticipantIds: body.messageMetadata?.recipientParticipantIds,
@@ -695,7 +698,7 @@ async function handleRestRetryMessage(
       | null = null;
 
     await context.dependencies.mutationGate.run(channelId, async () => {
-      const state = await context.dependencies.chatStore.read();
+      const state = await readConversationState(context.dependencies.chatStore, channelId);
       const core = await context.dependencies.chatStore.readCore();
       const channel = requireChannel(state, channelId);
       const roomRouting = resolveRoomRoutingState(channel.roomRouting);

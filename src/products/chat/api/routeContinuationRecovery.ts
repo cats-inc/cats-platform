@@ -12,6 +12,8 @@ import { readWorkflowRecommendation } from '../state/room-routing/recommendation
 import type { ChatStore } from '../state/store.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { notifyStreamTargetChanged } from './resources/streamTargetSignal.js';
+import { readConversationState } from './scopedConversationState.js';
+import { createLockedDispatchChatStore } from '../state/runtime-dispatch/merge.js';
 
 interface RecoveredContinuationParticipant {
   participantKind: 'orchestrator' | 'cat';
@@ -119,9 +121,13 @@ async function maybeAutoResumeRecoveredContinuationForParticipant(
   }
 
   try {
+    // This owner assignment path already owns the channel gate. The retained
+    // replay must keep its reads and transcript writes on that same channel.
+    const state = await readConversationState(context.dependencies.chatStore, channelId);
     const result = await resumeStoredWorkflowContinuationDispatch({
       request: replay,
-      chatStore: context.dependencies.chatStore,
+      chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, state,
+        () => context.dependencies.now?.() ?? now, context.dependencies.runtimeClient),
       runtimeClient: context.dependencies.runtimeClient,
       now,
       companionStore: context.dependencies.companionStore,
@@ -183,7 +189,7 @@ export async function maybeAutoResumeRecoveredCatContinuation(
   catId: string,
   now: Date,
 ): Promise<void> {
-  const state = await context.dependencies.chatStore.read();
+  const state = await readConversationState(context.dependencies.chatStore, channelId);
   const channel = buildChannelView(state, channelId);
   const assignment = channel.assignedCats.find((candidate) =>
     candidate.catId === catId && candidate.status === 'active'

@@ -13,7 +13,7 @@ import {
 } from '../../state/model/productScope.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { resolveChannelProductScope } from '../../shared/channelTopology.js';
-import { updateChatState } from '../../state/store.js';
+import { readConversationCatalog, updateConversationState } from '../scopedConversationState.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
 import { buildRoomMessageMutationDetail, publishChannelMutation } from '../transportEventPublisher.js';
@@ -102,7 +102,7 @@ export async function routeProductScopeResourceApi(context: ChatApiRouteContext)
   try {
     if (context.method === 'GET') {
       requireOwnerPrincipal(context);
-      const state = await context.dependencies.chatStore.read();
+      const state = await readConversationCatalog(context.dependencies.chatStore);
       sendJson(context.response, 200, await describeRaise(context, state, channelId), { 'cache-control': 'no-store' });
       return true;
     }
@@ -121,8 +121,8 @@ export async function routeProductScopeResourceApi(context: ChatApiRouteContext)
     let outcome = { refusal: 'not_found' } as RaiseOutcome;
     // FR-22: inside the conversation's mutation gate, which waits for a turn that holds it. The
     // checks run again inside the store's lock, where every whole-state writer also waits.
-    await context.dependencies.mutationGate.run(channelId, () =>
-      updateChatState(context.dependencies.chatStore, (latest) => {
+    const state = await context.dependencies.mutationGate.run(channelId, () =>
+      updateConversationState(context.dependencies.chatStore, channelId, (latest) => {
         const channel = latest.channels.find((entry) => entry.id === channelId);
         if (!channel) { outcome = { refusal: 'not_found' }; return latest; }
         const refusal = productScopeRaiseRefusal(latest, channelId, target);
@@ -156,7 +156,6 @@ export async function routeProductScopeResourceApi(context: ChatApiRouteContext)
       throw new ChatApiError(REFUSAL_STATUS[refusal], refusal, refusalMessage(refusal, target));
     }
     const raised = outcome;
-    const state = await context.dependencies.chatStore.read();
     const message = requireConversation(state, channelId).messages.find((entry) => entry.id === raised.messageId);
     if (message) {
       publishChannelMutation(context.dependencies.eventHub, channelId, 'message_added',

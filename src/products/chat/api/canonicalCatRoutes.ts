@@ -29,6 +29,7 @@ import {
   type ChatApiRouteContext,
 } from './routeSupport.js';
 import { publishChannelMutation } from './transportEventPublisher.js';
+import { readConversationState } from './scopedConversationState.js';
 import {
   catSelectionStillMaps,
   findUnmappableCatSelectionCopies,
@@ -202,7 +203,7 @@ async function handleCanonicalListChannelCats(
 ): Promise<void> {
   try {
     const view = buildChannelView(
-      await context.dependencies.chatStore.read(),
+      await readConversationState(context.dependencies.chatStore, channelId),
       channelId,
     );
     sendJson(context.response, 200, {

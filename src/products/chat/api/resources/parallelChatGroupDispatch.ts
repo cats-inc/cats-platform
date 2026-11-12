@@ -13,6 +13,7 @@ import {
 import { createMergedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { updateChatState } from '../../state/store.js';
+import { assertConversationWritable } from '../../shared/conversationArchive.js';
 import type {
   ParallelChatDispatchResponse,
   ParallelChatDispatchResult,
@@ -214,6 +215,14 @@ async function stageParallelChatBodies(
     persistAcknowledgedStateBeforeDispatch?: boolean;
   },
 ): Promise<StagedParallelChatDispatch> {
+  // A broadcast must fail before a hot sibling starts Runtime work or attachments
+  // are copied. Per-member failures are too late to reject a cold recipient.
+  assertConversationWritable(requireChannel(options.baselineState, options.activeChannelId));
+  for (const [id, input] of options.channelInputs) {
+    if (input.body.trim() || options.sharedAttachments?.length) {
+      assertConversationWritable(requireChannel(options.baselineState, id));
+    }
+  }
   const now = nowFrom(context.dependencies);
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);

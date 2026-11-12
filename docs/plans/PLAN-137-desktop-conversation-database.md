@@ -63,7 +63,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   The authenticated/redacted query endpoint, client and scoped/global Desktop dialog are
   implemented. Focused controls/cancellation checks pass; manual acceptance remains pending.
 - [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
-  Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
+  Runtime dispatch writers and REST send/retry, rename, coordinator, participant and product
+  scope changes use target-only state. Metadata list/scope/Project readers and transport
+  fanout avoid unrelated history. Prepared owner participant changes have independent
+  field-conflict admission and safe new-session cleanup. Session/control and multi-member
+  consumers remain to be finished/audited; Core/global projections retain their explicit cost.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
   bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
@@ -171,6 +175,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-13 | Shared archive/restore controls and selected-window reconciliation are implemented across Chat/Work/Code. Affected renderer tests passed **88/88** before the final participant draft guard; the final four affected bundles passed **61/61**, including **14/14** archive controller/DOM scenarios. Counts overlap. The final guard discards dirty participant edits on a read-only transition while preserving ordinary close-to-save behavior. Renderer and fixture typechecks and the actual source-candidate Runtime/server/host/web builds passed. Independent read-only UI review closed its permission-teardown finding and reports no remaining blocking P1/P2 in this delta. Real Desktop archive/restore acceptance and the remaining full-port gates are still pending. |
 | 2026-11-13 | Actual isolated Windows Desktop passed archive → read-only → restore → composer restoration in Chat, Code and Work. Cold paging prepended earlier messages while retaining the visible anchor, copy controls remained, search explained cold exclusion, Code restored its existing work-area tags and Work retained its scope/project inspection. No provider/model execution was requested. After normal stop, a readback verified all **720** synthetic messages' IDs, exact bodies/metadata/timestamps and the parallel group's member IDs; all three owned PIDs were absent. This does not establish live-provider or active parallel/group mutation acceptance. |
 | 2026-11-13 | Archive UI receipt: private root `cats-inc/.desktop-candidates/archive-ui-20261113-d`, launch `33d87c75d2fb86fc7aca42b99e739a0aea3a69abab89b68d3ffc55f3f6186642`, instance `0a20ead730df8e048440201a90e089f6`; Platform HEAD `24996398e` plus this UI delta, source digest `71f7e53f85d70b2e349a1d633f57b1b6b2eba72b6ca4e32bdd6d741ffe1278f1`; Runtime `77d3e861aff5a8871e138e3be5ed28ce96c2ab09`. Six synthetic conversations and one synthetic owner existed only in that profile. The earlier `c` fixture populated conversations before creating its owner, correctly reaching auth recovery; it was drained without archive acceptance. Native control was unavailable and guarded focus attempts sent no shortcut. The successful `d` fixture created the owner before first launch and signed in normally through the candidate tool. Installed Desktop/profile were untouched; no CDP port was opened. |
+| 2026-11-13 | Scoped REST/participant checkpoint: server build and fixture typecheck passed. Existing REST/participant/relay/scope/fanout consumers passed **50/50 Node** before final cleanup/replay additions. The expanded storage/API matrix initially passed **60/61 Node**; its retained-replay test had seeded orphan Core metadata which projection correctly removed. Replacing it with a real blocked workflow checkpoint passed **1/1**; the final new-API/recovery suite passed **25/25 Node**. The final corresponding scoped/store/presentation/message/archive/fanout matrix passed **61/61 actual Electron 41.2.0 / Node 24.14.0**, zero skipped. Counts overlap and are not additive. Initial synthetic group edits also failed no-drop admission until fixtures rebuilt consistent synthetic Core; production admission was not relaxed. |
+| 2026-11-13 | New real SQLite/HTTP cases cover malformed sibling messages with global read/write forbidden, same/trim-equal member rename and atomic group metadata refusal, cat add/retarget/remove/reactivate, temporary removal with concurrent append/edit, uncommitted-session cleanup, recovery after durable commit without closing an attached session, attachment-sync failure before lease publication, actual eligible continuation dispatch and cold broadcast/relay/upload/participant refusal before Runtime or workspace creation. Independent read-only reviews closed membership-loss, idempotent rename, pre-lease session cleanup and raw-store continuation findings; no blocking P1/P2 remains in this slice. Session/control and multi-member scoping, full live acceptance, measurements/million-entry checks and hosted three-OS CI remain open. |
+| 2026-11-13 | Electron execution evidence: two direct PowerShell invocations returned zero with empty output files; neither was accepted as a test pass. Read-only process queries found no matching child. A runtime probe identified Electron 41.2.0 / Node 24.14.0; a Node `spawn` wrapper then explicitly awaited the actual Electron child and retained the complete **61/61** summary above. This does not explain or close the earlier independent multi-process startup failure. |
 
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
@@ -182,9 +189,9 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: finish isolated live/active-parallel/group and cross-product paging/search
-acceptance, remaining scoped
-REST consumers, and the still-unexplained Electron multi-process startup failure (retain the
+Next work: finish session/control and multi-member scoped consumers, isolated
+live/active-parallel/group and cross-product paging/search acceptance, and the
+still-unexplained Electron multi-process startup failure (retain the
 new safe diagnostic evidence); then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised

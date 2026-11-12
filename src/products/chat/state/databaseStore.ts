@@ -224,6 +224,13 @@ export class DatabaseChatStore implements ChatStore {
     });
   }
 
+  async readCatalog() {
+    return this.run(async (session, envelope) => ({
+      metadata: { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups() },
+      headers: session.conversations.headers(), core: structuredClone(envelopeCore(envelope)),
+    }));
+  }
+
   async read(): Promise<ChatState> {
     return this.run(async (session, envelope) => this.chat(session, envelope));
   }
@@ -289,7 +296,12 @@ export class DatabaseChatStore implements ChatStore {
       this.prepareSearch(session);
       const target = makeEnvelope(buildPersistedChatSnapshot(after.chat, nextCore), this.filePath,
         envelope.storage.installationId);
-      await this.commit(session, envelope, target, nextCore, () => session.conversations.putChannel(channel, position));
+      await this.commit(session, envelope, target, nextCore, () => {
+        session.conversations.putChannel(channel, position);
+        if (!isDeepStrictEqual(metadata.parallelChatGroups, nextMetadata.parallelChatGroups)) {
+          session.conversations.putGroups(nextMetadata.parallelChatGroups);
+        }
+      });
       return structuredClone(channel);
     });
   }
@@ -689,11 +701,17 @@ export class DatabaseChatStore implements ChatStore {
 
 /** Scoped dispatch may refresh derived memory, but never remove cats, alter their
  * execution profiles, change group membership or overwrite unrelated preferences.
+ * Renaming this member may rename its group, as the existing product model does.
  */
 function validateScopedMetadata(previous: ChatMetadata, next: ChatMetadata, channel: ChatChannelState): void {
   const activeCats = new Set(channel.catAssignments.filter(assignment => assignment.status === 'active')
     .map(assignment => assignment.catId));
   const expected = { ...previous,
+    parallelChatGroups: previous.parallelChatGroups.map(group => {
+      const candidate = next.parallelChatGroups.find(value => value.id === group.id);
+      return candidate && !isDeepStrictEqual(candidate, group) && group.memberChannelIds.includes(channel.id)
+        ? { ...group, title: channel.title, updatedAt: channel.updatedAt } : group;
+    }),
     globalOrchestrator: { ...previous.globalOrchestrator,
       memory: next.globalOrchestrator.memory, updatedAt: next.globalOrchestrator.updatedAt },
     cats: previous.cats.map(cat => {
@@ -702,7 +720,7 @@ function validateScopedMetadata(previous: ChatMetadata, next: ChatMetadata, chan
         ? { ...cat, memory: candidate.memory, updatedAt: candidate.updatedAt } : cat;
     }),
   };
-  if (!isDeepStrictEqual(expected, next)) throw new TypeError('A scoped channel mutation may only update its derived shared memory');
+  if (!isDeepStrictEqual(expected, next)) throw new TypeError('A scoped channel mutation may only update derived shared memory or its related group name');
 }
 
 /** Keep SQLite/OS diagnostics and stored JSON out of public errors. Busy locks and
