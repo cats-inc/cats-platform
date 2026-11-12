@@ -26,12 +26,17 @@ see Compatibility and recovery.
   (cats-platform#447 to cats-platform#451, cats-platform#453, cats-platform#454)
 - **Boss Cat.** Settings, an on/off switch and a join card; a Boss Cat joins a
   conversation under 「允許」, asks on a card under 「每次問我」, and can leave.
-  (cats-platform#427 to cats-platform#432)
+  A Boss Cat can also start a blank group conversation for the owner, at most
+  five an hour across every Boss Cat. (cats-platform#422, cats-platform#427 to
+  cats-platform#432)
 - **Companion profile feed.** AI media posts, share links and owner
-  notifications. Images and image references work in Desktop; video
-  generation and video sources are not offered, because Desktop does not ship
-  FFmpeg, and Runtime now starts without it. (cats-platform#443,
-  cats-runtime#221, cats-runtime#222)
+  notifications. Images and image references work in Desktop: the sidecar now
+  ships sharp with its natives for every architecture of each installer's OS.
+  Video generation and video sources need FFmpeg, which Desktop does not ship:
+  the composer still offers a Video format and MP4 uploads, Runtime refuses
+  them, and the composer then reports them unavailable or the upload as
+  failed. Runtime now starts without FFmpeg. (cats-platform#443,
+  cats-platform#456, cats-runtime#221, cats-runtime#222)
 - **Plugins.** Agency is optional and installable from Settings in previews; a
   Cat can select an Agency skill only after it is installed. Runtime supports
   the preview installation and restores cleanly after a restart.
@@ -61,7 +66,9 @@ see Compatibility and recovery.
   is met by 0.16.0. Preview content also carries the Agency **0.1.0** installer
   pinned by `config/desktop-plugins.lock.json` (40,832 bytes, SHA-256
   `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`, producer
-  cats-inc/cats-plugins, upstream msitarzewski/agency-agents at
+  cats-inc/cats-plugins, whose main at selection is
+  `12411d5dc7d045d007267e73cff7fd494b631cfa`, upstream
+  msitarzewski/agency-agents at
   `479193dcce1cf6432ce0f5aa230ab8cc739a8c6b`); a profile stays uninstalled until
   Settings → Plugins → Install. Platform npm, Runtime npm, Apps, Plugins and
   cats-one are separate publication targets.
@@ -78,11 +85,21 @@ see Compatibility and recovery.
     configured overrides and workspace attachment directories.
   - Going back to 0.15.x: stop Desktop; copy the newest
     `chat-state.local.json.pre-product-scope*.bak` over both
-    `chat-state.local.json` and `chat-state.local.json.bak`, and the
+    `chat-state.local.json` and `chat-state.local.json.bak`, and the newest
     companion `.v1-<digest>.bak` over `chat-state.local.companion-boxes.json`.
     Changes made after the upgrade are lost. Runtime media receipts gain an
     additive contract 3 and existing receipts are not rewritten; let running
     media work finish before going back.
+  - Cat images: an AI profile post under 0.16.0 can record image edit or
+    video jobs in `platform/state/multimedia/cat-images.sqlite`, which 0.15.x
+    refuses (`media_state_invalid`), so its Cat images then stop working.
+    Going back after such a post also copies that file from the backup taken
+    before the upgrade and deletes its `-wal` and `-shm` files; the jobs
+    recorded after the upgrade are lost.
+  - A Cat cover set before the upgrade moves to a 0.16.0 media link that
+    0.15.x cannot show, so it looks broken there until it is set again; 0.16.0
+    keeps the original picture in the window's local storage under
+    `cats:cover-migration-backup:<catId>`.
 - **Signing and updates.** Freeze the bump at `release/v0.16.0`; run exact-source
   CI there, then dispatch desktop-release.yml from that same source with
   `tag=v0.16.0`, the Runtime SHA above and `unsigned=false`. Standard expected
@@ -99,6 +116,10 @@ see Compatibility and recovery.
     original bytes and 0.15.1 runs on them. The copies were deleted.
   - Runtime's bundle starts laid out as Desktop ships it, without FFmpeg
     (cats-runtime#222).
+  - The Platform sidecar laid out with exactly the Windows stage's packages
+    loads the server and resizes a PNG with sharp (cats-platform#456). The
+    macOS universal merge rule for sharp's single-architecture natives is
+    covered by a test and review; this release's macOS build is its first run.
   - Each change passed its own review and CI. Live Claude Code and Codex
     acceptance of the conversation tools did not run (PLAN-134 Phase 7,
     PLAN-135 Phase 6).
