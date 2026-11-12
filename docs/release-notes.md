@@ -2,6 +2,86 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-13 — Desktop 0.17.0 standard preview: conversation database
+
+Selected distribution: Desktop **0.17.0 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**, optional preview **Agency 0.1.0** installer.
+
+- **Conversation storage.** ADR-152 / SPEC-144 moves complete conversations,
+  messages and parallel groups into an installation-local SQLite database.
+  Cats, settings and complete Core relationships remain in JSON. Scoped writes
+  preserve sibling conversations; global operations retain their complete-state
+  contract. Cross-process locking and a durable metadata handoff recover interrupted
+  commits. The lazy SQLite adapter is isolated from browser and generic Core code.
+- **History and search.** Chat, Code and Work open bounded latest-message windows,
+  load earlier pages without losing the visible anchor, and search multilingual
+  text in the current or all accessible conversations. Session metadata, live
+  streaming, Core presentations, group and parallel settlement retain their
+  existing semantics. Message-list responses are now bounded; clients needing
+  complete history must follow the paging contract or use an explicit export.
+- **Archive and recovery.** Explicit archive/restore keeps relationships and
+  read-only history, with verified compressed cold assets and background workers.
+  Archived history must be restored before searching or editing it. Daily paired
+  database/JSON snapshots retain seven verified pairs. Offline check, snapshot,
+  deterministic export and resumable restore use the configured profile.
+- **OpenClaw setup.** Settings accepts a write-only gateway token. Runtime stores
+  the token behind its existing secret boundary; saved values are not returned
+  to the renderer. (cats-platform#461, cats-runtime#223)
+- **Source selection:** cats-runtime@512c074713cbe563124f21c4ed9218e0b408c33f; main@512c074713cbe563124f21c4ed9218e0b408c33f.
+- **Exact source and modules.** Platform main at selection is
+  `6150489d9c13027cf389bd49d0268a7f90e48e9e`. The completed bump commit is frozen
+  in `release/v0.17.0`; the workflow records that exact source SHA. Runtime
+  **0.6.2** includes every change at the selected baseline. Shared conversation UI
+  **0.1.0** remains the current producer content, digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`, tarball
+  SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  Nine shared-tool pins match cats-one main
+  `f8b0d8a6e566b44d788ffc77912665ef46b738d3`. Catlas/orchestrator knowledge is
+  reviewed at revision `2026-11-13.1` for `0.17.x`; App SDK remains 1.9.0.
+- **Bundled artifacts.** Latest Usage **0.5.4** is selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`; Apps main at selection is
+  `015448936e3685091b09f7d9966104cdd952e68c`. Its minimum host requirement and
+  App SDK range remain supported. Agency **0.1.0** keeps SHA-256
+  `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`;
+  Plugins main at selection is `12411d5dc7d045d007267e73cff7fd494b631cfa`.
+- **Minor boundary and migration.** Persisted metadata becomes envelope version
+  **8**, while in-memory Core remains version 7; the database uses schema **6**.
+  This and bounded message-list responses require the new minor. Recognized old
+  profiles are validated, backed up byte-for-byte, imported into a staged database,
+  compared logically and atomically published with resumable handoff. Recognized
+  database schemas 1–5 receive verified backups before transactional upgrade.
+  Unknown, newer or damaged inputs are refused with original bytes preserved.
+- **Backup and rollback.** Stop Desktop and every process using the data roots;
+  back up `~/.cats`, configured overrides and workspace attachment directories
+  before upgrading. Keep JSON, SQLite, installation receipts, paired manifests
+  and referenced cold assets together. Older 0.16.x cannot open envelope 8.
+  On failure preserve all roots and retry 0.17.0 recovery. To return to the old
+  JSON minor, use 0.17.0's offline `state restore --manifest` with the original
+  pre-database backup manifest before starting the older application. This restores
+  that backup's point in time, not subsequent messages. Interrupted restores resume
+  with the same manifest/profile; never delete a journal or database to force startup.
+- **Signing and publication.** Exact-source `ci.yaml` on `release/v0.17.0` gates
+  manual `desktop-release.yml` from the same SHA with `tag=v0.17.0`, the Runtime
+  SHA above and `unsigned=false`. Standard expected trust is macOS **signed +
+  notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Windows ships
+  x64/arm64 NSIS, macOS a universal DMG/updater ZIP, Linux amd64/arm64 DEBs.
+  Native signatures, packaged identities, source receipts, updater metadata and
+  checksums gate publication; same-team signed macOS, Windows NSIS and Linux DEB
+  retain their update paths.
+- **Validation boundary.** The completed port passed exact-source full CI and
+  three-OS Node/shipped-Electron functional acceptance, independent reviews,
+  isolated old-profile import/export/restore checks and actual Desktop paging,
+  search, archive/restore and group/parallel history acceptance (PLAN-137).
+  Release CI validates this exact bump source and selected inputs. Installed
+  upgrade/rollback on every OS and credentialed provider execution are not claimed.
+  Post-port performance and million-entry tests remain owner-deferred. Runtime
+  npm, Platform npm, Apps, Plugins and cats-one are separate publication targets.
+
+Publication results: the `v0.17.0` GitHub Standard Preview, source/build receipts,
+checksums, provenance and Actions run.
+
 ## 2026-11-12 — Desktop 0.16.1 standard preview: reliable update discovery
 
 Selected distribution: Desktop **0.16.1 standard-profile preview**, App SDK

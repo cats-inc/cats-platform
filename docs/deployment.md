@@ -19,10 +19,10 @@ Before upgrading an existing local workspace, review
 [release-notes.md](./release-notes.md) for behavior changes and migration
 notes.
 
-## Conversation database snapshots (implementation candidate)
+## Conversation database snapshots (0.17.x)
 
-The ADR-152 / SPEC-144 database port is still under implementation and has not
-been released. In that candidate, the Platform server starts background snapshot
+The ADR-152 / SPEC-144 database port belongs to Desktop 0.17.x. The Platform
+server starts background snapshot
 checks after startup recovery: first after 30 seconds, then hourly. A verified
 snapshot is due when the last eligible complete pair is at least 24 hours old.
 
@@ -44,9 +44,9 @@ configured profile is called `manifest.json`. Earlier verified generic-name
 snapshot manifests remain readable without rewriting them. Upgrade backup proofs
 similarly use `<profile-basename>.schema-upgrade-manifest.json`.
 
-## Offline state commands (implementation candidate)
+## Offline state commands (0.17.x)
 
-These commands belong to the same unreleased database candidate. Close Cats
+These commands belong to the same 0.17.x database contract. Close Cats
 Desktop and every process using the selected profile first. They run before
 ordinary server/auth startup and never start a listener or contact Runtime.
 
@@ -88,7 +88,7 @@ Restore stages these assets before publishing its database and preserves exact c
 bytes with the rollback copy, including damaged originals. A good backup can repair damaged
 files with the same archive ID. Resume verifies original/already-published digests and refuses
 unknown edits. Background proofs/copies yield between bounded reads and honor cancellation.
-The candidate also provides explicit conversation commands that coordinate with live profile
+The same version provides explicit conversation commands that coordinate with live profile
 users (the four offline commands above still require all users to stop):
 
 ```text
