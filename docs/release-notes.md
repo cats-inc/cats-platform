@@ -92,14 +92,16 @@ see Compatibility and recovery.
     media work finish before going back.
   - Cat images: an AI profile post under 0.16.0 can record image edit or
     video jobs in `platform/state/multimedia/cat-images.sqlite`, which 0.15.x
-    refuses (`media_state_invalid`), so its Cat images then stop working.
-    0.16.0 keeps no copy of that file. Going back after such a post needs the
+    refuses (`media_state_invalid`): its Cat images stop working, and so do
+    companion heartbeats, which check for pending images. 0.16.0 keeps no
+    copy of that file. Going back after such a post needs the
     operator's own copy from before the upgrade: with Desktop stopped, copy it
     back and delete its `-wal` and `-shm` files; jobs recorded after the
-    upgrade are lost. Without such a copy, 0.15.x cannot use Cat images on
-    that profile.
-  - A Cat cover set before the upgrade moves to a 0.16.0 media link that
-    0.15.x cannot show, so it looks broken there until it is set again; 0.16.0
+    upgrade are lost. Without such a copy, 0.15.x cannot use Cat images or
+    companion heartbeats on that profile.
+  - A Cat cover set before the upgrade moves, the first time 0.16.0 opens
+    that Cat's profile, to a media link that 0.15.x cannot show, so it looks
+    broken there until it is set again; 0.16.0
     keeps the original picture in the window's local storage under
     `cats:cover-migration-backup:<catId>`.
 - **Signing and updates.** Freeze the bump at `release/v0.16.0`; run exact-source

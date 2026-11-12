@@ -123,11 +123,12 @@ file without them reads as no Project, so they need no upgrade of their own.
   Desktop is stopped.
 - An AI profile post under 0.16.0 can record image edit or video jobs in
   `platform/state/multimedia/cat-images.sqlite`, which 0.15.x refuses
-  (`media_state_invalid`), and 0.16.0 keeps no copy of it. Going back after
+  (`media_state_invalid`): its Cat images stop working, and so do companion
+  heartbeats, which check for pending images. 0.16.0 keeps no copy of it. Going back after
   such a post needs the operator's own copy from before the upgrade: with
   Desktop stopped, copy it back and delete its `-wal` and `-shm` files; jobs
   recorded after the upgrade are lost. Without such a copy, 0.15.x cannot use
-  Cat images on that profile.
+  Cat images or companion heartbeats on that profile.
 - Any build from `main` that opens a profile upgrades it, so do not point a
   development build at a profile that an installed 0.15.x Desktop still uses.
 
