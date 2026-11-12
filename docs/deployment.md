@@ -116,6 +116,19 @@ file without them reads as no Project, so they need no upgrade of their own.
   again.
 - Opening the profile with the new build again later upgrades it again and keeps
   the newer version 6 bytes beside the earlier ones.
+- The same release upgrades companion data (`chat-state.local.companion-boxes.json`)
+  from version 1 to 2, keeping the version 1 bytes in `.v1-<digest>.bak` beside
+  it. 0.15.x reads version 2 but drops its publication fields when it writes, so
+  going back also copies the newest such backup over the companion file while
+  Desktop is stopped.
+- An AI profile post under 0.16.0 can record image edit or video jobs in
+  `platform/state/multimedia/cat-images.sqlite`, which 0.15.x refuses
+  (`media_state_invalid`): its Cat images stop working, and so do companion
+  heartbeats, which check for pending images. 0.16.0 keeps no copy of it. Going back after
+  such a post needs the operator's own copy from before the upgrade: with
+  Desktop stopped, copy it back and delete its `-wal` and `-shm` files; jobs
+  recorded after the upgrade are lost. Without such a copy, 0.15.x cannot use
+  Cat images or companion heartbeats on that profile.
 - Any build from `main` that opens a profile upgrades it, so do not point a
   development build at a profile that an installed 0.15.x Desktop still uses.
 
