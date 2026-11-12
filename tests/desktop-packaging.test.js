@@ -847,6 +847,11 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     (entry) => entry.from === 'build/native'
       && entry.to === 'native',
   ), true);
+  // build/native ships as resources/native, so the native dependency install prefix must stay
+  // outside it; a copy there would put single-arch sharp natives where the macOS merge refuses them.
+  const prepareNatives = await readFile(join(process.cwd(), 'scripts/prepare-app-ingress.mjs'), 'utf8');
+  assert.match(prepareNatives, /const prefix = path\.join\(root, 'build', 'native-deps'\);/);
+  assert.doesNotMatch(prepareNatives, /'build', 'native',/);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/mobile'
       && entry.to === 'mobile'

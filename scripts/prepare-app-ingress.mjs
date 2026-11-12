@@ -2,7 +2,7 @@
 // Prepare exact optional native dependencies for every architecture in a selected Desktop stage:
 // App ingress (ngrok) and companion image processing (sharp).
 // Usage: node scripts/prepare-app-ingress.mjs --platform <windows|macos|linux|all>
-import { readFile, mkdir, cp } from 'node:fs/promises';
+import { readFile, mkdir, cp, rm } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -32,7 +32,11 @@ if (args.includes('--help')) {
   // --force permits foreign CPU/OS packages for cross builds. Lifecycle scripts remain disabled.
   // Use an isolated prefix so npm cannot prune or upgrade the build's locked dependencies.
   // npm verifies registry integrity; neither the source manifest nor its lockfile is rewritten.
-  const prefix = path.join(root, 'build', 'native', 'app-ingress-deps');
+  // The prefix stays outside build/native, which the installers ship as resources/native: a
+  // second copy there would duplicate every native, and on macOS the universal merge refuses
+  // the single-arch sharp natives at that path. It is removed once the packages are copied.
+  const prefix = path.join(root, 'build', 'native-deps');
+  await rm(prefix, { recursive: true, force: true });
   await mkdir(prefix, { recursive: true });
   const invocation = await resolveCommandInvocation('npm',
     ['install', '--prefix', prefix, '--no-save', '--package-lock=false', '--ignore-scripts', '--force', ...selected]);
@@ -45,4 +49,5 @@ if (args.includes('--help')) {
   for (const name of names) {
     await cp(path.join(prefix, 'node_modules', name), path.join(root, 'node_modules', name), { recursive: true, force: true });
   }
+  await rm(prefix, { recursive: true, force: true });
 }
