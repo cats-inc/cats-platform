@@ -493,5 +493,7 @@ export function getAppHelpText(): string {
     '  --ready-output <plain|json|silent>',
     '  --no-open                             Skip opening the browser (press o to open later)',
     '  -h, --help',
+    '',
+    'Offline state operations: cats-platform state <check|snapshot|export|restore> --help',
   ].join('\n');
 }

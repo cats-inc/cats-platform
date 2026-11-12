@@ -35,6 +35,7 @@ import { DatabaseChatStore } from './products/chat/state/databaseStore.js';
 import { ProfileStorageError, STATE_STORAGE_FAILURE_EXIT_CODE } from './products/chat/state/database/profileFormat.js';
 import { closeStateMaintenanceWorkers } from './platform/persistence/state-db/stateMaintenance.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
+import { runStateCommand } from './app/server/stateCommands.js';
 import { browserUrl, startCliInteraction } from './shared/cliInteraction.js';
 import {
   flushProviderSnapshotPersistence,
@@ -59,6 +60,10 @@ export async function startApp(extension: {
   shutdown?(): Promise<void>;
 } = {}): Promise<void> {
   loadProjectEnvFiles();
+  if (process.argv[2] === 'state') {
+    process.exitCode = await runStateCommand(process.argv.slice(3));
+    return;
+  }
   const startupTrace = createAppStartupTrace();
   startupTrace.trace('main.entered', {
     argv: process.argv.slice(2),

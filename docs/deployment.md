@@ -38,9 +38,57 @@ unfinished and future-dated candidates cannot displace good backups; a clock
 rollback preserves previously good future-dated pairs. Interrupted maintenance
 resumes cleanup and retention on a later check. Backup failures emit only a safe
 failure code and leave ordinary conversation work available. Shutdown/reset stops
-the scheduler and its workers before profile removal. Offline command routing and
-paired-snapshot restore are still being implemented; do not replace live profile
-files manually while Cats is running.
+the scheduler and its workers before profile removal. New snapshot manifests use
+`<profile-basename>.snapshot-manifest.json`, avoiding a collision even when the
+configured profile is called `manifest.json`. Earlier verified generic-name
+snapshot manifests remain readable without rewriting them. Upgrade backup proofs
+similarly use `<profile-basename>.schema-upgrade-manifest.json`.
+
+## Offline state commands (implementation candidate)
+
+These commands belong to the same unreleased database candidate. Close Cats
+Desktop and every process using the selected profile first. They run before
+ordinary server/auth startup and never start a listener or contact Runtime.
+
+```text
+cats-platform state --help
+cats-platform state check
+cats-platform state snapshot
+cats-platform state export --output "./new-export.json"
+cats-platform state restore --manifest "./chosen-snapshot/chat-state.local.json.snapshot-manifest.json"
+```
+
+Use the exact `result.manifest` returned by `snapshot` when choosing its restore
+source. `restore` also accepts the original pre-database JSON backup manifest to
+roll back to the previous JSON minor. An explicit `--profile "./existing-profile.json"`
+overrides the configured selection. Otherwise selection matches the live server:
+`CATS_PLATFORM_DIR`, then `.cats/platform` under `HOME`, `USERPROFILE` or the OS
+home, followed by `state/chat-state.local.json`.
+
+`check` verifies SQLite integrity and the committed database/JSON/installation
+receipt. `export` streams the complete deterministic logical snapshot, including
+Core, group membership and every message, to a new file; it refuses overwrites and
+active profile/backup paths. Neither command initializes, migrates, repairs or
+creates a missing database. All commands refuse live connection leases; check,
+snapshot and export reject pending handoffs, restores or resets instead of recovering them.
+Coordination locks and provably dead leases may be reclaimed.
+
+Restore validates the selected source and preserves exact current files in a
+`<profile>.before-restore-<uuid>` directory before replacement. A durable marker
+blocks Desktop startup throughout the switch. Old WAL/SHM disappear before a new
+database is atomically published; receipt and JSON follow. Resume an interrupted
+restore with the **same manifest and profile**. Unknown edits to active files or
+staged proofs are refused. An authorized pending data reset must be completed
+before either restore format can run. Restore disables an older automatic-cleanup
+opt-in so a backup cannot silently re-enable deletion.
+
+Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
+failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native
+workers stop, preserving a pending restore marker for resumption. Native work has
+a five-minute default deadline; `--timeout-ms` accepts 1–600000. Error responses
+contain controlled codes and static guidance, not original filesystem, SQLite or
+stored-record exception text. Do not replace live profile files manually while
+Cats is running.
 
 ## Reset Platform data
 

@@ -18,7 +18,7 @@ export interface ProfileSnapshotManifest {
   installationId: string; revision: string; metadataDigest: string; schemaVersion: number;
   files: Array<{ name: string; sha256: string }>;
 }
-export type ProfileSnapshotResult = { status: 'published'; directory: string }
+export type ProfileSnapshotResult = { status: 'published'; directory: string; manifest: string }
   | { status: 'not_due' | 'changed' | 'busy' };
 export interface ProfileSnapshotOptions {
   signal?: AbortSignal;
@@ -36,6 +36,9 @@ export class ProfileSnapshotError extends Error {
 }
 
 export const profileSnapshotDirectory = (profile: string): string => `${path.resolve(profile)}.state-db-snapshots`;
+/** Appending to the profile basename cannot collide with its JSON/DB/receipt,
+ * including an explicitly configured profile named manifest.json. */
+export const profileSnapshotManifestName = (profile: string): string => `${path.basename(profile)}.snapshot-manifest.json`;
 
 /** Only capture runs under the serving store's operation lock. Native VACUUM/check,
  * hashing and retention never hold that lock, so a busy profile can defer a backup.
@@ -115,7 +118,7 @@ export async function maintainProfileSnapshot(profilePath: string,
         const manifest: ProfileSnapshotManifest = { format: 1, kind: 'paired-state-snapshot', profile: path.basename(profile),
           createdAt: now.toISOString(), installationId: envelope.storage.installationId, revision: envelope.storage.revision,
           metadataDigest: bytesDigest(metadata), schemaVersion, files };
-        await writeDurableFile(path.join(stage, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+        await writeDurableFile(path.join(stage, profileSnapshotManifestName(profile)), `${JSON.stringify(manifest, null, 2)}\n`);
         await inspectProfileSnapshot(stage, profile, signal);
         await options.checkpoint?.('verified');
         signal.throwIfAborted();
@@ -129,7 +132,7 @@ export async function maintainProfileSnapshot(profilePath: string,
         const kept = await prune([...eligible, { directory, manifest }], retain, profile, signal, now, envelope.storage.installationId, directory);
         if (!kept.some(item => item.directory === directory)) throw new Error('The published snapshot no longer verifies');
         await syncDirectory(root);
-        return { status: 'published', directory };
+        return { status: 'published', directory, manifest: path.join(directory, profileSnapshotManifestName(profile)) };
       } finally { if (!published) await removeSnapshotDirectory(stage, profile).catch(() => false); }
     }, { timeoutMs: 0, signal });
   } catch (error) {
@@ -143,10 +146,15 @@ export async function maintainProfileSnapshot(profilePath: string,
  * database identity/revision/metadata. Read-only; never creates or repairs a pair.
  */
 export async function inspectProfileSnapshot(directory: string, profile: string,
-  signal: AbortSignal = new AbortController().signal): Promise<ProfileSnapshotManifest> {
+  signal: AbortSignal = new AbortController().signal, selectedManifest?: string): Promise<ProfileSnapshotManifest> {
   signal.throwIfAborted();
   await assertDirectory(directory);
-  const manifestFile = path.join(directory, 'manifest.json');
+  const preferred = profileSnapshotManifestName(profile);
+  if (selectedManifest && ![preferred, 'manifest.json'].some(name => storageNameIdentity(name) === storageNameIdentity(selectedManifest))) throw new Error('Invalid snapshot manifest name');
+  let manifestFile = path.join(directory, selectedManifest ?? preferred);
+  if (!selectedManifest && !(await lstat(manifestFile).catch(error => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error;
+  }))) manifestFile = path.join(directory, 'manifest.json'); // Read older verified backups without rewriting them.
   const stat = await lstat(manifestFile);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024) throw new Error('Invalid snapshot manifest');
   const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as ProfileSnapshotManifest;
@@ -233,7 +241,7 @@ async function removeSnapshotDirectory(directory: string, profile: string): Prom
 }
 function allowedSnapshotName(name: string, profile: string): boolean {
   const identity = storageNameIdentity(name);
-  return [...snapshotNames(profile), 'manifest.json'].map(storageNameIdentity).some(base =>
+  return [...snapshotNames(profile), profileSnapshotManifestName(profile), 'manifest.json'].map(storageNameIdentity).some(base =>
     identity === base || identity === `${base}-wal` || identity === `${base}-shm`
     || identity.startsWith(`${base}.`) && new RegExp(`^[0-9]+\\.${UUID}\\.unfinished$`, 'u').test(identity.slice(base.length + 1)));
 }

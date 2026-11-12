@@ -72,6 +72,14 @@ test('idle open connections forbid restore before any current data is replaced',
   await assert.rejects(readFile(`${file}.state-db-restore.json`), { code: 'ENOENT' });
 });
 
+test('a pending authorized reset forbids legacy restore before changing any current files', async t => {
+  const { dir, file, manifest } = await fixture(t);
+  await writeFile(path.join(dir, 'platform-data-reset.pending.json'), JSON.stringify({ schemaVersion: 1, directories: [] }));
+  const before = await readdir(dir); const bytes = await readFile(file);
+  await assert.rejects(restoreLegacyProfile(file, manifest), { code: 'reset_pending' });
+  assert.deepEqual(await readdir(dir), before); assert.deepEqual(await readFile(file), bytes);
+});
+
 test('tampered backup data is refused without changing current state', async t => {
   const { file, manifest } = await fixture(t);
   const before = await readFile(file);

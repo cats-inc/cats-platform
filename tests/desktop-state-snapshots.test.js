@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseChatStore } from '../build/server/products/chat/state/databaseStore.js';
-import { maintainProfileSnapshot, inspectProfileSnapshot, profileSnapshotDirectory, ProfileSnapshotMaintenance } from '../build/server/products/chat/state/database/profileSnapshots.js';
+import { maintainProfileSnapshot, inspectProfileSnapshot, profileSnapshotDirectory, profileSnapshotManifestName, ProfileSnapshotMaintenance } from '../build/server/products/chat/state/database/profileSnapshots.js';
 import { withProfileLock } from '../build/server/platform/persistence/state-db/profileLock.js';
 import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
 import { logicalDatabaseSnapshot } from '../build/server/products/chat/state/database/logicalExport.js';
@@ -68,10 +68,10 @@ test('a write after VACUUM does not reject an already matching older committed p
 
 for (const failAt of ['snapshot_written', 'verified', 'published']) test(`interruption at ${failAt} preserves the prior good pair and resumes cleanup/retention`, async t => {
   const { file, take, list } = await fixture(t); const first = await take();
-  const original = await readFile(path.join(first.directory, 'manifest.json'));
+  const original = await readFile(path.join(first.directory, profileSnapshotManifestName(file)));
   await assert.rejects(take({ now: date(1), retain: 1, checkpoint(stage) { if (stage === failAt) throw Error('private injected failure'); } }),
     error => error.code === 'snapshot_failed' && !error.message.includes('private'));
-  assert.deepEqual(await readFile(path.join(first.directory, 'manifest.json')), original);
+  assert.deepEqual(await readFile(path.join(first.directory, profileSnapshotManifestName(file))), original);
   await inspectProfileSnapshot(first.directory, file);
   assert.equal((await list()).length, failAt === 'published' ? 2 : 1);
   const resumed = await take({ now: date(1), retain: 1 });
@@ -86,17 +86,17 @@ test('retention ignores damaged/future pairs and a backward clock preserves prev
   const day1 = await take({ now: date(1), retain: 30 });
   const future = await take({ now: date(10), retain: 30 });
   const invalid = path.join(profileSnapshotDirectory(file), `snapshot-20260103T000000000Z-${randomUUID()}`);
-  await mkdir(invalid); await writeFile(path.join(invalid, 'manifest.json'), JSON.stringify({ createdAt: date(2).toISOString() }));
+  await mkdir(invalid); await writeFile(path.join(invalid, profileSnapshotManifestName(file)), JSON.stringify({ createdAt: date(2).toISOString() }));
   const orphan = path.join(profileSnapshotDirectory(file), `.unfinished-${randomUUID()}`);
   await mkdir(orphan); await writeFile(path.join(orphan, path.basename(file)), 'Interrupted metadata');
   const day2 = await take({ now: date(2), retain: 2 }); assert.equal(day2.status, 'published');
-  await assert.rejects(readFile(path.join(day0.directory, 'manifest.json')), { code: 'ENOENT' });
+  await assert.rejects(readFile(path.join(day0.directory, profileSnapshotManifestName(file))), { code: 'ENOENT' });
   for (const entry of [day1, day2, future]) await inspectProfileSnapshot(entry.directory, file);
   assert.equal((await list()).length, 4, 'Three valid pairs plus the ignored damaged directory');
   const back = await take({ now: date(-1), retain: 2 }); assert.equal(back.status, 'published');
   for (const entry of [day1, day2, future, back]) await inspectProfileSnapshot(entry.directory, file);
   assert.equal((await take({ now: date(2.1), retain: 2 })).status, 'not_due');
-  await assert.rejects(readFile(path.join(back.directory, 'manifest.json')), { code: 'ENOENT' });
+  await assert.rejects(readFile(path.join(back.directory, profileSnapshotManifestName(file))), { code: 'ENOENT' });
   await inspectProfileSnapshot(future.directory, file);
   assert.equal((await readdir(profileSnapshotDirectory(file))).some(name => name.startsWith('.unfinished-')), false);
 });
@@ -105,7 +105,7 @@ test('manifest path injection and profile-case aliases follow the fixed sibling 
   const { file, take, root } = await fixture(t); const result = await take();
   if (process.platform === 'win32') await inspectProfileSnapshot(result.directory, file.toUpperCase());
   const outside = path.join(root, 'outside.txt'); await writeFile(outside, 'Untouched unrelated data');
-  const manifestFile = path.join(result.directory, 'manifest.json'); const manifest = JSON.parse(await readFile(manifestFile, 'utf8'));
+  const manifestFile = path.join(result.directory, profileSnapshotManifestName(file)); const manifest = JSON.parse(await readFile(manifestFile, 'utf8'));
   manifest.files[0].name = '../outside.txt'; await writeFile(manifestFile, JSON.stringify(manifest));
   await assert.rejects(inspectProfileSnapshot(result.directory, file));
   assert.equal(await readFile(outside, 'utf8'), 'Untouched unrelated data');
@@ -136,7 +136,7 @@ test('Windows profile aliases prune the old pair using the same filename identit
   const { file, take, capture, list } = await fixture(t); const first = await take({ retain: 1 });
   const second = await maintainProfileSnapshot(file.toUpperCase(), capture, { now: date(1), retain: 1 });
   assert.equal(second.status, 'published'); assert.equal((await list()).length, 1);
-  await assert.rejects(readFile(path.join(first.directory, 'manifest.json')), { code: 'ENOENT' });
+  await assert.rejects(readFile(path.join(first.directory, profileSnapshotManifestName(file))), { code: 'ENOENT' });
   await inspectProfileSnapshot(second.directory, file);
 });
 

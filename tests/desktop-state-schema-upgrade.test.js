@@ -13,10 +13,11 @@ import { fileDigest } from '../build/server/platform/persistence/state-db/fileDi
 import { withProfileLock } from '../build/server/platform/persistence/state-db/profileLock.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { STATE_SCHEMA_VERSION } from '../build/server/platform/persistence/state-db/stateSchema.js';
+import { schemaUpgradeManifestName } from '../build/server/products/chat/state/database/schemaUpgrade.js';
 
-async function fixture(t, pending = false, sourceSchema = 1) {
+async function fixture(t, pending = false, sourceSchema = 1, basename = 'profile.json') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-schema 升級 '));
-  const file = path.join(root, 'profile.json'); const stores = [];
+  const file = path.join(root, basename); const stores = [];
   await writeFile(file, JSON.stringify(snapshot()));
   const create = options => { const store = new DatabaseChatStore(file, options); stores.push(store); return store; };
   t.after(async () => { for (const store of stores) await store.close(); await rm(root, { recursive: true, force: true, maxRetries: 10 }); });
@@ -50,7 +51,7 @@ for (const sourceSchema of [1, 2]) test(`schema ${sourceSchema} upgrades only af
   assert.equal(version(file), String(STATE_SCHEMA_VERSION));
   assert.equal(await store.logicalDigest(), expected);
   const directory = path.join(root, (await backups())[0]);
-  const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+  const manifest = JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8'));
   assert.equal(manifest.kind, 'before-schema-upgrade'); assert.equal(manifest.sourceSchema, sourceSchema);
   for (const entry of manifest.files) assert.equal(fileDigest(path.join(directory, entry.name)), entry.sha256);
   assert.deepEqual(await readFile(path.join(directory, path.basename(file))), metadata);
@@ -67,13 +68,24 @@ test('an interruption after backup leaves schema 1 and retry reuses the verified
   assert.equal(await store.logicalDigest(), expected);
 });
 
+for (const sourceSchema of [1, 2]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
+  const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema, 'manifest.json');
+  const bytes = await readFile(file); const store = create(); await store.initialize();
+  assert.equal(await store.logicalDigest(), expected); assert.equal(version(file), String(STATE_SCHEMA_VERSION));
+  const directory = path.join(root, (await backups())[0]);
+  assert.deepEqual(await readFile(path.join(directory, path.basename(file))), bytes);
+  const manifest = JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8'));
+  assert.equal(manifest.kind, 'before-schema-upgrade'); assert.equal(manifest.sourceSchema, sourceSchema);
+  for (const entry of manifest.files) assert.equal(fileDigest(path.join(directory, entry.name)), entry.sha256);
+});
+
 test('a pending old-schema handoff is backed up and recovered once during upgrade', async t => {
   const { file, create, root, backups } = await fixture(t, true);
   const previous = await readFile(file);
   const store = create(); await store.initialize();
   assert.equal((await store.readCore()).ownerProfile.displayName, 'Committed before upgrade');
   const directory = path.join(root, (await backups())[0]);
-  assert.equal(JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8')).pendingHandoff, true);
+  assert.equal(JSON.parse(await readFile(path.join(directory, schemaUpgradeManifestName(file)), 'utf8')).pendingHandoff, true);
   assert.deepEqual(await readFile(path.join(directory, path.basename(file))), previous);
 });
 
@@ -105,7 +117,7 @@ test('a failed SQL upgrade rolls back every DDL change and keeps the original an
   const database = openStateDatabase({ file: databasePath(file), mode: 'reader' });
   try { assert.equal(database.get('select unexpected from channel_catalog').unexpected, 'preserve'); } finally { database.close(); }
   const directory = path.join(root, (await backups())[0]);
-  assert.ok(await readFile(path.join(directory, 'manifest.json')));
+  assert.ok(await readFile(path.join(directory, schemaUpgradeManifestName(file))));
 });
 
 test('an installation receipt mismatch is rejected before schema upgrade or backup admission', async t => {
@@ -157,5 +169,5 @@ test('close prevents a preparing upgrade from starting a new native maintenance 
   await rejected; await closing;
   assert.equal(version(file), '1');
   const directory = path.join(root, (await backups())[0]);
-  assert.equal((await readdir(directory)).some(name => name.includes('.sqlite') || name === 'manifest.json'), false);
+  assert.equal((await readdir(directory)).some(name => name.includes('.sqlite') || name === schemaUpgradeManifestName(file)), false);
 });

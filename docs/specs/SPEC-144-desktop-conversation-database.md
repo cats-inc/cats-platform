@@ -197,8 +197,20 @@ installation/revision/digest and contain no pending handoff. A concurrent revisi
 publication. An atomic directory rename publishes the verified DB/JSON/receipt/manifest pair.
 Seven verified non-future pairs are kept; retention revalidates before deletion, ignores
 damaged/future candidates, and resumes after interrupted publication/pruning. Close/reset
-cancels queued capture/native work, and reopening resumes scheduling. Offline command routing
-and paired-snapshot restore still remain implementation tasks.
+cancels queued capture/native work, and reopening resumes scheduling. Snapshot and upgrade
+proof filenames append to the profile basename, so even `manifest.json` is safe; earlier
+verified generic snapshot manifests remain readable without rewriting them.
+
+Offline `cats-platform state` commands now provide check, snapshot, deterministic streaming
+export and legacy/paired restore before ordinary server/auth initialization. Configured HOME/
+USERPROFILE/Platform-directory selection matches the live server; `--profile` selects an exact
+file. Check/export never initialize, migrate or recover state. Commands reject live leases
+and incomplete commits/resets, expose controlled errors/nonzero exits, and cancel lock waits
+and native workers. Paired restore stages a verified target after backing up current bytes,
+blocks startup with a durable journal, removes old WAL before atomic database replacement,
+publishes receipt/metadata and validates completion before removing the journal. Resume uses
+the same manifest; unknown active/staged changes fail closed. Restore cannot revive an older
+automatic-deletion opt-in. The operations guide records commands and recovery behavior.
 
 ## Dependencies and open validation
 

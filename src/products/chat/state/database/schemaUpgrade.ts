@@ -12,6 +12,8 @@ import { logicalDatabaseSnapshot } from './logicalExport.js';
 import { assertProfileOffline } from './profileLease.js';
 import { bytesDigest, databasePath, ProfileStorageError, readOptionalFile } from './profileFormat.js';
 
+export const schemaUpgradeManifestName = (profile: string): string => `${path.basename(profile)}.schema-upgrade-manifest.json`;
+
 /** Called under the profile lock, before opening an older database for writing.
  * A verified standalone snapshot + exact metadata/receipt precedes the adapter's
  * atomic SQL upgrade. Pending handoffs are backed up as a recoverable pair.
@@ -84,7 +86,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
     targetSchema: STATE_SCHEMA_VERSION, installationId: source.envelope.storage.installationId,
     revision: source.envelope.storage.revision, pendingHandoff: source.pending, logicalDigest: logicalDigest!,
     files: names.map(name => ({ name, sha256: fileDigest(path.join(directory, name)) })) }, null, 2)}\n`;
-  await saveExact(path.join(directory, 'manifest.json'), Buffer.from(manifest));
+  await saveExact(path.join(directory, schemaUpgradeManifestName(profile)), Buffer.from(manifest));
   await hooks.checkpoint?.('schema_backup_complete');
   if (hooks.signal?.aborted) throw new StateMaintenanceError('cancelled');
   const admittedMetadata = await readOptionalFile(profile);
