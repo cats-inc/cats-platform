@@ -385,6 +385,10 @@ The most suitable contemporary technical pattern for Cats is:
   They apply these layers to resident bots: a SQLite evidence store and nightly
   consolidation, with record shapes aligned to this spec and SPEC-031 for a possible
   shared package (ADR-142). Desktop is unchanged.
+  - 2026-11-12: Cats Bot withdrew ADR-021's database before release and keeps its JSON and
+    JSONL files; Desktop tries a state database first
+    ([ADR-152](../decisions/152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md)),
+    and where ADR-022 keeps its evidence waits on that.
   - Its [agent memory architecture survey](https://github.com/cats-inc/cats-bot/blob/main/docs/research/2026-11-11-agent-memory-architecture-survey.md)
     updates this spec's OpenClaw benchmark from source: transcripts now in SQLite, dreaming,
     and weak keyword search for Chinese.

@@ -376,6 +376,9 @@ needs a stable hook and payload contract.
   (approved 2026-11-11) specifies extraction from transcript evidence by nightly
   consolidation, with derived trust, evidence links, scopes and an owner approval queue. Its
   record shapes follow this spec, so a later shared package can serve both products.
+  On 2026-11-12 Bot withdrew the state database this builds on, before release; where its
+  evidence is kept waits on Desktop's pilot
+  ([ADR-152](../decisions/152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md)).
 
 ---
 

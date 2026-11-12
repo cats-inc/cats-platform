@@ -1,5 +1,12 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-152: Pilot a state database in Cats Desktop before Cats Bot](152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md)
+  — proposed, 2026-11-12; documentation only. The owner decided the order (D1–D3): Desktop,
+  whose conversations and messages all live in one rewritten JSON file, tries a SQLite state
+  database first; Cats Bot, light and one-to-one, keeps its readable files and decides after
+  Desktop's pilot has been tested. P1–P9 propose measuring first with a gate, what moves,
+  reuse of what Bot built and withdrew (tag `state-db-p1`), the lessons it cost, and the
+  upgrade path a persisted-data change needs.
 - [ADR-151: Build Cat profile posts on managed media and share links](151-build-cat-profile-posts-on-managed-media-and-share-links.md)
   — proposed, 2026-11-11; documentation only. Directory feed, agent-owned post lifecycle,
   managed media inputs/outputs, heartbeat publication and revocable shared-ingress links.
