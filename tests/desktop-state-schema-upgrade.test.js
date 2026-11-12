@@ -14,6 +14,7 @@ import { withProfileLock } from '../build/server/platform/persistence/state-db/p
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { STATE_SCHEMA_VERSION } from '../build/server/platform/persistence/state-db/stateSchema.js';
 import { schemaUpgradeManifestName } from '../build/server/products/chat/state/database/schemaUpgrade.js';
+import { downgradeDatabaseSchema } from './fixtures/desktop-state-schema.mjs';
 
 async function fixture(t, pending = false, sourceSchema = 1, basename = 'profile.json') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-schema 升級 '));
@@ -32,9 +33,7 @@ async function fixture(t, pending = false, sourceSchema = 1, basename = 'profile
   }
   await store.close();
   const raw = new (sqliteDriver().DatabaseSync)(databasePath(file));
-  raw.exec('drop index messages_presentation; drop index messages_rejection; drop index messages_presentation_time');
-  if (sourceSchema === 1) raw.exec('drop table channel_catalog');
-  raw.prepare("update meta set value = ? where key = 'schema_version'").run(String(sourceSchema)); raw.close();
+  try { downgradeDatabaseSchema(raw, sourceSchema); } finally { raw.close(); }
   const backups = async () => (await readdir(root)).filter(name => name.includes('.pre-state-db-schema-'));
   return { root, file, create, expected, backups };
 }
@@ -44,7 +43,7 @@ function version(file) {
   try { return database.meta('schema_version'); } finally { database.close(); }
 }
 
-for (const sourceSchema of [1, 2]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
+for (const sourceSchema of [1, 2, 3]) test(`schema ${sourceSchema} upgrades only after a paired verified backup and retains logical state`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema);
   const metadata = await readFile(file);
   const store = create(); await store.initialize();
@@ -68,7 +67,7 @@ test('an interruption after backup leaves schema 1 and retry reuses the verified
   assert.equal(await store.logicalDigest(), expected);
 });
 
-for (const sourceSchema of [1, 2]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
+for (const sourceSchema of [1, 2, 3]) test(`schema ${sourceSchema} upgrades a manifest.json profile without overwriting metadata`, async t => {
   const { file, create, expected, root, backups } = await fixture(t, false, sourceSchema, 'manifest.json');
   const bytes = await readFile(file); const store = create(); await store.initialize();
   assert.equal(await store.logicalDigest(), expected); assert.equal(version(file), String(STATE_SCHEMA_VERSION));

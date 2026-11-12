@@ -3,7 +3,9 @@ import { chmod, lstat, mkdir, readdir, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { withProfileLock } from '../../../../platform/persistence/state-db/profileLock.js';
 import { copyDurableFile, syncDirectory, unlinkStateFile, writeDurableFile } from '../../../../platform/persistence/state-db/atomicFile.js';
-import { fileDigest } from '../../../../platform/persistence/state-db/fileDigest.js';
+import { fileDigest, fileDigestAsync } from '../../../../platform/persistence/state-db/fileDigest.js';
+import { archiveDirectory, copyArchiveAssets, isArchiveAssetName, rawArchiveAssetProofs, verifyArchiveAssets,
+  removeArchiveAssetDirectory, type ArchiveAssetProof } from './archiveAssets.js';
 import { openStateDatabase } from '../../../../platform/persistence/state-db/stateDatabase.js';
 import { runStateMaintenance } from '../../../../platform/persistence/state-db/stateMaintenance.js';
 import { inspectProfileSnapshot, profileSnapshotManifestName, type ProfileSnapshotManifest } from './profileSnapshots.js';
@@ -15,6 +17,7 @@ import { bytesDigest, databasePath, parseEnvelope, parseJsonRecord, ProfileStora
 interface SavedFile { name: string; original: string; sha256: string; }
 interface CurrentBackup {
   format: 1; kind: 'before-legacy-restore' | 'before-paired-restore'; profile: string; files: SavedFile[];
+  archives?: ArchiveAssetProof[];
 }
 interface RestoreJournal {
   format: 1;
@@ -29,7 +32,7 @@ export interface RestoreOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
   checkpoint?(stage: 'restore_source_verified' | 'restore_prepared' | 'restore_primary_published' | 'restore_files_removed'
-    | 'restore_database_published' | 'restore_receipt_published'): void | Promise<void>;
+    | 'restore_database_published' | 'restore_receipt_published' | 'restore_archives_published'): void | Promise<void>;
 }
 export interface RestoreResult { backupDirectory: string; restoredVersion: number; }
 
@@ -63,6 +66,7 @@ export async function restoreLegacyProfile(profilePath: string, backupManifest: 
       if (!saved || bytesDigest(saved) !== journal.currentManifestDigest) throw invalid('The current-state backup manifest did not verify.');
       current = validateCurrentBackup(parseJsonRecord(saved.toString('utf8')), profile);
       verifySavedFiles(currentDirectory, current);
+      await verifyCurrentArchives(currentDirectory, current, options.signal);
     } else {
       currentDirectory = `${profile}.before-restore-${randomUUID()}`;
       await mkdir(currentDirectory, { mode: 0o700 });
@@ -81,6 +85,7 @@ export async function restoreLegacyProfile(profilePath: string, backupManifest: 
         }
         current.files.push({ name: savedName, original: name, sha256: digest });
       }
+      await backupCurrentArchives(profile, currentDirectory, current, options.signal);
       const text = `${JSON.stringify(current, null, 2)}\n`;
       await writeDurableFile(path.join(currentDirectory, 'manifest.json'), text);
       journal = {
@@ -108,6 +113,7 @@ export async function restoreLegacyProfile(profilePath: string, backupManifest: 
         throw invalid('An active state file changed during restore; it was preserved.');
       }
     }
+    await admitCurrentArchives(profile, current, options.signal);
     options.signal?.throwIfAborted();
     if (found !== journal.targetDigest) await writeDurableFile(profile, source.target);
     await options.checkpoint?.('restore_primary_published');
@@ -180,6 +186,7 @@ export async function restoreSnapshotProfile(profilePath: string, manifestPath: 
       if (!bytes || bytesDigest(bytes) !== journal.currentManifestDigest) throw invalid('The current-state backup manifest did not verify.');
       current = validateCurrentBackup(parseJsonRecord(bytes.toString('utf8')), profile, 'before-paired-restore');
       verifySavedFiles(currentDirectory, current);
+      await verifyCurrentArchives(currentDirectory, current, options.signal);
     } else {
       currentDirectory = `${profile}.before-restore-${randomUUID()}`;
       await mkdir(currentDirectory, { mode: 0o700 }); await assertDirectory(currentDirectory);
@@ -192,6 +199,7 @@ export async function restoreSnapshotProfile(profilePath: string, manifestPath: 
         if (fileDigest(active) !== sha256 || fileDigest(path.join(currentDirectory, saved)) !== sha256) throw invalid('Current state changed during its backup.');
         current.files.push({ name: saved, original: name, sha256 });
       }
+      await backupCurrentArchives(profile, currentDirectory, current, options.signal);
       const currentText = `${JSON.stringify(current, null, 2)}\n`;
       await writeDurableFile(path.join(currentDirectory, 'manifest.json'), currentText);
       const staged = path.join(currentDirectory, 'target'); await mkdir(staged, { mode: 0o700 });
@@ -215,8 +223,11 @@ export async function restoreSnapshotProfile(profilePath: string, manifestPath: 
         const found = fileDigest(active); const identity = storageNameIdentity(name);
         if (found !== originals.get(identity) && found !== targets.get(identity)?.sha256) throw invalid('An active state file changed outside the pending restore.');
       }
+      await admitCurrentArchives(profile, current, options.signal, target.archives);
     };
     await options.checkpoint?.('restore_prepared'); await admit();
+    await publishRestoredArchives(profile, staged, currentDirectory, target.archives ?? [], admit, options.signal);
+    await options.checkpoint?.('restore_archives_published'); await admit();
     // Old WAL/SHM must disappear before a different database inode is published.
     for (const file of current.files) if (!targets.has(storageNameIdentity(file.original))) {
       await admit(); const active = path.join(path.dirname(profile), file.original);
@@ -245,6 +256,9 @@ export async function restoreSnapshotProfile(profilePath: string, manifestPath: 
     }
     await admit();
     for (const file of target.files) if (fileDigest(path.join(path.dirname(profile), file.name)) !== file.sha256) throw invalid('The restored pair did not verify.');
+    const restored = openStateDatabase({ file: databasePath(profile), mode: 'reader' });
+    try { await verifyArchiveAssets(restored, target.archives ?? [], options.signal); }
+    finally { restored.close(); }
     await runStateMaintenance({ kind: 'check', file: databasePath(profile) }, { signal: options.signal, timeoutMs: options.timeoutMs ?? 5 * 60_000 });
     await unlink(marker); await syncDirectory(path.dirname(profile));
     return { backupDirectory: currentDirectory, restoredVersion: 8 };
@@ -260,6 +274,8 @@ async function stageSnapshotTarget(profile: string, source: string, manifest: Pr
     await copyDurableFile(original, path.join(staged, file.name));
     if (fileDigest(original) !== file.sha256 || fileDigest(path.join(staged, file.name)) !== file.sha256) throw invalid('The selected snapshot changed during copying.');
   }
+  await copyArchiveAssets(archiveDirectory(databasePath(path.join(source, path.basename(profile)))),
+    archiveDirectory(databasePath(path.join(staged, path.basename(profile)))), manifest.archives ?? [], options.signal);
   const stagedProfile = path.join(staged, path.basename(profile)); const stagedDatabase = databasePath(stagedProfile);
   const bytes = (await readOptionalFile(stagedProfile))!; const envelope = parseEnvelope(bytes.toString('utf8'), stagedProfile);
   const reader = openStateDatabase({ file: stagedDatabase, mode: 'reader' });
@@ -363,7 +379,59 @@ function validateCurrentBackup(value: Record<string, unknown>, profile: string,
     }
     names.add(file.name); originals.add(storageNameIdentity(file.original));
   }
+  if (current.archives !== undefined && (!Array.isArray(current.archives)
+    || new Set(current.archives.map(file => typeof file?.name === 'string' ? storageNameIdentity(file.name) : null)).size !== current.archives.length
+    || current.archives.some(file => !file || typeof file.name !== 'string' || !isArchiveAssetName(file.name) || !digest(file.sha256)))) {
+    throw invalid('An unsafe current archive backup entry was refused.');
+  }
   return current;
+}
+
+async function verifyCurrentArchives(directory: string, current: CurrentBackup, signal?: AbortSignal): Promise<void> {
+  if (current.archives?.length) await assertDirectory(path.join(directory, 'archives'));
+  for (const asset of current.archives ?? []) {
+    if (await fileDigestAsync(path.join(directory, 'archives', asset.name), signal) !== asset.sha256) throw invalid('A rollback archive did not verify.');
+  }
+}
+
+async function backupCurrentArchives(profile: string, directory: string, current: CurrentBackup, signal?: AbortSignal): Promise<void> {
+  current.archives = await rawArchiveAssetProofs(archiveDirectory(databasePath(profile)), signal);
+  await copyArchiveAssets(archiveDirectory(databasePath(profile)), path.join(directory, 'archives'), current.archives, signal);
+}
+
+async function admitCurrentArchives(profile: string, current: CurrentBackup, signal?: AbortSignal, target: ArchiveAssetProof[] = []): Promise<void> {
+  const root = archiveDirectory(databasePath(profile));
+  if (current.archives?.length) await assertDirectory(root);
+  const originals = new Map((current.archives ?? []).map(asset => [storageNameIdentity(asset.name), asset.sha256]));
+  const targets = new Map(target.map(asset => [storageNameIdentity(asset.name), asset.sha256]));
+  for (const asset of current.archives ?? []) {
+    const found = await fileDigestAsync(path.join(root, asset.name), signal);
+    if (found !== asset.sha256 && found !== targets.get(storageNameIdentity(asset.name))) throw invalid('An active archive changed outside the pending restore.');
+  }
+  for (const asset of target) if (!originals.has(storageNameIdentity(asset.name))) {
+    const destination = path.join(root, asset.name);
+    if (await regularExists(destination) && await fileDigestAsync(destination, signal) !== asset.sha256) throw invalid('An unknown archive occupies a pending restore target.');
+  }
+}
+
+/** Restore may repair an exact backed-up original; ordinary immutable copies never overwrite. */
+async function publishRestoredArchives(profile: string, staged: string, currentDirectory: string,
+  assets: ArchiveAssetProof[], admit: () => Promise<void>, signal?: AbortSignal): Promise<void> {
+  if (!assets.length) return;
+  const source = archiveDirectory(databasePath(path.join(staged, path.basename(profile))));
+  const root = archiveDirectory(databasePath(profile));
+  await mkdir(root, { recursive: true, mode: 0o700 }); await assertDirectory(root);
+  for (const asset of assets) {
+    await admit(); const destination = path.join(root, asset.name);
+    if (await regularExists(destination) && await fileDigestAsync(destination, signal) === asset.sha256) continue;
+    const publication = path.join(currentDirectory, `publication-archives-${randomUUID()}`);
+    try {
+      await copyArchiveAssets(source, publication, [asset], signal);
+      await admit(); signal?.throwIfAborted();
+      if (process.platform === 'win32' && await regularExists(destination)) await chmod(destination, 0o600);
+      await rename(path.join(publication, asset.name), destination); await syncDirectory(root);
+    } finally { await removeArchiveAssetDirectory(publication); }
+  }
 }
 
 function verifySavedFiles(directory: string, current: CurrentBackup): void {

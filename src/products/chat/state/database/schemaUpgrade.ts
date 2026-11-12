@@ -11,6 +11,7 @@ import { MetadataCommit, type StorageHooks } from './metadataCommit.js';
 import { logicalDatabaseSnapshot } from './logicalExport.js';
 import { assertProfileOffline } from './profileLease.js';
 import { bytesDigest, databasePath, ProfileStorageError, readOptionalFile } from './profileFormat.js';
+import { archiveDirectory, copyArchiveAssets, verifyArchiveAssets, type ArchiveAssetProof } from './archiveAssets.js';
 
 export const schemaUpgradeManifestName = (profile: string): string => `${path.basename(profile)}.schema-upgrade-manifest.json`;
 
@@ -23,6 +24,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
   const reader = openStateDatabase({ file, mode: 'reader' });
   let source: Awaited<ReturnType<MetadataCommit['inspect']>>;
   let logicalDigest: string;
+  let archives: ArchiveAssetProof[];
   const version = Number(reader.meta('schema_version'));
   try {
     if (version === STATE_SCHEMA_VERSION) return;
@@ -33,6 +35,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
     const inspected = await new MetadataCommit(profile, reader).inspect();
     source = inspected;
     logicalDigest = reader.snapshot(() => canonicalDigest(logicalDatabaseSnapshot(inspected.envelope, reader)));
+    archives = await verifyArchiveAssets(reader, undefined, hooks.signal);
   } finally { reader.close(); }
   const metadata = await readOptionalFile(profile);
   if ((metadata === null ? null : bytesDigest(metadata)) !== source.currentDigest) throw changed();
@@ -40,7 +43,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
   const expectedReceipt = `${JSON.stringify({ format: 1, installationId: source.envelope.storage.installationId })}\n`;
   if (receipt !== null && receipt.toString('utf8') !== expectedReceipt) throw new ProfileStorageError('installation_mismatch',
     'The state receipt belongs to another database; no schema was changed.');
-  const key = canonicalDigest([version, source.envelope.storage.installationId, source.envelope.storage.revision,
+  const key = canonicalDigest([version, STATE_SCHEMA_VERSION, source.envelope.storage.installationId, source.envelope.storage.revision,
     source.currentDigest, receipt === null ? null : bytesDigest(receipt), logicalDigest!]).slice(0, 16);
   const directory = `${profile}.pre-state-db-schema-${version}-${key}`;
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -66,6 +69,8 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
   }
   const backup = openStateDatabase({ file: savedDatabase, mode: 'reader' });
   try {
+    await copyArchiveAssets(archiveDirectory(file), archiveDirectory(savedDatabase), archives!, hooks.signal);
+    await verifyArchiveAssets(backup, archives!, hooks.signal, true);
     const recovered = await new MetadataCommit(savedProfile, backup).inspect();
     if (Number(backup.meta('schema_version')) !== version || recovered.currentDigest !== source.currentDigest
       || recovered.envelope.storage.installationId !== source.envelope.storage.installationId
@@ -77,6 +82,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
     const current = await new MetadataCommit(profile, verify).inspect();
     if (current.currentDigest !== source.currentDigest || current.envelope.storage.revision !== source.envelope.storage.revision
       || verify.snapshot(() => canonicalDigest(logicalDatabaseSnapshot(current.envelope, verify))) !== logicalDigest!) throw changed();
+    await verifyArchiveAssets(verify, archives!, hooks.signal);
   } finally { verify.close(); }
   const receiptNow = await readOptionalFile(`${profile}.database.json`);
   if ((receiptNow === null ? null : bytesDigest(receiptNow)) !== (receipt === null ? null : bytesDigest(receipt))) throw changed();
@@ -85,7 +91,7 @@ export async function prepareProfileSchemaUpgrade(profile: string, hooks: Storag
   const manifest = `${JSON.stringify({ format: 1, kind: 'before-schema-upgrade', sourceSchema: version,
     targetSchema: STATE_SCHEMA_VERSION, installationId: source.envelope.storage.installationId,
     revision: source.envelope.storage.revision, pendingHandoff: source.pending, logicalDigest: logicalDigest!,
-    files: names.map(name => ({ name, sha256: fileDigest(path.join(directory, name)) })) }, null, 2)}\n`;
+    files: names.map(name => ({ name, sha256: fileDigest(path.join(directory, name)) })), archives: archives! }, null, 2)}\n`;
   await saveExact(path.join(directory, schemaUpgradeManifestName(profile)), Buffer.from(manifest));
   await hooks.checkpoint?.('schema_backup_complete');
   if (hooks.signal?.aborted) throw new StateMaintenanceError('cancelled');

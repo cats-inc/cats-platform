@@ -129,7 +129,7 @@ test('truncated and subsequently modified payloads fail without exposing body or
 
 test('full verification checks both whole-file and logical digests independently of member proofs', async t => {
   const { root, write } = await fixture(t), { manifest } = write();
-  for (const field of ['sha256', 'logicalSha256']) {
+  for (const field of ['sha256', 'logicalSha256', 'messagesDigest']) {
     const changed = structuredClone(manifest); changed[field] = '0'.repeat(64);
     const reader = new ColdArchiveReader(root, changed);
     try { assert.throws(() => reader.verify(), safeFailure('invalid_archive')); }
@@ -171,6 +171,7 @@ test('writer rejects mismatched source counts, channel identity and non-JSON rec
     () => { input.messages[0].channelId = input.header.channelId; input.contexts[0].value.bad = undefined; },
     () => { delete input.contexts[0].value.bad; input.contexts[0].value.bad = Infinity; },
     () => { delete input.contexts[0].value.bad; input.contexts[0].value.bad = input.contexts[0].value; },
+    () => { delete input.contexts[0].value.bad; input.messages[0].metadata.cyclic = input.messages[0]; },
   ];
   for (const change of cases) {
     change(); assert.throws(write, safeFailure('invalid_input'));

@@ -490,11 +490,19 @@ test('chat read routes consume a dedicated channel repair helper instead of comp
     new URL('../src/products/chat/api/channelRepair.ts', import.meta.url),
     'utf8',
   );
+  const transcriptRepairModule = await readFile(
+    new URL('../src/products/chat/state/transcriptRepairs.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(routeSupportModule, /\.\/channelRepair\.js/u);
   assert.match(channelModule, /\.\.\/channelRepair\.js/u);
-  assert.match(repairHelperModule, /export function applyChannelReadRepairs/u);
+  assert.match(repairHelperModule, /import \{ applyChannelReadRepairs \} from '\.\.\/state\/transcriptRepairs\.js'/u);
+  assert.match(repairHelperModule, /export \{ applyChannelReadRepairs \} from '\.\.\/state\/transcriptRepairs\.js'/u);
+  assert.match(transcriptRepairModule, /export function applyChannelReadRepairs/u);
+  assert.match(transcriptRepairModule, /export function prepareTranscriptState/u);
   assert.match(repairHelperModule, /export async function repairChannelReadState/u);
+  assert.doesNotMatch(repairHelperModule, /repairMissingSessionStartedMessages|repairMissingStartupRecoveryNotice|repairOrphanedCompletedDispatchTurn/u);
   assert.doesNotMatch(routeSupportModule, /repairMissingSessionStartedMessages/u);
   assert.doesNotMatch(routeSupportModule, /repairMissingStartupRecoveryNotice/u);
   assert.doesNotMatch(routeSupportModule, /repairOrphanedCompletedDispatchTurn/u);

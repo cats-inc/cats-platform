@@ -1,10 +1,13 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { chmod, lstat, mkdir, open, readFile, readdir, rename, rmdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { syncDirectory, writeDurableFile } from '../../../../platform/persistence/state-db/atomicFile.js';
 import { withProfileLock } from '../../../../platform/persistence/state-db/profileLock.js';
 import { openStateDatabase } from '../../../../platform/persistence/state-db/stateDatabase.js';
 import { runStateMaintenance } from '../../../../platform/persistence/state-db/stateMaintenance.js';
+import { fileDigestAsync as digestFile } from '../../../../platform/persistence/state-db/fileDigest.js';
+import { archiveAssetProofsAsync, archiveDirectory, copyArchiveAssets, removeArchiveAssetDirectory, verifyArchiveAssets,
+  type ArchiveAssetProof } from './archiveAssets.js';
 import { MetadataCommit } from './metadataCommit.js';
 import { bytesDigest, databasePath, parseEnvelope, storageNameIdentity } from './profileFormat.js';
 
@@ -17,6 +20,7 @@ export interface ProfileSnapshotManifest {
   format: 1; kind: 'paired-state-snapshot'; profile: string; createdAt: string;
   installationId: string; revision: string; metadataDigest: string; schemaVersion: number;
   files: Array<{ name: string; sha256: string }>;
+  archives?: ArchiveAssetProof[];
 }
 export type ProfileSnapshotResult = { status: 'published'; directory: string; manifest: string }
   | { status: 'not_due' | 'changed' | 'busy' };
@@ -102,6 +106,7 @@ export async function maintainProfileSnapshot(profilePath: string,
         try { await fd.sync(); } finally { await fd.close(); }
         const database = openStateDatabase({ file: savedDatabase, mode: 'reader' });
         let schemaVersion: number;
+        let archives: ArchiveAssetProof[];
         try {
           // A different revision, including a pending handoff, is an ordinary
           // concurrent-write deferral. Never recover or modify a backup to match.
@@ -112,12 +117,24 @@ export async function maintainProfileSnapshot(profilePath: string,
           await new MetadataCommit(savedProfile, database).readCommitted();
           if (database.meta('profile_import_complete') !== '1') throw new Error('Incomplete snapshot');
           schemaVersion = Number(database.meta('schema_version'));
+          try {
+            const sourceRoot = archiveDirectory(databasePath(profile));
+            archives = await archiveAssetProofsAsync(database, sourceRoot, signal);
+            await copyArchiveAssets(sourceRoot, archiveDirectory(savedDatabase), archives, signal);
+            await verifyArchiveAssets(database, archives, signal, true);
+          } catch (error) {
+            signal.throwIfAborted();
+            const live = openStateDatabase({ file: databasePath(profile), mode: 'reader' });
+            try { if (live.meta('revision') !== envelope.storage.revision) return { status: 'changed' }; }
+            finally { live.close(); }
+            throw error;
+          }
         } finally { database.close(); }
         const files = [];
         for (const name of snapshotNames(profile)) files.push({ name, sha256: await digestFile(path.join(stage, name), signal) });
         const manifest: ProfileSnapshotManifest = { format: 1, kind: 'paired-state-snapshot', profile: path.basename(profile),
           createdAt: now.toISOString(), installationId: envelope.storage.installationId, revision: envelope.storage.revision,
-          metadataDigest: bytesDigest(metadata), schemaVersion, files };
+          metadataDigest: bytesDigest(metadata), schemaVersion, files, archives };
         await writeDurableFile(path.join(stage, profileSnapshotManifestName(profile)), `${JSON.stringify(manifest, null, 2)}\n`);
         await inspectProfileSnapshot(stage, profile, signal);
         await options.checkpoint?.('verified');
@@ -156,7 +173,7 @@ export async function inspectProfileSnapshot(directory: string, profile: string,
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error;
   }))) manifestFile = path.join(directory, 'manifest.json'); // Read older verified backups without rewriting them.
   const stat = await lstat(manifestFile);
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024) throw new Error('Invalid snapshot manifest');
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 16 * 1024 * 1024) throw new Error('Invalid snapshot manifest');
   const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as ProfileSnapshotManifest;
   const names = snapshotNames(profile);
   if ((await readdir(directory)).some(name => !allowedSnapshotName(name, profile))) throw new Error('Unexpected snapshot file');
@@ -179,6 +196,7 @@ export async function inspectProfileSnapshot(directory: string, profile: string,
   try {
     await new MetadataCommit(savedProfile, database).readCommitted();
     if (database.meta('profile_import_complete') !== '1' || Number(database.meta('schema_version')) !== manifest.schemaVersion) throw new Error('Snapshot schema mismatch');
+    await verifyArchiveAssets(database, manifest.archives ?? [], signal, true);
   } finally { database.close(); }
   return manifest;
 }
@@ -210,37 +228,25 @@ async function prune(complete: Array<{ directory: string; manifest: ProfileSnaps
   }
   return ordered.slice(0, retain);
 }
-async function digestFile(file: string, signal: AbortSignal): Promise<string> {
-  const before = await lstat(file);
-  if (!before.isFile() || before.isSymbolicLink()) throw new Error('Snapshot proof needs a regular file');
-  const fd = await open(file, 'r');
-  const hash = createHash('sha256'); const buffer = Buffer.allocUnsafe(128 * 1024);
-  try {
-    for (;;) {
-      signal.throwIfAborted();
-      const { bytesRead } = await fd.read(buffer);
-      if (!bytesRead) break;
-      hash.update(buffer.subarray(0, bytesRead));
-    }
-  } finally { await fd.close(); }
-  const after = await lstat(file);
-  if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) throw new Error('Snapshot changed during proof');
-  return hash.digest('hex');
-}
 async function removeSnapshotDirectory(directory: string, profile: string): Promise<boolean> {
   await assertDirectory(directory);
   const entries = await readdir(directory);
+  const coldName = storageNameIdentity(path.basename(archiveDirectory(databasePath(profile))));
   for (const name of entries) {
     if (!allowedSnapshotName(name, profile)) return false;
     const stat = await lstat(path.join(directory, name));
-    if (!stat.isFile() || stat.isSymbolicLink()) return false;
+    if (stat.isSymbolicLink() || (storageNameIdentity(name) === coldName ? !stat.isDirectory() : !stat.isFile())) return false;
   }
-  for (const name of entries) await unlink(path.join(directory, name));
+  for (const name of entries) if (storageNameIdentity(name) === coldName) {
+    if (!await removeArchiveAssetDirectory(path.join(directory, name))) return false;
+  }
+  for (const name of entries) if (storageNameIdentity(name) !== coldName) await unlink(path.join(directory, name));
   await rmdir(directory);
   return true;
 }
 function allowedSnapshotName(name: string, profile: string): boolean {
   const identity = storageNameIdentity(name);
+  if (identity === storageNameIdentity(path.basename(archiveDirectory(databasePath(profile))))) return true;
   return [...snapshotNames(profile), profileSnapshotManifestName(profile), 'manifest.json'].map(storageNameIdentity).some(base =>
     identity === base || identity === `${base}-wal` || identity === `${base}-shm`
     || identity.startsWith(`${base}.`) && new RegExp(`^[0-9]+\\.${UUID}\\.unfinished$`, 'u').test(identity.slice(base.length + 1)));

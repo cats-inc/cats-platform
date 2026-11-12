@@ -172,7 +172,7 @@ export async function removePlatformOwnedData(chatStatePath: string, options: {
   for (const [index, base] of profileNames.entries()) {
     const db = databaseNames[index];
     for (const name of [db, `${db}-wal`, `${db}-shm`, `${base}.database.json`,
-      `${base}.state-db-restore.json`, `${base}.leases`, `${base}.state-db-snapshots`, `${base}.archives`]) {
+      `${base}.state-db-restore.json`, `${base}.leases`, `${base}.state-db-snapshots`, `${base}.archives`, `${db}.archives`]) {
       targets.add(path.join(stateDir, name));
     }
   }

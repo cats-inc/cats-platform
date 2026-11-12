@@ -65,8 +65,8 @@ overrides the configured selection. Otherwise selection matches the live server:
 `CATS_PLATFORM_DIR`, then `.cats/platform` under `HOME`, `USERPROFILE` or the OS
 home, followed by `state/chat-state.local.json`.
 
-`check` verifies SQLite integrity and the committed database/JSON/installation
-receipt. `export` streams the complete deterministic logical snapshot, including
+`check` verifies SQLite integrity, the committed database/JSON/installation
+receipt and referenced cold archive assets. `export` streams the complete deterministic logical snapshot, including
 Core, group membership and every message, to a new file; it refuses overwrites and
 active profile/backup paths. Neither command initializes, migrates, repairs or
 creates a missing database. All commands refuse live connection leases; check,
@@ -82,6 +82,15 @@ staged proofs are refused. An authorized pending data reset must be completed
 before either restore format can run. Restore disables an older automatic-cleanup
 opt-in so a backup cannot silently re-enable deletion.
 
+Cold archive files use the fixed `<database-file>.archives` sibling directory. Paired
+snapshots carry their own verified copies; keep the complete snapshot directory together.
+Restore stages these assets before publishing its database and preserves exact current cold
+bytes with the rollback copy, including damaged originals. A good backup can repair damaged
+files with the same archive ID. Resume verifies original/already-published digests and refuses
+unknown edits. Background proofs/copies yield between bounded reads and honor cancellation.
+Archive creation and conversation unarchive controls remain under implementation in this
+unreleased candidate; this storage support does not expose them yet.
+
 Help is plain text. Completed operations print one JSON result and exit 0; invalid arguments exit 2;
 failed operations exit 1. SIGINT/SIGTERM cancel work and exit 130/143 after native
 workers stop, preserving a pending restore marker for resumption. Native work has
@@ -95,7 +104,7 @@ Cats is running.
 Settings > Data erases Platform-owned conversation/account/setup data using the
 explicit file/directory inventory in `src/shared/platformDataReset.ts`. This
 includes all rotating and migration `.bak` entries directly in `state/`, paired
-conversation-database snapshots, abandoned
+conversation-database snapshots and cold archives, abandoned
 state-write temporary files, canonical/companion memory and sources, local
 knowledge, evidence, transport delivery state, schedules, Platform attachments
 and history caches. Referenced attachment/evidence directories are erased only

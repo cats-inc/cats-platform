@@ -4,8 +4,10 @@ import {
   type Stats,
 } from 'node:fs';
 import path from 'node:path';
+import { lstat, open } from 'node:fs/promises';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { ChatMessage } from '../../api/contracts.js';
+import { CanonicalArrayDigest } from '../../../../platform/persistence/state-db/canonicalJson.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -61,9 +63,15 @@ export interface ColdArchiveManifest {
   installationId: string;
   channelId: string;
   file: string;
+  createdAt: string;
+  sourceRevision: string;
+  channelRevision: string;
+  orderRevision: string;
+  originalStatus: string;
   bytes: number;
   sha256: string;
   logicalSha256: string;
+  messagesDigest: string;
   messageCount: number;
   contextCount: number;
   blocks: ColdArchiveBlock[];
@@ -132,7 +140,9 @@ function validateHeader(value: unknown): asserts value is ColdArchiveHeader {
     && identifier(value.channelRevision) && identifier(value.orderRevision)
     && typeof value.createdAt === 'string' && Number.isFinite(Date.parse(value.createdAt))
     && integer(value.messageCount) && object(value.channel)
-    && value.channel.id === value.channelId && !Object.hasOwn(value.channel, 'messages'));
+    && value.channel.id === value.channelId && typeof value.channel.status === 'string'
+    && ['planned', 'configured', 'active', 'watching', 'archived'].includes(value.channel.status)
+    && !Object.hasOwn(value.channel, 'messages'));
 }
 
 function validMessage(value: unknown, channelId: string): value is ChatMessage {
@@ -181,8 +191,12 @@ function copyManifest(input: unknown): ColdArchiveManifest {
     && typeof value.archiveId === 'string' && UUID.test(value.archiveId)
     && typeof value.installationId === 'string' && UUID.test(value.installationId)
     && identifier(value.channelId) && value.file === `${value.archiveId}.jsonl.gz`
+    && typeof value.createdAt === 'string' && Number.isFinite(Date.parse(value.createdAt))
+    && identifier(value.sourceRevision) && identifier(value.channelRevision) && identifier(value.orderRevision)
+    && typeof value.originalStatus === 'string' && ['planned', 'configured', 'active', 'watching', 'archived'].includes(value.originalStatus)
     && integer(value.bytes, 1) && typeof value.sha256 === 'string' && SHA256.test(value.sha256)
     && typeof value.logicalSha256 === 'string' && SHA256.test(value.logicalSha256)
+    && typeof value.messagesDigest === 'string' && SHA256.test(value.messagesDigest)
     && integer(value.messageCount) && integer(value.contextCount) && Array.isArray(value.blocks)
     && value.blocks.length > 0);
   let offset = 0, contexts = 0, messages = 0, phase = 0;
@@ -228,6 +242,7 @@ export function writeColdArchive(directory: string, input: {
       fd = openSync(payloadFile, 'wx', 0o600);
       owned.push({ file: payloadFile, stat: fstatSync(fd) });
       const compressedHash = createHash('sha256'), logicalHash = createHash('sha256');
+      const messagesHash = new CanonicalArrayDigest();
       const blocks: ColdArchiveBlock[] = [];
       let offset = 0, contextCount = 0, messageCount = 0;
       const flush = (kind: BlockKind, first: number, lines: Buffer[]): void => {
@@ -245,10 +260,11 @@ export function writeColdArchive(directory: string, input: {
       };
       const line = (value: unknown): Buffer => Buffer.concat([jsonBytes(value, BLOCK_LIMIT - 1), Buffer.from('\n')]);
       flush('header', 0, [line(header)]);
-      const writeRecords = (kind: 'context' | 'message', records: Iterable<unknown>): number => {
+      const writeRecords = (kind: 'context' | 'message', records: Iterable<JsonObject>): number => {
         let lines: Buffer[] = [], bytes = 0, count = 0;
         for (const record of records) {
           const encoded = line(record);
+          if (kind === 'message') messagesHash.add(record.message);
           if (lines.length && (lines.length === BLOCK_RECORDS || bytes + encoded.length > BLOCK_TARGET)) {
             flush(kind, count - lines.length, lines); lines = []; bytes = 0;
           }
@@ -258,13 +274,13 @@ export function writeColdArchive(directory: string, input: {
         if (lines.length) flush(kind, count - lines.length, lines);
         return count;
       };
-      function* contexts(): Generator<unknown> {
+      function* contexts(): Generator<JsonObject> {
         for (const context of input.contexts) {
           requireValue(object(context) && identifier(context.family) && object(context.value), 'invalid_input');
           yield { kind: 'context', family: context.family, value: context.value };
         }
       }
-      function* messages(): Generator<unknown> {
+      function* messages(): Generator<JsonObject> {
         let position = 0;
         for (const message of input.messages) {
           requireValue(validMessage(message, channelId), 'invalid_input');
@@ -277,8 +293,10 @@ export function writeColdArchive(directory: string, input: {
       fsyncSync(fd); closeSync(fd); fd = undefined;
       const manifest = copyManifest({ format: 1, codec: 'gzip-jsonl-members', archiveId: header.archiveId,
         installationId: header.installationId, channelId: header.channelId,
+        createdAt: header.createdAt, sourceRevision: header.sourceRevision, channelRevision: header.channelRevision,
+        orderRevision: header.orderRevision, originalStatus: header.channel.status,
         file: path.basename(payloadFile), bytes: offset, sha256: compressedHash.digest('hex'),
-        logicalSha256: logicalHash.digest('hex'), messageCount, contextCount, blocks });
+        logicalSha256: logicalHash.digest('hex'), messagesDigest: messagesHash.digest(), messageCount, contextCount, blocks });
       const reader = new ColdArchiveReader(directory, manifest);
       try { reader.verify(); } finally { reader.close(); }
       const manifestBytes = jsonBytes(manifest, MANIFEST_LIMIT);
@@ -353,7 +371,10 @@ export class ColdArchiveReader {
       if (block.kind === 'header') {
         validateHeader(record);
         requireValue(record.archiveId === this.manifest.archiveId && record.installationId === this.manifest.installationId
-          && record.channelId === this.manifest.channelId && record.messageCount === this.manifest.messageCount);
+          && record.channelId === this.manifest.channelId && record.messageCount === this.manifest.messageCount
+          && record.createdAt === this.manifest.createdAt && record.sourceRevision === this.manifest.sourceRevision
+          && record.channelRevision === this.manifest.channelRevision && record.orderRevision === this.manifest.orderRevision
+          && record.channel.status === this.manifest.originalStatus);
       } else if (block.kind === 'context') requireValue(identifier(record.family) && object(record.value));
       else requireValue(record.position === block.first + i && validMessage(record.message, this.manifest.channelId));
     }
@@ -367,14 +388,7 @@ export class ColdArchiveReader {
 
   /** Full readback is mandatory before the caller may remove hot rows. */
   verify(): void {
-    controlled(() => {
-      const compressed = createHash('sha256'), logical = createHash('sha256');
-      for (const block of this.manifest.blocks) {
-        const decoded = this.decode(block);
-        compressed.update(decoded.compressed); logical.update(decoded.raw);
-      }
-      requireValue(compressed.digest('hex') === this.manifest.sha256 && logical.digest('hex') === this.manifest.logicalSha256);
-    });
+    for (const _message of this.messages()) { /* Consume the complete bounded stream. */ }
   }
 
   *contexts(): Generator<ColdArchiveContext> {
@@ -383,6 +397,22 @@ export class ColdArchiveReader {
       const records = controlled(() => this.decode(block).records);
       for (const record of records) yield { family: record.family as string, value: record.value as JsonObject };
     }
+  }
+
+  /** Full ordered readback/export also proves context and whole-payload integrity. */
+  *messages(): Generator<ChatMessage> {
+    const compressed = createHash('sha256'), logical = createHash('sha256');
+    const messagesHash = new CanonicalArrayDigest();
+    for (const block of this.manifest.blocks) {
+      const decoded = controlled(() => this.decode(block));
+      compressed.update(decoded.compressed); logical.update(decoded.raw);
+      if (block.kind === 'message') for (const record of decoded.records) {
+        const message = record.message as unknown as ChatMessage;
+        messagesHash.add(message); yield message;
+      }
+    }
+    requireValue(compressed.digest('hex') === this.manifest.sha256 && logical.digest('hex') === this.manifest.logicalSha256
+      && messagesHash.digest() === this.manifest.messagesDigest);
   }
 
   readPage(limit = 50, before = this.manifest.messageCount): {
@@ -436,4 +466,36 @@ export function readColdArchiveManifest(directory: string, archiveId: string, ex
       return manifest;
     } finally { closeSync(fd); }
   });
+}
+
+/** Background admission yields on bounded reads; no synchronous all-archive scan. */
+export async function readColdArchiveManifestAsync(directory: string, archiveId: string, expectedDigest: string,
+  signal?: AbortSignal): Promise<ColdArchiveManifest> {
+  try {
+    requireValue(UUID.test(archiveId) && SHA256.test(expectedDigest), 'invalid_input');
+    signal?.throwIfAborted();
+    const file = path.join(directory, `${archiveId}.manifest.json`), before = await lstat(file);
+    requireValue(before.isFile() && !before.isSymbolicLink() && before.size > 0 && before.size <= MANIFEST_LIMIT);
+    const fd = await open(file, 'r');
+    let bytes: Buffer;
+    try {
+      requireValue(unchanged(before, await fd.stat()));
+      bytes = Buffer.allocUnsafe(before.size);
+      for (let offset = 0; offset < bytes.length;) {
+        signal?.throwIfAborted();
+        const { bytesRead } = await fd.read(bytes, offset, Math.min(128 * 1024, bytes.length - offset), offset);
+        requireValue(bytesRead > 0); offset += bytesRead;
+      }
+      requireValue(unchanged(before, await fd.stat()) && unchanged(before, await lstat(file)) && digest(bytes) === expectedDigest);
+    } finally { await fd.close(); }
+    signal?.throwIfAborted();
+    let parsed: unknown;
+    try { parsed = JSON.parse(utf8.decode(bytes)); } catch { throw new ColdArchiveError('invalid_archive'); }
+    const manifest = copyManifest(parsed);
+    requireValue(manifest.archiveId === archiveId);
+    return manifest;
+  } catch (error) {
+    signal?.throwIfAborted();
+    throw error instanceof ColdArchiveError ? error : new ColdArchiveError('io_error');
+  }
 }

@@ -11,6 +11,7 @@ import { fileDigest } from '../build/server/platform/persistence/state-db/fileDi
 import { sqliteDriver } from '../build/server/platform/persistence/state-db/sqliteDriver.js';
 import { emptyOwnerLifecycle } from '../build/server/core/ownerLifecycle.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
+import { downgradeDatabaseSchema } from './fixtures/desktop-state-schema.mjs';
 
 async function fixture(t, source = snapshot(), basename = 'profile.json') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-pair-restore 資料 '));
@@ -109,16 +110,14 @@ test('paired restore never resurrects an older automatic-cleanup opt-in', async 
   assert.equal((await create().read()).channels.length, source.chat.channels.length);
 });
 
-for (const [schema, enabled] of [[1, false], [2, true]]) test(`an older-schema pair ${schema} restores complete state with cleanup opt-in ${enabled}`, async t => {
+for (const [schema, enabled] of [[1, false], [2, true], [3, false], [3, true]]) test(`an older-schema pair ${schema} restores complete state with cleanup opt-in ${enabled}`, async t => {
   const source = snapshot(); source.ownerLifecycle = emptyOwnerLifecycle(); source.ownerLifecycle.retention.enabled = enabled;
   const { file, before, create, manifest } = await fixture(t, source);
   const metadata = JSON.parse(await readFile(path.join(path.dirname(manifest), path.basename(file)), 'utf8'));
   const expectedCore = envelopeCore(metadata); const savedDb = databasePath(path.join(path.dirname(manifest), path.basename(file)));
   const raw = new (sqliteDriver().DatabaseSync)(savedDb);
   try {
-    raw.exec('drop index messages_presentation; drop index messages_rejection; drop index messages_presentation_time');
-    if (schema === 1) raw.exec('drop table channel_catalog');
-    raw.prepare("update meta set value = ? where key = 'schema_version'").run(String(schema));
+    downgradeDatabaseSchema(raw, schema);
   } finally { raw.close(); }
   const proof = JSON.parse(await readFile(manifest, 'utf8')); proof.schemaVersion = schema;
   proof.files.find(entry => entry.name === path.basename(savedDb)).sha256 = fileDigest(savedDb);

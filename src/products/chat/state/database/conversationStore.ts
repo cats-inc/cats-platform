@@ -11,6 +11,9 @@ import type { CatsCoreState } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_MESSAGE_PAGE_SIZE } from '../../shared/transcript.js';
+import { canonicalDigest } from '../../../../platform/persistence/state-db/canonicalJson.js';
+import { conversationArchive, openConversationArchive } from './archiveAssets.js';
+import { ProfileStorageError } from './profileFormat.js';
 import {
   buildSearchQuery, conversationTerm, indexText, INDEX_FORM,
 } from '../../../../platform/persistence/state-db/searchText.js';
@@ -133,6 +136,15 @@ export class ConversationDatabase {
   }
 
   messages(channelId: string): ChatMessage[] {
+    const archive = conversationArchive(this.database, channelId);
+    if (archive) {
+      const reader = openConversationArchive(this.database, archive);
+      try {
+        const messages = [...reader.messages()];
+        if (canonicalDigest(messages) !== archive.messagesDigest) throw new ProfileStorageError('archive_invalid', 'A conversation archive did not verify.');
+        return messages;
+      } finally { reader.close(); }
+    }
     return this.database.all('select json from messages where channel_id = ? order by position', channelId)
       .map(row => JSON.parse(String(row.json)) as ChatMessage);
   }
@@ -195,6 +207,18 @@ export class ConversationDatabase {
     if (!Number.isSafeInteger(position) || position < 0) throw new RangeError('Invalid conversation position');
     const { messages, ...metadata } = channel;
     const json = JSON.stringify(metadata);
+    const archive = conversationArchive(this.database, channel.id);
+    if (archive) {
+      if (channel.status !== 'archived' || canonicalDigest(messages) !== archive.messagesDigest) {
+        throw new ProfileStorageError('conversation_archived', 'Restore this archived conversation before changing its transcript.');
+      }
+      const stored = this.database.get('select position, json from channels where id = ?', channel.id);
+      if (!stored) throw new ProfileStorageError('archive_invalid', 'The archived conversation header is missing.');
+      if (stored.json !== json) this.database.run('update channels set json = ?, position = ?, content_revision = ? where id = ?', json, position, randomUUID(), channel.id);
+      else if (stored.position !== position) this.database.run('update channels set position = ? where id = ?', position, channel.id);
+      this.putCatalog(channel, position);
+      return;
+    }
     const stored = this.database.get('select position, message_count, order_revision, json from channels where id = ?', channel.id);
     const previous = this.database.all('select id, message_id, position, json from messages where channel_id = ?', channel.id);
     const byId = new Map(previous.map(row => [String(row.message_id), row]));
@@ -204,9 +228,10 @@ export class ConversationDatabase {
     const changedOrder = previous.some(row => nextPositions.get(String(row.message_id)) !== row.position)
       || messages.some((message, index) => !byId.has(message.id) && index < previous.length);
     const order = Number(stored?.order_revision ?? 0) + (changedOrder ? 1 : 0);
+    let changedContent = stored?.json !== json || stored.message_count !== messages.length || changedOrder;
     if (stored?.json !== json || stored.position !== position || stored.message_count !== messages.length || changedOrder) {
-      this.database.run('insert into channels(id, position, message_count, order_revision, json) values (?, ?, ?, ?, ?) on conflict(id) do update set position = excluded.position, message_count = excluded.message_count, order_revision = excluded.order_revision, json = excluded.json',
-        channel.id, position, messages.length, order, json);
+      this.database.run('insert into channels(id, position, message_count, order_revision, content_revision, json) values (?, ?, ?, ?, ?, ?) on conflict(id) do update set position = excluded.position, message_count = excluded.message_count, order_revision = excluded.order_revision, json = excluded.json',
+        channel.id, position, messages.length, order, randomUUID(), json);
     }
     this.putCatalog(channel, position);
     // Stage moves outside the committed position range, preserving row/index identities.
@@ -225,6 +250,7 @@ export class ConversationDatabase {
     messages.forEach((message, index) => {
       const previous = byId.get(message.id);
       const changed = this.putMessage(channel.id, message, index, previous);
+      changedContent ||= changed;
       if (changed && index < messages.length - DEFAULT_MESSAGE_PAGE_SIZE) changedOlder = true;
       if (changed && messages.length > DEFAULT_MESSAGE_PAGE_SIZE) {
         const oldMessage = previous ? JSON.parse(String(previous.json)) as ChatMessage : undefined;
@@ -241,6 +267,7 @@ export class ConversationDatabase {
       }
     });
     if (changedOlder) this.database.setMeta(`channel_history:${channel.id}`, randomUUID());
+    if (changedContent) this.database.run('update channels set content_revision = ? where id = ?', randomUUID(), channel.id);
   }
 
   /** Initial import gives search row IDs chronological order, independently of channel order. */
@@ -256,7 +283,7 @@ export class ConversationDatabase {
     }
     channels.forEach((channel, index) => {
       const { messages: _messages, ...metadata } = channel;
-      this.database.run('insert into channels(id, position, message_count, order_revision, json) values (?, ?, ?, 0, ?)', channel.id, index, channel.messages.length, JSON.stringify(metadata));
+      this.database.run('insert into channels(id, position, message_count, order_revision, content_revision, json) values (?, ?, ?, 0, ?, ?)', channel.id, index, channel.messages.length, randomUUID(), JSON.stringify(metadata));
       this.putCatalog(channel, index);
       channel.messages.forEach((message, position) => {
         const milliseconds = Date.parse(message.createdAt);
@@ -338,6 +365,7 @@ export class ConversationDatabase {
       this.assertIndexWritable();
       this.database.run('delete from message_search where rowid in (select id from messages where channel_id = ?)', id);
       this.database.run('delete from messages where channel_id = ?', id);
+      this.database.run("update conversation_archives set state = 'delete_pending' where channel_id = ? and state = 'active'", id);
       this.database.run('delete from channel_catalog where channel_id = ?', id);
       this.database.run('delete from meta where key = ?', `channel_choice:${id}`);
       this.database.run('delete from meta where key = ?', `channel_history:${id}`);

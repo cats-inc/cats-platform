@@ -1,6 +1,6 @@
 /** SPEC-144: conversations and parallel groups; settings and Core remain JSON. */
 import { MESSAGE_PRESENTATION_INDEXES } from './messageIndex.js';
-export const STATE_SCHEMA_VERSION = 3;
+export const STATE_SCHEMA_VERSION = 4;
 /** "CPLT", deliberately different from the image ledger and Cats Bot. */
 export const STATE_APPLICATION_ID = 0x43504c54;
 const CHANNEL_CATALOG_SQL = `
@@ -15,12 +15,39 @@ create table channel_catalog(
 ) strict;
 create index channel_catalog_position on channel_catalog(position);
 `;
+const COLD_ARCHIVES_SQL = `
+create table conversation_archives(
+  archive_id text primary key not null,
+  channel_id text not null,
+  state text not null check(state in ('active', 'delete_pending')),
+  manifest_digest text not null,
+  messages_digest text not null,
+  message_count integer not null check(message_count >= 0),
+  created_at text not null,
+  original_status text not null,
+  source_revision text not null,
+  channel_revision text not null
+) strict;
+create unique index conversation_archives_active on conversation_archives(channel_id) where state = 'active';
+create table conversation_archive_jobs(
+  channel_id text primary key not null,
+  token text not null unique,
+  lease_token text not null,
+  kind text not null check(kind in ('archive', 'restore')),
+  archive_id text not null,
+  channel_revision text not null,
+  created_at text not null
+) strict;
+`;
 export const STATE_SCHEMA_UPGRADES: Record<number, string> = { 1: `${CHANNEL_CATALOG_SQL}
 insert into channel_catalog(channel_id, position, title, created_at, updated_at, cat_assignments, participant_assignments)
 select id, position, json_extract(json, '$.title'), json_extract(json, '$.createdAt'),
   json_extract(json, '$.updatedAt'), coalesce(json_extract(json, '$.catAssignments'), '[]'),
   coalesce(json_extract(json, '$.participantAssignments'), '[]') from channels;
-`, 2: MESSAGE_PRESENTATION_INDEXES };
+`, 2: MESSAGE_PRESENTATION_INDEXES, 3: `
+alter table channels add column content_revision text not null default '';
+update channels set content_revision = lower(hex(randomblob(16)));
+${COLD_ARCHIVES_SQL}` };
 
 export const STATE_SCHEMA_SQL = `
 create table meta(key text primary key not null, value text not null) strict, without rowid;
@@ -29,9 +56,11 @@ create table channels(
   position integer not null,
   message_count integer not null,
   order_revision integer not null,
+  content_revision text not null,
   json text not null
 ) strict;
 ${CHANNEL_CATALOG_SQL}
+${COLD_ARCHIVES_SQL}
 create table messages(
   id integer primary key autoincrement,
   channel_id text not null,

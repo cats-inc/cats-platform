@@ -7,6 +7,7 @@ import { withProfileLock } from '../../platform/persistence/state-db/profileLock
 import { openStateDatabase, StateDatabaseError, type StateDatabase } from '../../platform/persistence/state-db/stateDatabase.js';
 import { closeStateMaintenanceWorkers, runStateMaintenance, StateMaintenanceError } from '../../platform/persistence/state-db/stateMaintenance.js';
 import { logicalDatabaseSnapshot } from '../../products/chat/state/database/logicalExport.js';
+import { verifyArchiveAssets } from '../../products/chat/state/database/archiveAssets.js';
 import { MetadataCommit } from '../../products/chat/state/database/metadataCommit.js';
 import { assertProfileOffline } from '../../products/chat/state/database/profileLease.js';
 import { maintainProfileSnapshot } from '../../products/chat/state/database/profileSnapshots.js';
@@ -93,6 +94,7 @@ export async function runStateCommand(args: string[], env: NodeJS.ProcessEnv = p
             || receipt?.format !== 1 || receipt.installationId !== envelope.storage.installationId) throw new ProfileStorageError('recovery_pending', 'Complete state startup recovery with the matching Cats build first.');
           if (options.command === 'check') {
             await runStateMaintenance({ kind: 'check', file: databasePath(profile) }, { timeoutMs: options.timeoutMs, signal: abort.signal });
+            await verifyArchiveAssets(database, undefined, abort.signal);
             return { checked: true, schemaVersion: Number(database.meta('schema_version')), installationId: envelope.storage.installationId, revision: envelope.storage.revision };
           }
           if (options.command === 'snapshot') {

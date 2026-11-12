@@ -12,6 +12,7 @@ import { openStateDatabase } from '../build/server/platform/persistence/state-db
 import { DatabaseChatStore } from '../build/server/products/chat/state/databaseStore.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { canonicalDigest } from '../build/server/platform/persistence/state-db/canonicalJson.js';
+import { archivedProfile } from './fixtures/desktop-state-archive.mjs';
 
 test('bundled maintenance reaper/native entries run under Node and shipped Electron with attribution', { timeout: 60_000 }, async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-bundled-db-worker-'));
@@ -81,7 +82,7 @@ test('the complete bundled CLI checks, snapshots, restores and exports in Node a
   // installed inputs, without installing or replacing dependencies in this probe.
   await symlink(path.resolve('node_modules'), path.join(packageRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const outfile = path.join(packageRoot, 'build/server/index.js'); await bundleServer({ outfile });
-  const file = path.join(root, 'profile.json'); await writeFile(file, JSON.stringify(snapshot()));
+  const { file } = await archivedProfile(t);
   let store = new DatabaseChatStore(file); let expected;
   try { await store.initialize(); expected = await store.logicalDigest(); } finally { await store.close(); }
   for (const [name, command] of [['node', process.execPath], ['electron', createRequire(import.meta.url)('electron')]]) {

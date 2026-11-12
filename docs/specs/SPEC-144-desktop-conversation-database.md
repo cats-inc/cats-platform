@@ -183,7 +183,7 @@ timestamp anchors. A page never treats a response in another window as missing. 
 Core presentations render at their terminal/latest response placement; a genuinely Core-only
 live presentation anchors to the newest window, and other Core-only snapshots use their time
 anchor. Rejections in another page suppress synthetic output. The original Core records stay
-intact. Schema-1 and schema-2 profiles receive verified paired backups before upgrading.
+intact. Schema-1, schema-2 and schema-3 profiles receive verified paired backups before upgrading.
 
 Schema-1 database admission creates a verified recoverable backup before transactional DDL,
 including exact JSON/receipt, installation/revision/digest binding and interrupted-upgrade
@@ -217,7 +217,8 @@ automatic-deletion opt-in. The operations guide records commands and recovery be
 FR-15 uses immutable external compressed JSONL, not a second transcript table. The codec
 foundation writes a header, individual group/Core context records and complete ordered raw
 messages as concatenated standard gzip members. Member ranges and compressed hashes permit
-bounded cold paging; a whole-file digest and a logical JSONL digest prove complete readback.
+bounded cold paging; whole-file, logical JSONL and canonical message-array digests prove
+complete readback and bind the catalog to the same records used by full reads/exports.
 The writer verifies the entire payload before producing its manifest. It never removes hot
 rows. UUID filenames are independent of the configured profile basename. Default chunks
 contain at most 200 records/about 512 KiB; a single larger JSON record is retained intact up
@@ -225,8 +226,14 @@ to an explicit 64 MiB limit. Over-limit/non-JSON input fails without truncation.
 size, offsets and decompression output are bounded. This codec is synchronous and belongs in
 a native maintenance worker or an offline command, not a serving callback.
 
-The remaining integration must introduce a backed-up schema boundary for cold pointers and
-per-channel content revisions. Prepare/compress/verify off the serving thread, reserving the
+Schema 4 now adds cold pointers, job reservations and per-channel content revisions behind
+the existing verified backup/transactional upgrade boundary. Only header/transcript changes
+advance a channel's content token; collection reordering and sibling writes leave it stable.
+Full logical exports/global reads hydrate cold records, and ordinary mutations reject changes
+to an archived transcript without reinserting it. Automatic transcript repairs stop for archived
+channels, including startup preparation and ordinary writes. Owner deletion leaves a cleanup tombstone.
+
+The remaining archive actions must prepare/compress/verify off the serving thread, reserving the
 target with its live profile lease. Before the durable metadata handoff removes hot messages
 and FTS entries, compare the target content revision, reject active execution, and promote the
 verified immutable assets. Unrelated conversation writes must not invalidate preparation.
@@ -236,11 +243,18 @@ Archive keeps channel/group/Core relationships; owner deletion removes the point
 recoverable asset cleanup, without resurrecting archived content. Full logical exports/global
 snapshots must hydrate cold history; ordinary mutations must not silently reinsert it.
 
-Snapshots, schema-upgrade backups and paired restore must include and verify every referenced
-cold asset, so a backup remains usable after the original profile is removed. A source-asset
-race defers snapshot publication and preserves the previous good backup. Product controls,
-authenticated operations, archive/restore crash recovery, native worker packaging and this
-backup integration remain unimplemented; codec tests alone do not satisfy FR-15.
+Immutable files live in a fixed sibling `<database>.archives` directory, derived from the
+configured database path. Snapshots, schema-upgrade backups and paired restore now include
+and verify referenced assets, so a backup remains usable after the original cold root is
+removed. A source-asset race defers snapshot publication and preserves the last good backup.
+Background manifest admission and bounded-buffer copies are asynchronous and cancellable;
+Windows filename aliases share the existing profile identity rules. Restore preserves raw
+current assets even when damaged, stages verified replacements and publishes them before the
+database. It may atomically repair an already-backed-up original with the same archive ID;
+unknown edits are refused and interruption admits only original/already-published target bytes.
+Offline check validates cold evidence too. Product controls, authenticated archive operations,
+archive/unarchive transaction recovery, cleanup workers and native archive packaging remain
+unimplemented; the persistence/backup tests alone do not satisfy FR-15.
 
 ## Dependencies and open validation
 

@@ -16,6 +16,18 @@ export function canonicalDigest(value: unknown): string {
   return hash.digest('hex');
 }
 
+/** Incremental canonical array proof without collecting the records. */
+export class CanonicalArrayDigest {
+  private readonly hash = createHash('sha256').update('[');
+  private first = true;
+  add(value: unknown): void {
+    if (!this.first) this.hash.update(',');
+    this.first = false;
+    for (const token of tokens(value)) this.hash.update(token);
+  }
+  digest(): string { return this.hash.update(']\n').digest('hex'); }
+}
+
 function* tokens(value: unknown): Generator<string> {
   if (Array.isArray(value) || value instanceof JsonArray) {
     yield '[';

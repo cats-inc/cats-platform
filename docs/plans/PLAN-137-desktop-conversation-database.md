@@ -66,10 +66,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
-  bounded cold paging. Pending: cold catalog/revisions and backed-up schema upgrade, native
-  worker/reservations and crash recovery, archive/restore/deletion integration, product/CLI
-  controls, and self-contained snapshots/restore of referenced immutable assets. Do not mark
-  FR-15 complete on codec-only evidence.
+  bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
+  guards and self-contained asset snapshots/paired restore are implemented. Pending: native
+  workers/reservation lifecycle and crash recovery, archive/unarchive hot-row transactions,
+  deletion asset cleanup, and product/CLI controls. Do not mark FR-15 complete on these
+  persistence/backup foundations alone.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
@@ -151,6 +152,10 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Fixed configured `manifest.json` collisions in snapshots, paired restore and schema-1/2 upgrade backups. New proof names append to the profile basename; metadata, DB and receipt retain their names. Earlier generic snapshot manifests remain read-only/restorable. New regressions prove canonical equality, exact metadata bytes and digest proofs for the colliding profile; old generic snapshots restore without rewriting the selected backup. |
 | 2026-11-12 | Cold archive codec foundation now writes standard concatenated-gzip JSONL with complete header/message records and individual group/Core context records; proves member, whole-file and logical digests by full readback before returning a manifest. Indexed member ranges support exclusive cold pages without decompressing unrelated history. Strict JSON/identity/count/path/range/UTF-8/decompression bounds fail without truncation; owned-inode cleanup preserves existing/replaced paths and controlled errors hide source diagnostics. This module is not yet wired to production archive actions or hot-row removal. |
 | 2026-11-12 | Codec checkpoint passed **20/20 Node and 20/20 Electron**, zero skipped, plus server build and fixture typecheck on Windows. Covers rich Unicode/NUL/special-key records, group/Core roundtrip, cross-member/empty paging, corrupt old evidence outside a newest-page read, malformed manifests/JSONL, source count/identity failures, existing/replaced files, closed handles and oversized records. Independent read-only review has no remaining blocking P1/P2 in the codec slice after fixing POSIX directory durability. Its isolated child regression injects directory-sync failure (simulated directory handle on Windows, real payload/manifest IO), proving safe failure/cleanup and unchanged source bytes. Actual POSIX execution remains a hosted-CI gate. FR-15 catalog/transactions/recovery/worker/product/backup integration remains pending. |
+| 2026-11-12 | Schema 4 adds cold catalog/job rows and independent channel content revisions, with exact paired backups before schema-1/2/3 upgrades. Position-only/sibling updates keep the target token. Full reads/logical exports hydrate cold records and reject mismatched catalog/manifest proofs; ordinary writes cannot reinsert or edit cold transcripts, and owner deletion leaves an asset-cleanup tombstone. Archive creation/unarchive and cleanup worker lifecycles are not yet exposed. |
+| 2026-11-12 | Referenced immutable files now live under the fixed database-derived `.sqlite.archives` sibling (or `<database>.archives` for another DB basename). Paired snapshots/restore carry independent manifest/payload proofs and raw current rollback assets. Tests remove the original root before successful full Chat/Core restoration, repair same-ID corrupt originals through atomic replacement, resume after asset/DB/metadata publication, defer a source-deletion race, preserve last-good backups/unknown files, and cover Windows nested aliases. Async manifest admission and 128-KiB proof/copy loops permit cancellation. Temporary publication verifies owned inode, bytes and stable attributes before linking. |
+| 2026-11-12 | Storage checkpoint: **191/192 Node**, zero skipped; the sole failure was the existing actual Electron CLI `state --help` child reaching its unchanged 20-second limit with no output. The same test passed **1/1** in isolation in 9.0 seconds without source/deadline changes; its cause remains unestablished. The corresponding storage matrix excluding that CLI file passed **180/180 Electron**, zero skipped, including actual cold CLI check/export. The complete bundled sidecar CLI passed **1/1**, checking/snapshotting/restoring/exporting a cold profile under both actual hosts with exact linked dependencies. These are local Windows checkpoints, not hosted CI or a full application pass. |
+| 2026-11-12 | Final deltas: archived channels stop automatic transcript repair; an actually repairable assistant/session fixture passes startup/retitle with unchanged cold messages and zero hot rows (**1/1 Node and 1/1 Electron**). Strict JSON encoding now precedes canonical message hashing; cyclic messages remain controlled `invalid_input`, with final codec checks **20/20 in each host**. Affected runtime merge and architecture checks passed **126/126** after correcting the stale pre-extraction helper-location assertion; it now verifies the API adapter delegates/re-exports the central state repair helper and does not compose repair passes. Server build and fixture typecheck passed. Independent read-only reviews have no remaining blocking P1/P2 in these slices. |
 
 *Created and last updated: 2026-11-12*
 
@@ -169,6 +174,15 @@ archives and their explicit product/operations consumers; then post-port
 measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
+
+- Next archive action integration: perform native prepare against a read-only SQLite snapshot,
+  admitting exact JSON bytes only when installation/revision/digest agree and no handoff is
+  pending. Defer a capture race; never hold the serving lock through compression. Reserve the
+  target using its content revision and live profile lease token, with a separate per-job lock
+  so stale cleanup cannot delete a worker's stage. Final archive/unarchive applies under the
+  operation lock with target CAS/latest active-execution admission, verified immutable assets
+  before hot-row changes, and the existing durable metadata handoff. Keep these product jobs
+  behind a fixed trusted worker entrypoint/reaper and add split/bundled artifact acceptance.
 
 - The mounted transcript now consumes `messagePage`/`orderRevision`, loads older pages and
   merges `displayMessages` (falling back to raw `messages` for fixture responses). Retained

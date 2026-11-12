@@ -9,6 +9,11 @@ export interface TranscriptRepairOptions { core?: CatsCoreState; runtimeDataDir?
 export function applyChannelReadRepairs(state: ChatState, channelId: string, options: TranscriptRepairOptions = {}): {
   repaired: boolean; state: ChatState;
 } {
+  // Cold transcripts are immutable until explicit restore; automatic read repairs
+  // must not turn ordinary startup or a sibling edit into a cold-history write.
+  if (state.channels.find(channel => channel.id === channelId)?.status === 'archived') {
+    return { repaired: false, state };
+  }
   const now = options.now ?? new Date();
   const turn = repairOrphanedCompletedDispatchTurn(state, channelId, now, options.core);
   const sessions = repairMissingSessionStartedMessages(turn.state, channelId, { ...options, now });
