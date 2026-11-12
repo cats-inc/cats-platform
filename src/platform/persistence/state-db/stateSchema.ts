@@ -1,8 +1,25 @@
 /** SPEC-144: conversations and parallel groups; settings and Core remain JSON. */
-export const STATE_SCHEMA_VERSION = 1;
+export const STATE_SCHEMA_VERSION = 2;
 /** "CPLT", deliberately different from the image ledger and Cats Bot. */
 export const STATE_APPLICATION_ID = 0x43504c54;
-export const STATE_SCHEMA_UPGRADES: Record<number, string> = {};
+const CHANNEL_CATALOG_SQL = `
+create table channel_catalog(
+  channel_id text primary key not null,
+  position integer not null,
+  title text not null,
+  created_at text not null,
+  updated_at text not null,
+  cat_assignments text not null,
+  participant_assignments text not null
+) strict;
+create index channel_catalog_position on channel_catalog(position);
+`;
+export const STATE_SCHEMA_UPGRADES: Record<number, string> = { 1: `${CHANNEL_CATALOG_SQL}
+insert into channel_catalog(channel_id, position, title, created_at, updated_at, cat_assignments, participant_assignments)
+select id, position, json_extract(json, '$.title'), json_extract(json, '$.createdAt'),
+  json_extract(json, '$.updatedAt'), coalesce(json_extract(json, '$.catAssignments'), '[]'),
+  coalesce(json_extract(json, '$.participantAssignments'), '[]') from channels;
+` };
 
 export const STATE_SCHEMA_SQL = `
 create table meta(key text primary key not null, value text not null) strict, without rowid;
@@ -13,6 +30,7 @@ create table channels(
   order_revision integer not null,
   json text not null
 ) strict;
+${CHANNEL_CATALOG_SQL}
 create table messages(
   id integer primary key autoincrement,
   channel_id text not null,

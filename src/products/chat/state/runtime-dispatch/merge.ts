@@ -4,7 +4,7 @@ import type {
   ParticipantExecutionLease,
   ChatState,
 } from '../../api/contracts.js';
-import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
+import { refreshDerivedMemoryLayers, type MemoryChannelReference } from '../memoryLayers.js';
 import { requireChannel } from '../model/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -16,6 +16,13 @@ interface MutationGateLike {
 }
 
 const MERGED_DISPATCH_WRITE_GATE_KEY = '__chat:merged-dispatch-write__';
+type DispatchBackingStore = Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'
+  | 'updateSnapshot' | 'updateChannel' | 'readChannelState'>;
+
+function scopedDispatchState(state: ChatState, channelId: string): ChatState {
+  const { channels, ...metadata } = state;
+  return { ...structuredClone(metadata), channels: channels.filter(channel => channel.id === channelId).map(channel => structuredClone(channel)) };
+}
 
 function sameSnapshot(left: unknown, right: unknown): boolean {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
@@ -366,6 +373,7 @@ export function mergeCompletedDispatchState(
   dispatchState: ChatState,
   channelId: string,
   now: Date = new Date(),
+  channelCatalog?: ReadonlyArray<MemoryChannelReference>,
 ): ChatState {
   const nextState = structuredClone(latestState);
   const latestChannel = requireChannel(nextState, channelId);
@@ -408,30 +416,31 @@ export function mergeCompletedDispatchState(
     dispatchChannel.updatedAt,
   ) ?? latestChannel.updatedAt;
 
-  return refreshDerivedMemoryLayers(nextState, channelId, now);
+  return refreshDerivedMemoryLayers(nextState, channelId, now, channelCatalog);
 }
 
 /** Caller already owns the channel gate; each write still merges under the store's atomic lock. */
 export function createLockedDispatchChatStore(
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore' | 'updateSnapshot'>,
+  chatStore: DispatchBackingStore,
   channelId: string,
   baselineState: ChatState,
   now: () => Date,
   runtimeClient?: Pick<RuntimeClient, 'closeSession'>,
 ) {
-  return { read: chatStore.read.bind(chatStore), ...createMergedDispatchChatStore({
+  return { read: () => chatStore.readChannelState?.(channelId) ?? chatStore.read(), ...createMergedDispatchChatStore({
     chatStore, channelId, baselineState, now, runtimeClient,
     mutationGate: { run: (_key, operation) => operation() },
   }) };
 }
 
 export function createMergedDispatchChatStore(options: {
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore' | 'updateSnapshot'>;
+  chatStore: DispatchBackingStore;
   mutationGate: MutationGateLike;
   channelId: string;
   baselineState: ChatState;
   now: () => Date;
   runtimeClient?: Pick<RuntimeClient, 'closeSession'>;
+  /** latest/persisted views contain the target channel only on a scoped backing store. */
   beforeMerge?: (latestState: ChatState, dispatchState: ChatState, core?: CatsCoreState) => ChatState;
   onPersistMergedState?: (input: {
     previousState: ChatState;
@@ -440,7 +449,8 @@ export function createMergedDispatchChatStore(options: {
     channelId: string;
   }) => void;
 }): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'> {
-  let previousState = structuredClone(options.baselineState);
+  let previousState = options.chatStore.updateChannel
+    ? scopedDispatchState(options.baselineState, options.channelId) : structuredClone(options.baselineState);
   // Runs before the writer releases the channel gate, so a wake cannot resume
   // the retained ID between this decision and closing its worker.
   const closeRetiredWorkers = async (dispatch: ChatState, persisted: ChatState) => {
@@ -464,6 +474,28 @@ export function createMergedDispatchChatStore(options: {
     async write(dispatchState: ChatState): Promise<ChatState> {
       return options.mutationGate.run(options.channelId, async () => {
         return options.mutationGate.run(MERGED_DISPATCH_WRITE_GATE_KEY, async () => {
+          if (options.chatStore.updateChannel) {
+            const proposed = scopedDispatchState(dispatchState, options.channelId);
+            let before: ChatState = { ...proposed, channels: [] };
+            let persisted: ChatState = before;
+            const channel = await options.chatStore.updateChannel(options.channelId, (latest, context) => {
+              const chat = { ...structuredClone(context.chat), channels: [latest] };
+              before = structuredClone(chat);
+              const checked = options.beforeMerge?.(chat, proposed, context.core) ?? proposed;
+              persisted = mergeCompletedDispatchState(chat, previousState, checked, options.channelId,
+                options.now(), context.channelCatalog);
+              const { channels, ...metadata } = persisted;
+              return { channel: requireChannel(persisted, options.channelId), metadata };
+            });
+            // The backend's invariant guards can preserve newer scope/proposal/Project
+            // fields. Report that actual committed target, not the proposed merge.
+            persisted = { ...persisted, channels: channel ? [channel] : [] };
+            previousState = proposed;
+            await closeRetiredWorkers(dispatchState, persisted);
+            options.onPersistMergedState?.({ previousState: before, persistedState: persisted,
+              dispatchState, channelId: options.channelId });
+            return persisted;
+          }
           if (options.chatStore.updateSnapshot) {
             let before!: ChatState;
             const snapshot = await options.chatStore.updateSnapshot(({ chat, core }) => {

@@ -33,6 +33,7 @@ import {
 } from './platform/runtime/clientDiagnostics.js';
 import { DatabaseChatStore } from './products/chat/state/databaseStore.js';
 import { ProfileStorageError, STATE_STORAGE_FAILURE_EXIT_CODE } from './products/chat/state/database/profileFormat.js';
+import { closeStateMaintenanceWorkers } from './platform/persistence/state-db/stateMaintenance.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 import { browserUrl, startCliInteraction } from './shared/cliInteraction.js';
 import {
@@ -201,6 +202,7 @@ export async function startApp(extension: {
           try { await extension.shutdown?.(); } catch (error) { reportShutdownError(error); }
           try { await closeAppServerGracefully(server); } catch (error) { reportShutdownError(error); }
           try { await server.closeAppHosting(); } catch (error) { reportShutdownError(error); }
+        await closeStateMaintenanceWorkers();
           try { await chatStore.close(); } catch (error) { reportShutdownError(error); }
           // Flush any pending provider snapshot before exiting so a recent
           // successful refresh isn't lost when the debounce timer hadn't fired

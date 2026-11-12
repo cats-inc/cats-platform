@@ -10,7 +10,8 @@ import { hasSubstantiveCoreChange, type CoreStoreListener } from '../../../core/
 import type { CatsCoreState } from '../../../core/types.js';
 import type { ChatChannelState, ChatState } from '../api/contracts.js';
 import { buildPersistedChatSnapshot, extractCoreState, type PersistedChatSnapshot } from './core-snapshot/index.js';
-import { prepareChatSnapshot, type ChatStore, type ChatSnapshotMutator } from './store.js';
+import { prepareChatSnapshot, type ChatStore, type ChatSnapshotMutator, type ChatChannelMutator, type ChatMetadata } from './store.js';
+import { mergeScopedCoreProjection } from './core-projection/scoped.js';
 import { openProfile, type OpenProfile } from './database/openProfile.js';
 import { assertProfileOffline } from './database/profileLease.js';
 import { logicalDatabaseSnapshot } from './database/logicalExport.js';
@@ -21,6 +22,7 @@ import {
 } from './database/profileFormat.js';
 import type { MessagePage, MessageSearchHit } from './database/conversationStore.js';
 import { StateDatabaseError } from '../../../platform/persistence/state-db/stateDatabase.js';
+import { closeStateMaintenanceWorkers } from '../../../platform/persistence/state-db/stateMaintenance.js';
 
 export interface DatabaseStoreOptions extends StorageHooks {
   lockTimeoutMs?: number;
@@ -43,9 +45,13 @@ export class DatabaseChatStore implements ChatStore {
   private closed = false;
   private listeners = new Set<CoreStoreListener>();
   private resetContext = new AsyncLocalStorage<ResetContext>();
+  private maintenanceAbort = new AbortController();
+  private readonly maintenanceSignal: AbortSignal;
 
   constructor(filePath: string, private readonly options: DatabaseStoreOptions = {}) {
     this.filePath = path.resolve(filePath);
+    this.maintenanceSignal = options.signal ? AbortSignal.any([this.maintenanceAbort.signal, options.signal])
+      : this.maintenanceAbort.signal;
     databasePath(this.filePath); // Reject unsupported locations before creating lock files.
   }
 
@@ -61,6 +67,58 @@ export class DatabaseChatStore implements ChatStore {
 
   async readChannel(id: string): Promise<ChatChannelState | null> {
     return this.run(async session => session.conversations.channel(id));
+  }
+
+  async readChannelState(id: string): Promise<ChatState> {
+    return this.run(async (session, envelope) => {
+      const channel = session.conversations.channel(id);
+      return { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups(),
+        channels: channel ? [channel] : [] };
+    });
+  }
+
+  async updateChannel(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null> {
+    return this.run(async (session, envelope) => {
+      const stored = session.conversations.channel(id);
+      if (!stored) return null; // A completed dispatch must never resurrect a deleted channel.
+      const core = envelopeCore(envelope);
+      const { channels: _channels, ...chatMetadata } = structuredClone(envelope.chat);
+      const metadata = { ...chatMetadata, parallelChatGroups: session.conversations.groups() };
+      const catalog = session.conversations.projectionMetadata();
+      const context = { chat: structuredClone(metadata), core: structuredClone(core), channelCatalog: structuredClone(catalog) };
+      let result: ReturnType<ChatChannelMutator>;
+      try { result = mutator(structuredClone(stored), context); }
+      catch (error) { throw new MutationFailure(error); }
+      if (result && typeof (result as unknown as { then?: unknown }).then === 'function') {
+        void Promise.resolve(result).catch(() => {});
+        throw new TypeError('A channel mutation must be synchronous');
+      }
+      if (!isDeepStrictEqual(context.chat, metadata) || !isDeepStrictEqual(context.core, core)
+        || !isDeepStrictEqual(context.channelCatalog, catalog)) {
+        throw new TypeError('A channel mutation cannot edit global Chat or Core state');
+      }
+      const incoming = result?.channel;
+      if (!incoming || incoming.id !== id || !Array.isArray(incoming.messages)
+        || incoming.messages.some(message => !message || !message.id || message.channelId !== id)) {
+        throw new TypeError('A channel mutation must keep its channel and message identities');
+      }
+      const nextMetadata = result.metadata ?? metadata;
+      validateScopedMetadata(metadata, nextMetadata, incoming);
+      if (isDeepStrictEqual(incoming, stored) && isDeepStrictEqual(nextMetadata, metadata)) return structuredClone(stored);
+      const now = new Date();
+      const beforeChat = { ...metadata, channels: [stored] };
+      const before = prepareChatSnapshot(beforeChat, beforeChat, core, this.filePath, now);
+      const after = prepareChatSnapshot(beforeChat, { ...nextMetadata, channels: [incoming] }, core, this.filePath, now);
+      const channel = after.chat.channels[0]!;
+      const nextCore = mergeScopedCoreProjection(core, extractCoreState(before), extractCoreState(after),
+        beforeChat, catalog, channel);
+      const position = session.conversations.position(id)!;
+      this.prepareSearch(session);
+      const target = makeEnvelope(buildPersistedChatSnapshot(after.chat, nextCore), this.filePath,
+        envelope.storage.installationId);
+      await this.commit(session, envelope, target, nextCore, () => session.conversations.putChannel(channel, position));
+      return structuredClone(channel);
+    });
   }
 
   async readMessagePage(id: string, limit = 50, before?: string): Promise<MessagePage> {
@@ -156,6 +214,8 @@ export class DatabaseChatStore implements ChatStore {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closing = true;
+    this.maintenanceAbort.abort();
+    await closeStateMaintenanceWorkers(databasePath(this.filePath));
     if (!this.session && this.pending === 0) { this.closed = true; return; }
     await withProfileLock(this.filePath, async () => {
       const session = this.session;
@@ -174,6 +234,7 @@ export class DatabaseChatStore implements ChatStore {
     await this.run(async session => {
       // The profile lock keeps other writers out while connections close and the
       // reset removes the old identity. The next request can initialize fresh state.
+      await closeStateMaintenanceWorkers(databasePath(this.filePath));
       session.database.close();
       await session.releaseLease();
       this.session = null;
@@ -232,33 +293,42 @@ export class DatabaseChatStore implements ChatStore {
     const snapshot = prepareChatSnapshot(stored, chat, core, this.filePath);
     this.prepareSearch(session);
     const envelope = makeEnvelope(snapshot, this.filePath, previous.storage.installationId);
+    await this.commit(session, previous, envelope, extractCoreState(snapshot),
+      () => session.conversations.synchronize(snapshot.chat));
+    return structuredClone(snapshot);
+  }
+
+  private async commit(session: OpenProfile, previous: StorageEnvelope, envelope: StorageEnvelope,
+    nextCore: CatsCoreState, changeRows: () => void): Promise<void> {
     session.database.transaction(() => {
-      session.conversations.synchronize(snapshot.chat);
+      changeRows();
       session.metadata.stage(envelope, bytesDigest(serializeEnvelope(previous)));
     }, { durable: true });
     await this.options.checkpoint?.('database_committed');
     session.envelope = await session.metadata.recover();
-    const nextCore = extractCoreState(snapshot);
     if (hasSubstantiveCoreChange(envelopeCore(previous), nextCore)) {
       for (const listener of this.listeners) {
         try { listener(structuredClone(nextCore)); }
         catch { process.stderr.write('[cats-platform-store] core_listener_failed\n'); }
       }
     }
-    return structuredClone(snapshot);
   }
 
   private async run<T>(work: (session: OpenProfile, envelope: StorageEnvelope) => Promise<T>): Promise<T> {
     if (this.closing || this.closed) throw new ProfileStorageError('closed', 'The state store is closed.');
     this.pending++;
+    let phase: 'lock' | 'opening' | 'recovering' | 'operation' = 'lock';
     try {
       const perform = async () => {
+        phase = 'opening';
         if (this.closed) throw new ProfileStorageError('closed', 'The state store is closed.');
         if (!this.session) await resumePlatformOwnedDataReset(this.filePath,
           (profile, remove) => this.withResetExclusivity(undefined, remove, profile));
-        this.session ??= await openProfile(this.filePath, this.options);
+        this.session ??= await openProfile(this.filePath, { ...this.options, signal: this.maintenanceSignal });
+        phase = 'recovering';
         const envelope = await this.session.metadata.recover();
         this.session.envelope = envelope;
+        phase = 'operation';
         return work(this.session, envelope);
       };
       const context = this.resetContext.getStore();
@@ -270,7 +340,7 @@ export class DatabaseChatStore implements ChatStore {
       return await withProfileLock(this.filePath, perform, { timeoutMs: this.options.lockTimeoutMs });
     } catch (error) {
       if (error instanceof MutationFailure) throw error.original;
-      const failure = classifyStorageFailure(error);
+      const failure = classifyStorageFailure(error, phase);
       if (failure) { this.options.onFatal?.(failure); throw failure; }
       throw error;
     } finally { this.pending--; }
@@ -285,10 +355,28 @@ export class DatabaseChatStore implements ChatStore {
   }
 }
 
+/** Scoped dispatch may refresh derived memory, but never remove cats, alter their
+ * execution profiles, change group membership or overwrite unrelated preferences.
+ */
+function validateScopedMetadata(previous: ChatMetadata, next: ChatMetadata, channel: ChatChannelState): void {
+  const activeCats = new Set(channel.catAssignments.filter(assignment => assignment.status === 'active')
+    .map(assignment => assignment.catId));
+  const expected = { ...previous,
+    globalOrchestrator: { ...previous.globalOrchestrator,
+      memory: next.globalOrchestrator.memory, updatedAt: next.globalOrchestrator.updatedAt },
+    cats: previous.cats.map(cat => {
+      const candidate = next.cats.find(value => value.id === cat.id);
+      return activeCats.has(cat.id) && candidate
+        ? { ...cat, memory: candidate.memory, updatedAt: candidate.updatedAt } : cat;
+    }),
+  };
+  if (!isDeepStrictEqual(expected, next)) throw new TypeError('A scoped channel mutation may only update its derived shared memory');
+}
+
 /** Keep SQLite/OS diagnostics and stored JSON out of public errors. Busy locks and
  * caller mistakes remain ordinary operation failures; corruption/I/O stops the host.
  */
-function classifyStorageFailure(error: unknown): ProfileStorageError | undefined {
+function classifyStorageFailure(error: unknown, phase: 'lock' | 'opening' | 'recovering' | 'operation'): ProfileStorageError | undefined {
   if (error instanceof ProfileStorageError) return ['closed', 'profile_busy'].includes(error.code) ? undefined : error;
   if (error instanceof SyntaxError) return new ProfileStorageError('invalid_database_record',
     'A database record contains invalid JSON; preserve the state and restore a verified backup.');
@@ -303,7 +391,12 @@ function classifyStorageFailure(error: unknown): ProfileStorageError | undefined
     (code === 'ERR_SQLITE_ERROR' && ![5, 6].includes((sqlite?.errcode ?? 0) & 255)) ||
     ['ENOSPC', 'EIO', 'EROFS', 'EACCES', 'EPERM'].includes(code ?? '')) {
     return new ProfileStorageError('state_unavailable',
-      'Cats cannot safely access its state. Close Cats and use state check or restore before retrying.');
+      'Cats cannot safely access its state. Close Cats and use state check or restore before retrying.', {
+        phase,
+        sourceCode: error instanceof StateDatabaseError ? error.code : code!,
+        ...(code === 'ERR_SQLITE_ERROR' && Number.isSafeInteger(sqlite?.errcode) && sqlite!.errcode! >= 0
+          ? { sqliteResultCode: sqlite!.errcode } : {}),
+      });
   }
   return undefined;
 }

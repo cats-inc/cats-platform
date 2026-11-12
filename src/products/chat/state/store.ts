@@ -9,7 +9,8 @@ import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
-import type { ChatState } from '../api/contracts.js';
+import type { ChatState, ChatChannelState } from '../api/contracts.js';
+import type { ChannelProjectionMetadata } from './core-projection/scoped.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import { CATS_CORE_STATE_VERSION } from '../../../core/types.js';
 import {
@@ -78,7 +79,20 @@ export interface ChatStore extends CoreStore {
   removeOwnedState?(remove: () => Promise<void>): Promise<void>;
   /** Admit a data reset before mutation and coordinate every store call through erasure. */
   withDataReset?<T>(operation: () => Promise<T>): Promise<T>;
+  /** A dispatch-local view: metadata plus only the requested channel's transcript. */
+  readChannelState?(id: string): Promise<ChatState>;
+  /** Synchronous existing-channel mutation; optional metadata is limited to derived memory. */
+  updateChannel?(id: string, mutator: ChatChannelMutator): Promise<ChatChannelState | null>;
 }
+
+export type ChatMetadata = Omit<ChatState, 'channels'>;
+export interface ChatChannelMutationContext {
+  readonly chat: ChatMetadata;
+  readonly core: CatsCoreState;
+  readonly channelCatalog: ChannelProjectionMetadata[];
+}
+export type ChatChannelMutator = (channel: ChatChannelState,
+  context: ChatChannelMutationContext) => { channel: ChatChannelState; metadata?: ChatMetadata };
 
 export type ChatSnapshotMutator = (snapshot: { chat: ChatState; core: CatsCoreState })
   => { chat: ChatState; core: CatsCoreState };
@@ -263,7 +277,7 @@ export function normalizeImportedChatSnapshot(raw: unknown): PersistedChatSnapsh
 
 /** The persistent backends share lifecycle, scope, proposal and Project invariants. */
 export function prepareChatSnapshot(stored: ChatState, incoming: ChatState, core: CatsCoreState,
-  source: string): PersistedChatSnapshot {
+  source: string, now?: Date): PersistedChatSnapshot {
   if (core.version !== CATS_CORE_STATE_VERSION) throw new OwnerLifecycleFormatError();
   normalizeOwnerLifecycle(core.ownerLifecycle);
   for (const channel of incoming.channels) {
@@ -274,7 +288,7 @@ export function prepareChatSnapshot(stored: ChatState, incoming: ChatState, core
   }
   const chat = compactOwnerWorkflowHistory(
     structuredClone(keepStoredProductScopes(source, stored, incoming)), core);
-  const projected = syncCoreStateWithChatState(chat, structuredClone(core));
+  const projected = syncCoreStateWithChatState(chat, structuredClone(core), now);
   return repairPersistedSetupCompletion(buildPersistedChatSnapshot(chat, { ...core, ...projected }));
 }
 

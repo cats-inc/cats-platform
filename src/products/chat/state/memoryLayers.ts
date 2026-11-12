@@ -113,13 +113,16 @@ function deriveOrchestratorMemory(
   };
 }
 
+export type MemoryChannelReference = Pick<ChatState['channels'][number], 'id' | 'title' | 'updatedAt' | 'catAssignments'>;
+
 function deriveCatMemory(
   cat: ChatCat,
   state: ChatState,
   currentChannel: ChatChannelView,
   nowIso: string,
+  channelCatalog: ReadonlyArray<MemoryChannelReference> = state.channels,
 ): MemoryCheckpointSummary {
-  const relatedChannels = state.channels
+  const relatedChannels = channelCatalog
     .filter((channel) =>
       channel.catAssignments.some((assignment) => assignment.catId === cat.id && assignment.status === 'active'),
     )
@@ -187,6 +190,7 @@ export function refreshDerivedMemoryLayers(
   state: ChatState,
   channelId: string,
   now: Date = new Date(),
+  channelCatalog?: ReadonlyArray<MemoryChannelReference>,
 ): ChatState {
   const nextState = structuredClone(state);
   const nowIso = now.toISOString();
@@ -243,7 +247,7 @@ export function refreshDerivedMemoryLayers(
     cat.memory = deriveCatMemory(cat, nextState, {
       ...channelView,
       workingMemory: structuredClone(channel.workingMemory),
-    }, nowIso);
+    }, nowIso, channelCatalog?.map(entry => entry.id === channel.id ? channel : entry));
     cat.updatedAt = nowIso;
   }
 

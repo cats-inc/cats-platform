@@ -1,5 +1,6 @@
 import type { ChatChannelState, ChatMessage, ChatState } from '../../api/contracts.js';
 import type { StateDatabase, StateRow } from '../../../../platform/persistence/state-db/stateDatabase.js';
+import type { ChannelProjectionMetadata } from '../core-projection/scoped.js';
 import {
   buildSearchQuery, conversationTerm, indexText, INDEX_FORM,
 } from '../../../../platform/persistence/state-db/searchText.js';
@@ -62,6 +63,19 @@ export class ConversationDatabase {
       const row = this.database.get('select json from channels where id = ?', id);
       return row ? { ...JSON.parse(String(row.json)) as ChatChannelState, messages: this.messages(id) } : null;
     });
+  }
+
+  projectionMetadata(): ChannelProjectionMetadata[] {
+    return this.database.all(`select channel_id, title, created_at, updated_at,
+      cat_assignments, participant_assignments from channel_catalog order by position`)
+      .map(row => ({ id: String(row.channel_id), title: String(row.title), createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+        catAssignments: JSON.parse(String(row.cat_assignments)),
+        participantAssignments: JSON.parse(String(row.participant_assignments)) }));
+  }
+
+  position(id: string): number | null {
+    const row = this.database.get('select position from channels where id = ?', id);
+    return row ? Number(row.position) : null;
   }
 
   groups(): ChatState['parallelChatGroups'] {
@@ -144,6 +158,7 @@ export class ConversationDatabase {
       this.database.run('insert into channels(id, position, message_count, order_revision, json) values (?, ?, ?, ?, ?) on conflict(id) do update set position = excluded.position, message_count = excluded.message_count, order_revision = excluded.order_revision, json = excluded.json',
         channel.id, position, messages.length, order, json);
     }
+    this.putCatalog(channel, position);
     // Stage moves outside the committed position range, preserving row/index identities.
     for (const row of previous) {
       const nextPosition = nextPositions.get(String(row.message_id));
@@ -172,6 +187,7 @@ export class ConversationDatabase {
     channels.forEach((channel, index) => {
       const { messages: _messages, ...metadata } = channel;
       this.database.run('insert into channels(id, position, message_count, order_revision, json) values (?, ?, ?, 0, ?)', channel.id, index, channel.messages.length, JSON.stringify(metadata));
+      this.putCatalog(channel, index);
       channel.messages.forEach((message, position) => {
         const milliseconds = Date.parse(message.createdAt);
         this.database.run('insert into message_import(channel_id, position, created_ms, json) values (?, ?, ?, ?)',
@@ -193,6 +209,19 @@ export class ConversationDatabase {
     this.database.run('delete from message_import');
     this.database.setMeta('index_form', String(INDEX_FORM));
     this.database.setMeta('index_unicode', process.versions.unicode ?? 'unknown');
+  }
+
+  private putCatalog(channel: ChatChannelState, position: number): void {
+    this.database.run(`insert into channel_catalog(channel_id, position, title, created_at, updated_at, cat_assignments, participant_assignments)
+      values (?, ?, ?, ?, ?, ?, ?) on conflict(channel_id) do update set position = excluded.position,
+      title = excluded.title, created_at = excluded.created_at, updated_at = excluded.updated_at,
+      cat_assignments = excluded.cat_assignments, participant_assignments = excluded.participant_assignments
+      where channel_catalog.position != excluded.position or channel_catalog.title != excluded.title
+      or channel_catalog.created_at != excluded.created_at or channel_catalog.updated_at != excluded.updated_at
+      or channel_catalog.cat_assignments != excluded.cat_assignments
+      or channel_catalog.participant_assignments != excluded.participant_assignments`,
+    channel.id, position, channel.title, channel.createdAt, channel.updatedAt,
+    JSON.stringify(channel.catAssignments ?? []), JSON.stringify(channel.participantAssignments ?? []));
   }
 
   synchronize(chat: ChatState): void {
@@ -238,6 +267,7 @@ export class ConversationDatabase {
       this.assertIndexWritable();
       this.database.run('delete from message_search where rowid in (select id from messages where channel_id = ?)', id);
       this.database.run('delete from messages where channel_id = ?', id);
+      this.database.run('delete from channel_catalog where channel_id = ?', id);
       this.database.run('delete from channels where id = ?', id);
     });
   }

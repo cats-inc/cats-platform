@@ -313,6 +313,26 @@ test('Core reads do not scan transcripts, and malformed row errors do not expose
     error.code === 'invalid_database_record' && !error.message.includes('private-content'));
 });
 
+test('classified storage failures retain codes and phase without private diagnostics', async t => {
+  for (const fields of [{ code: 'EPERM' }, { code: 'ERR_SQLITE_ERROR', errcode: 10 }]) {
+    // Each case uses a separate profile so that the first interrupted migration
+    // cannot bypass the publication checkpoint for the second case.
+    const { create } = await fixture(t);
+    const subject = create({ checkpoint(stage) {
+      if (stage === 'database_published') throw Object.assign(new Error('private-source-sql-and-path'), fields,
+        { path: 'private-source-sql-and-path' });
+    } });
+    await assert.rejects(subject.initialize(), error => {
+      assert.equal(error.code, 'state_unavailable');
+      assert.deepEqual(error.cause, { phase: 'opening', sourceCode: fields.code,
+        ...(fields.errcode ? { sqliteResultCode: fields.errcode } : {}) });
+      assert.ok(!String(error.stack).includes('private-source'));
+      assert.ok(!JSON.stringify(error).includes('private-source'));
+      return true;
+    });
+  }
+});
+
 test('mutators and subscriptions retain async-Core/synchronous-Chat contracts across instances', async t => {
   const { create, source } = await fixture(t);
   const a = create(); const b = create(); await a.initialize();

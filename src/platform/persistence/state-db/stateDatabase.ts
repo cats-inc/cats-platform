@@ -71,6 +71,7 @@ export type StateDatabaseErrorCode =
   | 'read_only'
   /** SQLite ended the transaction itself, as it does after a full disk. None of it was kept. */
   | 'transaction_lost'
+  | 'upgrade_source_changed'
   | 'closed';
 
 export class StateDatabaseError extends Error {
@@ -99,6 +100,7 @@ export interface OpenStateDatabaseOptions {
    * version-1 import; SQLite's own 2 MiB otherwise.
    */
   cacheSizeKiB?: number;
+  upgradeAdmission?: { schemaVersion: number; installationId: string; revision: string; metadataDigest: string };
 }
 
 export type StateRow = Record<string, SqliteOutput>;
@@ -304,6 +306,9 @@ function openWriter(
     // Before anything that changes a row, a table or a setting: a database from a newer
     // version, or a file that is not ours, keeps all of them as they were found (FR-4).
     const found = inspect(connection, options.file);
+    if (options.upgradeAdmission && found !== options.upgradeAdmission.schemaVersion) {
+      throw new StateDatabaseError('upgrade_source_changed', 'State changed before its schema upgrade; no schema was changed.');
+    }
     const journal = connection.prepare('pragma journal_mode=wal').get()?.journal_mode;
     if (journal !== 'wal') {
       throw new Error(
@@ -312,7 +317,7 @@ function openWriter(
     }
     connection.exec('pragma synchronous=normal');
     if (found === 'empty') createSchema(connection, options.now ?? (() => new Date()));
-    else if (found < STATE_SCHEMA_VERSION) upgradeSchema(connection, options.file);
+    else if (found < STATE_SCHEMA_VERSION) upgradeSchema(connection, options.file, options.upgradeAdmission);
     const database = new Connection(options.file, 'writer', connection);
     recordRuntime(database, sqlite);
     return database;
@@ -408,12 +413,19 @@ function inspect(connection: SqliteDatabase, file: string): 'empty' | number {
  * all of it or none, so that a power cut leaves the earlier version for the next writer.
  * A reader reads an earlier version as it is.
  */
-function upgradeSchema(connection: SqliteDatabase, file: string): void {
+function upgradeSchema(connection: SqliteDatabase, file: string, admission?: OpenStateDatabaseOptions['upgradeAdmission']): void {
   connection.exec('begin immediate');
   try {
     const stored = Number(
       connection.prepare(`select value from meta where key = 'schema_version'`).get()?.value,
     );
+    if (admission) {
+      const read = (key: string) => connection.prepare('select value from meta where key = ?').get(key)?.value;
+      if (stored !== admission.schemaVersion || read('installation_id') !== admission.installationId
+        || read('revision') !== admission.revision || read('metadata_digest') !== admission.metadataDigest) {
+        throw new StateDatabaseError('upgrade_source_changed', 'State changed before its schema upgrade; no schema was changed.');
+      }
+    }
     for (let version = stored; version < STATE_SCHEMA_VERSION; version += 1) {
       const step = STATE_SCHEMA_UPGRADES[version];
       if (step === undefined) {

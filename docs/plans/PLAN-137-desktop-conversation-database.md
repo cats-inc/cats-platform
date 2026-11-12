@@ -34,7 +34,9 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 - [x] Implement query-layer row-delta writes, cached-count indexed pages with order-generation
   cursors, SQL-batched chronological import and bounded multilingual FTS. Unicode-version
   changes require rebuilding; unchanged synchronization never marks a stale index current.
-- [ ] Expose and integrate scoped transactional mutations through the live store.
+- [x] Expose scoped transactional mutation/read views through the live store; integrate runtime
+  intake/stream/finalization writers without loading sibling transcripts. Derived shared memory
+  uses a separately persisted compact channel catalog, not JSON extraction from workflow bodies.
 - [ ] Tests: real SQLite, multilingual/scoped queries, million-entry bounded operations,
   cursor/order edits, rollback, durable commit and multi-process contention.
 
@@ -55,15 +57,18 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
 
 - [ ] Connect indexed paging to message API and renderer while retaining live behavior.
 - [ ] Authenticated bounded search endpoint and Desktop search consumer; redact private cards.
-- [ ] Scoped conversation write consumers, preserving group and parallel semantics.
+- [ ] Finish scoped conversation write consumers, preserving group and parallel semantics.
+  Runtime dispatch writers are integrated; REST metadata/action consumers remain to be audited.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
 
 ## Phase 4 — Maintenance, host and packaging (FR-14, FR-16, FR-17, FR-19)
 
-- [ ] Killable child check/snapshot; paired metadata and valid snapshot retention.
+- [x] Killable native check/snapshot with a nonblocking reaper, including parent-kill cleanup.
+- [ ] Daily paired metadata snapshots and valid completed-snapshot retention.
 - [x] Initialize before readiness; migration progress/deadline and fatal-state restart behavior.
-- [ ] Close workers/connections during shutdown; offline command help and read-only behavior.
-- [ ] Sidecar/bundle worker entrypoint, notices and host runtime acceptance.
+- [x] Close connections/workers during shutdown/reset; prevent after-close maintenance spawns.
+- [ ] Offline command routing/help and read-only behavior.
+- [x] Split/bundle reaper and native entrypoints, licensing and Node/Electron artifact acceptance.
 
 ## Phase 5 — Acceptance and independent review (FR-18, FR-20)
 
@@ -107,6 +112,11 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-12 | Independent migration/restore and startup/reset reviews have no remaining blocking P1/P2 in their implemented scope. Resolved findings include Core-shape/no-drop admission, retention opt-out, group alias preservation, dead lease-candidate reclamation, selected-buffer digest, pre-mutation offline admission, shared-operation coordination, interrupted purge recovery, custom journal ownership, Windows filename aliases/discovery/primary-last deletion, nested caller errors, actionable runtime/schema errors, fatal exit preservation and bounded progress-only startup extension. These reviews do not approve the unimplemented full port. |
 | 2026-11-12 | Test bundling passed after allowing esbuild outside the Windows filesystem sandbox; the sandboxed attempt could not read ancestor directories. The test-fixture typecheck (`tsconfig.test.json`) passed after reusing main's installed mobile dependencies through a worktree-owned junction and verifying identical mobile lockfiles. Its first attempt lacked those dependencies. This is not a claim that the full `npm run typecheck` or full application suite ran. No dependency, version or release change was made. |
 | 2026-11-12 | Final local live-store checkpoint: **111/111 Node and 111/111 Electron**, zero skipped on Windows; **51/51** bundled affected typed Core/Work/history/ingress/Google consumers and **11/11** reset tests passed. Windows case-alias cases cover fresh/imported reopen, recovery-artifact and upgrade-backup discovery, reset primary-last ordering and interrupted restore through another spelling. Earlier build/CLI/host results remain applicable. Hosted three-OS CI and product paging/search/archive/maintenance acceptance are still pending. |
+| 2026-11-12 | Scoped writer/worker checkpoint: server and host builds passed; **137/137 Node and 137/137 Electron**, **99/99** affected runtime/Core/CLI/supervisor regressions, and **31/31** actual bundled-worker/SDK/staging tests passed. A later same/sibling-channel multi-process regression passed in the **12/12** Node scoped suite; the next full-host run includes it. These are focused checks, not the full application suite. |
+| 2026-11-12 | Expanded host acceptance passed **138/138 Node**, but the first Electron run passed **137/138**: the new same/sibling-channel child writer failed during initialization with sanitized `state_unavailable`. Seventeen isolated Electron repetitions and a diagnostic full Electron rerun (**138/138**) passed without reproducing that failure. The original intermittent failure remains unexplained and is not considered resolved by reruns. Temporary diagnostics existed only in ignored built output and were removed. The test-fixture typecheck (`tsconfig.test.json`) passed again. |
+| 2026-11-12 | Added content-free failure causes with an internally selected source code, SQLite result code and operation phase, preserving no original exception/message/path. The new injected-filesystem/SQLite regression passed under Node and Electron; server build passed. Independent review found no blocking P1/P2 in this diagnostic change. This improves future evidence and does not resolve the earlier intermittent failure. |
+| 2026-11-12 | Schema 2 adds an independent compact catalog. Recognized schema-1 profiles are offline-admitted, backed up with exact JSON/receipt and a verified standalone database snapshot, then upgraded in one SQL transaction bound to admitted schema/installation/revision/metadata digest. Canonical logical exports agree; failure, pending handoff, source replacement, wrong receipt and close-before-worker tests pass. No format/version release was published. |
+| 2026-11-12 | Independent scoped/worker reviews resolved all blocking P1/P2 in their slice: changed-record extension preservation, own `__proto__` JSON keys, hidden JSON workflow scans, native worker survival after parent death, backup-source admission races, receipt admission and close/spawn cancellation. The special-key test now starts with an existing empty metadata object to exercise the original recursive failure. Remaining product/maintenance/UI requirements are not approved by these slice reviews. |
 
 *Created and last updated: 2026-11-12*
 
@@ -118,9 +128,10 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: genuine scoped live writes and indexed API/renderer paging/search; explicit compressed
-archives; killable maintenance children and paired snapshot retention; offline CLI commands;
-split/bundled entrypoints; then post-port measurements, hosted CI and isolated Desktop acceptance.
+Next work: diagnose the intermittent Electron multi-process initialization failure, then indexed
+API/renderer paging/search and remaining scoped REST consumers; explicit compressed
+archives; daily paired snapshot publication/retention and offline CLI commands; then post-port
+measurements, hosted CI and isolated Desktop acceptance.
 The existing global snapshot APIs still materialize all transcripts and must not be advertised
 as meeting the final performance goal. Preserve these implementation constraints as work continues:
 

@@ -64,8 +64,9 @@ import {
 export function syncCoreStateWithChatState(
   chat: ChatState,
   existingCore: Partial<CatsCoreState> = createDefaultCoreState(),
+  now: Date = new Date(),
 ): CatsCoreState {
-  const updatedAt = new Date().toISOString();
+  const updatedAt = now.toISOString();
   const ownerProfile = existingCore.ownerProfile ?? createDefaultOwnerProfile(updatedAt);
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(chat);

@@ -10,7 +10,9 @@ Accepted for implementation, 2026-11-12. The owner subsequently instructed: prep
 SPEC/PLAN and complete the Desktop port. [SPEC-144](../specs/SPEC-144-desktop-conversation-database.md)
 and [PLAN-137](../plans/PLAN-137-desktop-conversation-database.md) record that authorization,
 the implementation contracts and actual progress. This does not authorize a release or
-version bump. The live Desktop store has not switched yet.
+version bump. The implementation worktree now wires live startup to the database store;
+the installed Desktop has not been changed, and product consumers and full acceptance
+are still in progress.
 
 - The owner decided the order and why (D1 to D3 below).
 - The original P1 to P9 proposals below remain the design rationale. The execution scope

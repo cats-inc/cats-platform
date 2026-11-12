@@ -11,6 +11,9 @@ on:
       - 'desktop/host/processSupervisor.ts'
       - 'desktop/host/bootstrapPage.ts'
       - 'desktop/host/contracts.ts'
+      - 'desktop/host/packaging.ts'
+      - 'scripts/bundle-server.mjs'
+      - 'tests/state-worker-bundling.test.js'
       - 'tests/desktop-state-*.test.js'
       - 'tests/fixtures/desktop-state-*.mjs'
       - 'scripts/testing/*desktop-state*.mjs'
@@ -39,3 +42,5 @@ jobs:
         run: node scripts/testing/run-desktop-state-host.mjs
       - name: Startup, reset and host integration
         run: npm run test:file -- tests/cli-entrypoint.test.js tests/desktop-supervisor.test.js tests/desktop-bootstrap-timeout.test.js tests/platform-data-reset.test.js
+      - name: Bundled worker and staging integration
+        run: npm run test:file -- tests/state-worker-bundling.test.js tests/app-sdk-bundled-sidecar.test.js tests/desktop-packaging.test.js

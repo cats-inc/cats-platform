@@ -15,8 +15,14 @@ const CORE_ARRAYS = Object.entries(createDefaultCoreState())
 
 export class ProfileStorageError extends Error {
   readonly fatal = true;
-  constructor(readonly code: string, message: string) {
-    super(message); this.name = 'ProfileStorageError';
+  constructor(readonly code: string, message: string, diagnostic?: {
+    phase: 'lock' | 'opening' | 'recovering' | 'operation';
+    sourceCode: string;
+    sqliteResultCode?: number;
+  }) {
+    // A classified failure may retain only internally selected codes, never the
+    // original exception, which can contain stored JSON, SQL or private paths.
+    super(message, diagnostic ? { cause: diagnostic } : undefined); this.name = 'ProfileStorageError';
   }
 }
 

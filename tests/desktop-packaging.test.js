@@ -160,6 +160,10 @@ async function smokeStagedCatalog(root) {
 async function seedPlatformServerBundle(packageRoot, contents = 'export const layout = "bundle";') {
   await seedFile(join(packageRoot, 'build', 'server-bundle', 'index.js'), contents);
   await seedFile(join(packageRoot, 'build', 'server-bundle', 'index.js.map'), '{"version":3}');
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'stateMaintenanceWorker.js'), 'process.exit(0);');
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'stateMaintenanceWorker.js.map'), '{"version":3}');
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'stateMaintenanceNativeWorker.js'), 'process.exit(0);');
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'stateMaintenanceNativeWorker.js.map'), '{"version":3}');
 }
 
 async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = "bundle";') {

@@ -749,7 +749,9 @@ export function createTemporaryParticipantActor(
   };
 }
 
-export function createTemporaryParticipantActors(chat: ChatState): CoreActorRecord[] {
+export function createTemporaryParticipantActors(chat: {
+  channels: Pick<ChatChannelState, 'participantAssignments'>[];
+}): CoreActorRecord[] {
   const actorsById = new Map<string, CoreActorRecord>();
 
   for (const channel of chat.channels) {
@@ -837,7 +839,9 @@ export function createChatConversationParticipants(
   return participants;
 }
 
-export function createChatRootContainer(chat: ChatState): ContainerRecord {
+export function createChatRootContainer(chat: Pick<ChatState, 'globalOrchestrator' | 'parallelChatGroups'> & {
+  channels: Pick<ChatChannelState, 'id' | 'createdAt' | 'updatedAt'>[];
+}): ContainerRecord {
   const earliestCreatedAt = [...chat.channels]
     .map((channel) => channel.createdAt)
     .sort((left, right) => left.localeCompare(right))[0]

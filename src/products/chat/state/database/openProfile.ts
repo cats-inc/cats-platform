@@ -11,6 +11,7 @@ import { logicalDatabaseSnapshot } from './logicalExport.js';
 import { prepareLegacyImport, validateLegacyManifest } from './legacyImport.js';
 import { MetadataCommit, type StorageHooks } from './metadataCommit.js';
 import { createProfileLease, type ProfileLease } from './profileLease.js';
+import { prepareProfileSchemaUpgrade } from './schemaUpgrade.js';
 import {
   bytesDigest, databasePath, makeEnvelope, parseJsonRecord, ProfileStorageError,
   readOptionalFile, storageNameIdentity, type StorageEnvelope,
@@ -48,10 +49,11 @@ export async function openProfile(profile: string, hooks: StorageHooks): Promise
     }
     await migrate(profile, hooks);
   }
+  const upgradeAdmission = await prepareProfileSchemaUpgrade(profile, hooks);
   let database: StateDatabase | null = null;
   let releaseLease: ProfileLease | null = null;
   try {
-    database = openStateDatabase({ file, mode: 'writer' });
+    database = openStateDatabase({ file, mode: 'writer', upgradeAdmission });
     if (database.meta('profile_import_complete') !== '1') {
       throw new ProfileStorageError('incomplete_database', 'The database has no verified import marker; no state was reset.');
     }

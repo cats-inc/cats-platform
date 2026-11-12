@@ -7,9 +7,11 @@ import {
 
 export type StorageCheckpoint =
   | 'backup_complete' | 'import_verified' | 'database_published'
-  | 'database_committed' | 'metadata_published' | 'handoff_acknowledged' | 'lease_prepared';
+  | 'database_committed' | 'metadata_published' | 'handoff_acknowledged' | 'lease_prepared'
+  | 'schema_backup_complete' | 'schema_backup_preparing';
 
 export interface StorageHooks {
+  signal?: AbortSignal;
   /** Fault-injection/progress seam. Never passed through public request payloads. */
   checkpoint?(stage: StorageCheckpoint): void | Promise<void>;
   progress?(stage: string, completed?: number): void;
@@ -35,6 +37,21 @@ export class MetadataCommit {
   }
 
   async recover(): Promise<StorageEnvelope> {
+    const state = await this.inspect();
+    if (state.pending) {
+      if (state.currentDigest !== bytesDigest(state.text)) await writeDurableFile(this.profile, state.text);
+      if (bytesDigest((await readOptionalFile(this.profile)) ?? '') !== bytesDigest(state.text)) throw this.mismatch();
+      await this.hooks.checkpoint?.('metadata_published');
+      this.database.transaction(() => {
+        this.database.run('delete from metadata_handoff where singleton = 1 and revision = ?', state.envelope.storage.revision);
+      }, { durable: true });
+      await this.hooks.checkpoint?.('handoff_acknowledged');
+    }
+    return state.envelope;
+  }
+
+  /** Validate a recoverable pair without publishing/acknowledging any handoff. */
+  async inspect(): Promise<{ envelope: StorageEnvelope; text: string; pending: boolean; currentDigest: string | null }> {
     const pending = this.database.get('select revision, previous_digest, json from metadata_handoff where singleton = 1');
     if (pending) {
       const text = String(pending.json);
@@ -48,16 +65,17 @@ export class MetadataCommit {
         throw new ProfileStorageError('handoff_conflict',
           'The profile changed outside its committed operation. Preserve it and use state recovery.');
       }
-      if (digest !== target) await writeDurableFile(this.profile, text);
-      if (bytesDigest((await readOptionalFile(this.profile)) ?? '') !== target) throw this.mismatch();
-      await this.hooks.checkpoint?.('metadata_published');
-      this.database.transaction(() => {
-        this.database.run('delete from metadata_handoff where singleton = 1 and revision = ?', pending.revision!);
-      }, { durable: true });
-      await this.hooks.checkpoint?.('handoff_acknowledged');
-      return envelope;
+      return { envelope, text, pending: true, currentDigest: digest };
     }
-    return this.readCommitted();
+    const current = await readOptionalFile(this.profile);
+    if (current === null) {
+      throw new ProfileStorageError('missing_metadata',
+        'The database exists but its metadata is missing. Restore a complete state backup; no reset was performed.');
+    }
+    const text = current.toString('utf8');
+    const envelope = parseEnvelope(text, this.profile);
+    this.verify(envelope, text);
+    return { envelope, text, pending: false, currentDigest: bytesDigest(current) };
   }
 
   /** Read-only tools never replay the handoff or write metadata. A pending commit
@@ -68,15 +86,7 @@ export class MetadataCommit {
       throw new ProfileStorageError('recovery_pending',
         'A committed state handoff needs recovery. Start the matching Cats build before taking a complete backup.');
     }
-    const current = await readOptionalFile(this.profile);
-    if (current === null) {
-      throw new ProfileStorageError('missing_metadata',
-        'The database exists but its metadata is missing. Restore a complete state backup; no reset was performed.');
-    }
-    const text = current.toString('utf8');
-    const envelope = parseEnvelope(text, this.profile);
-    this.verify(envelope, text);
-    return envelope;
+    return (await this.inspect()).envelope;
   }
 
   private verify(envelope: StorageEnvelope, text: string): void {

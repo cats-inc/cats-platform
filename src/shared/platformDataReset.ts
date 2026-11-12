@@ -188,7 +188,7 @@ export async function removePlatformOwnedData(chatStatePath: string, options: {
   for (const entry of entries) {
     // Exact owned prefixes; backups contain the pre-upgrade conversation bytes.
     if (profileNames.some(base => nameIdentity(entry.name).startsWith(nameIdentity(`${base}.pre-state-db-`))
-      && /^[a-f0-9]{16}$/u.test(entry.name.slice(`${base}.pre-state-db-`.length))
+      && /^(?:schema-[1-9][0-9]*-)?[a-f0-9]{16}$/u.test(entry.name.slice(`${base}.pre-state-db-`.length))
       || nameIdentity(entry.name).startsWith(nameIdentity(`${base}.before-restore-`))
       && /^[a-f0-9-]{36}$/u.test(entry.name.slice(`${base}.before-restore-`.length)))
       || databaseNames.some(db => nameIdentity(entry.name).startsWith(nameIdentity(`${db}.importing-`))

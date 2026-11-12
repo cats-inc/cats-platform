@@ -1,6 +1,6 @@
 import { access, cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, meetsMinimumVersion, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
 import type { DesktopHostConfig } from './config.js';
@@ -69,6 +69,7 @@ interface DesktopStagedSidecarOutput {
   sourceEntryPath: string;
   sourceMapPath: string | null;
   sourceDirectoryPath: string | null;
+  supportFiles?: string[];
 }
 
 type DesktopHelperCatalogEntry = DesktopInstallerContract['providerSetup']['helperCatalog'][number];
@@ -486,13 +487,18 @@ async function resolveAppServerStageSource(
   if (layout === 'bundle') {
     const sourceEntryPath = join(config.packageRoot, 'build', 'server-bundle', 'index.js');
     const sourceMapPath = join(config.packageRoot, 'build', 'server-bundle', 'index.js.map');
+    const supportFiles = ['stateMaintenanceWorker.js', 'stateMaintenanceWorker.js.map',
+      'stateMaintenanceNativeWorker.js', 'stateMaintenanceNativeWorker.js.map']
+      .map(name => join(config.packageRoot, 'build', 'server-bundle', name));
     await ensureRequiredFile(sourceEntryPath);
     await ensureRequiredFile(sourceMapPath);
+    for (const file of supportFiles) await ensureRequiredFile(file);
     return {
       layout,
       sourceEntryPath,
       sourceMapPath,
       sourceDirectoryPath: null,
+      supportFiles,
     };
   }
 
@@ -549,6 +555,7 @@ async function stageSidecarOutput(
   if (output.sourceMapPath) {
     await copyFile(output.sourceMapPath, join(targetDirectory, 'index.js.map'));
   }
+  for (const file of output.supportFiles ?? []) await copyFile(file, join(targetDirectory, basename(file)));
 }
 
 function filterSetupAssetsForPlatforms<T extends { targetPlatforms: DesktopPackagingPlatform[] }>(
@@ -1433,6 +1440,9 @@ export async function stageDesktopPackagingOutputs(
         source: relative(outputRoot, appServerStageSource.sourceEntryPath),
         target: 'shared/build/server/index.js',
       },
+      ...(appServerStageSource.supportFiles ?? []).map(file => ({
+        source: relative(outputRoot, file), target: `shared/build/server/${basename(file)}`,
+      })),
       {
         source: relative(outputRoot, join(config.packageRoot, 'build', 'renderer', 'index.html')),
         target: 'shared/build/renderer/index.html',

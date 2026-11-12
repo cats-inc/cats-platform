@@ -144,6 +144,21 @@ Snapshot-shaped product APIs remain available for global operations during this 
 while conversation-specific reads/writes use the indexed adapter. They must not be cited
 as constant-time operations. Cold normalization and Core projection remain measurable costs.
 
+The implementation's schema 2 keeps a separate compact channel catalog for shared root,
+participant and memory projections. A scoped writer must not parse unrelated workflow JSON.
+It applies known projection-field deltas to existing Core records, retaining passive fields
+and unrelated active turns. Runtime dispatch views contain only their target conversation;
+global snapshot APIs keep their complete-state contract. Derived participant/orchestrator
+memory may commit alongside the target, while preferences, groups and arbitrary Core edits
+require the global operation.
+
+Schema-1 database admission creates a verified recoverable backup before transactional DDL,
+including exact JSON/receipt, installation/revision/digest binding and interrupted-upgrade
+recovery. Native check/VACUUM runs behind a nonblocking reaper so parent death can terminate
+SQLite even while its own event loop is blocked. Both worker entrypoints ship in split and
+bundled artifacts. Daily snapshot publication/retention and the offline command surface remain
+implementation tasks, not acceptance claims for this checkpoint.
+
 ## Dependencies and open validation
 
 - Attribution: Cats Bot `state-db-p1`; no Bot dependency or changes.

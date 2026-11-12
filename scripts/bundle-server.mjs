@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-export function bundleServer({
+export async function bundleServer({
   entryPoint = resolve(root, 'build', 'server', 'index.js'),
   outfile = resolve(root, 'build', 'server-bundle', 'index.js'),
 } = {}) {
-  return build({
+  const result = await build({
     entryPoints: [entryPoint],
     bundle: true,
     outfile,
@@ -21,6 +21,13 @@ export function bundleServer({
     // Keep the SDK's import.meta.url beside its shipped browser.js resource.
     external: ['#cats-app-package'],
   });
+  await Promise.all(['stateMaintenanceWorker.js', 'stateMaintenanceNativeWorker.js'].map(name => build({
+    entryPoints: [resolve(root, 'build/server/platform/persistence/state-db', name)],
+    bundle: true,
+    outfile: resolve(dirname(outfile), name),
+    platform: 'node', target: 'node22', format: 'esm', sourcemap: true, packages: 'external',
+  })));
+  return result;
 }
 
 if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
