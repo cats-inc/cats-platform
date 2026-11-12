@@ -174,7 +174,10 @@
       "assets/build/icon.png",
       "assets/tray-icon*.png",
       "LICENSE",
-      "package.json"
+      "package.json",
+      "!node_modules/sharp/**",
+      "!node_modules/@img/**",
+      "!node_modules/detect-libc/**"
     ],
     "extraResources": [
       {
@@ -317,6 +320,7 @@
         "!node_modules/@ngrok/ngrok-darwin-x64/**",
         "!node_modules/@ngrok/ngrok-darwin-arm64/**"
       ],
+      "x64ArchFiles": "Contents/Resources/app-sidecar/node_modules/@img/sharp-*darwin-*/**",
       "icon": "icon.icns",
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",

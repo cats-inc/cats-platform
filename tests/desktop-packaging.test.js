@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -787,6 +788,24 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     '!node_modules/@ngrok/ngrok-darwin-x64/**',
     '!node_modules/@ngrok/ngrok-darwin-arm64/**',
   ]);
+  // sharp ships only in the sidecar, with one single-arch native package per macOS architecture
+  // that is identical in both bundles, so the merge must keep those files as they are. Check the
+  // rule with the minimatch @electron/universal itself uses.
+  const universalRequire = createRequire(join(process.cwd(), 'node_modules/@electron/universal/dist/cjs/index.js'));
+  const { minimatch } = universalRequire('minimatch');
+  const coveredByX64ArchFiles = (file) => minimatch(file, packageJson.build.mac.x64ArchFiles, { matchBase: true });
+  for (const name of imageNativePackages(['macos'])) {
+    const binary = name.includes('libvips') ? 'libvips-cpp.8.17.3.dylib' : `${name.slice('@img/'.length)}.node`;
+    const file = `Contents/Resources/app-sidecar/node_modules/${name}/lib/${binary}`;
+    assert.equal(coveredByX64ArchFiles(file), true, file);
+  }
+  assert.equal(coveredByX64ArchFiles('Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework'), false);
+  assert.equal(coveredByX64ArchFiles('Contents/Resources/native/cats-voice-helper'), false);
+  // The Electron main process never loads sharp, so its packages stay out of app.asar on every OS;
+  // otherwise the host-arch natives npm installed would also break the macOS merge.
+  for (const pattern of ['!node_modules/sharp/**', '!node_modules/@img/**', '!node_modules/detect-libc/**']) {
+    assert.equal(packageJson.build.files.includes(pattern), true, pattern);
+  }
   assert.deepEqual(
     packageJson.build.linux.target,
     [{ target: 'deb', arch: ['x64', 'arm64'] }],
