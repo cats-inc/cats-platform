@@ -37,6 +37,14 @@ function targets(value: unknown, allowEndpoint = false): ProviderTarget[] {
       if (typeof entry.endpoint !== 'string') throw new Error('Endpoint must be a URL.');
       target.endpoint = entry.endpoint;
     }
+    if (allowEndpoint && entry.authToken !== undefined) {
+      if (entry.provider !== 'openclaw' || entry.backend !== 'agent'
+        || (entry.authToken !== null && (typeof entry.authToken !== 'string'
+          || !entry.authToken || entry.authToken.length > 4096 || /[\x00-\x20\x7f]/u.test(entry.authToken)))) {
+        throw new Error('Invalid Gateway token.');
+      }
+      target.authToken = entry.authToken as string | null;
+    }
     const key = targetKey(target);
     if (seen.has(key)) throw new Error('Duplicate provider target.');
     seen.add(key);
@@ -74,7 +82,7 @@ export class DesktopProviderManager {
 
   private async exclusive<T>(selected: ProviderTarget[], stage: string, run: () => Promise<T>): Promise<T> {
     if (this.operation) throw new Error('A provider operation is running. Wait for it to finish.');
-    this.operation = { targets: selected, stage };
+    this.operation = { targets: selected.map(({ provider, backend, instance }) => ({ provider, backend, instance })), stage };
     try { return await run(); } finally { this.operation = null; }
   }
 
@@ -86,6 +94,12 @@ export class DesktopProviderManager {
       const reload = input.reload === true;
       const runtime = await this.dependencies.request<ProviderManagerRuntime>('/setup-state');
       if (!reload) this.assertRevision(runtime, input.expectedRevision);
+      for (const target of desired) {
+        if (target.authToken === undefined) continue;
+        const connection = runtime.connections?.find((entry) => targetKey(entry) === targetKey(target));
+        if (typeof connection?.tokenEditable !== 'boolean') throw new Error('Update Cats Runtime to configure a Gateway token here.');
+        if (!connection.tokenEditable) throw new Error('Gateway authentication is managed outside this form.');
+      }
       await this.dependencies.request(`/setup-selection${reload ? '/reload' : ''}`, {
         ...body({ targets: desired, expectedRevision: input.expectedRevision }), method: reload ? 'POST' : 'PUT',
       });

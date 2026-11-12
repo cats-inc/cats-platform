@@ -4,6 +4,8 @@ export interface ProviderTarget {
   backend: 'cli' | 'api' | 'local' | 'agent';
   instance: string;
   endpoint?: string;
+  /** Write-only Gateway credential. Omit to preserve; null to remove. */
+  authToken?: string | null;
 }
 export interface ProviderSelection {
   state: 'missing' | 'invalid' | 'empty' | 'selected';
@@ -53,7 +55,8 @@ export interface ProviderManagerSnapshot {
     universe: Array<ProviderTarget & { familyLabel: string; binaryName: string;
       install?: { auth?: { hint?: string; docsUrl?: string }; install?: { docsUrl?: string } } | null }>;
     observations?: ProviderObservation[];
-    connections?: Array<ProviderTarget & { endpoint: string; editable: boolean; source?: string }>;
+    connections?: Array<ProviderTarget & { endpoint: string; editable: boolean; source?: string;
+      tokenConfigured?: boolean; tokenEditable?: boolean }>;
     state?: { status?: string; error?: string | null } | null;
   };
   helpers: ProviderSetupHelper[];
