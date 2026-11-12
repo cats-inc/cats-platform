@@ -13,6 +13,7 @@ import {
   toDesktopUpdateProgress,
   toDesktopUpdaterCheckResult,
 } from '../build/desktop/updaterAdapter.js';
+import { VersionedGithubProvider } from '../build/desktop/versionedGithubProvider.js';
 import {
   DesktopInstallHandoffTimeoutError,
   withDesktopInstallHandoff,
@@ -212,6 +213,9 @@ test('a preview resolves updates through the prerelease feed it publishes to', (
   // Unset on purpose: a channel makes the provider require it as a semver
   // prerelease component of the tag, and preview tags are plain versions.
   assert.equal(autoUpdater.channel, null);
+  assert.deepEqual(autoUpdater.feedUrl, {
+    provider: 'custom', owner: 'cats-inc', repo: 'cats-platform', updateProvider: VersionedGithubProvider,
+  });
   // The safety rails do not relax for a preview.
   assert.equal(autoUpdater.autoDownload, false);
   assert.equal(autoUpdater.autoInstallOnAppQuit, false);
@@ -390,15 +394,14 @@ test('a late event after settlement does not resolve the operation twice', async
   assert.equal(autoUpdater.listenerCount(), 0);
 });
 
-test('the compiled adapter never imports electron-updater at runtime', async () => {
+test('the compiled adapter never imports the native electron-updater entrypoint', async () => {
   const compiled = await readFile(
     join(process.cwd(), 'build', 'desktop', 'updaterAdapter.js'),
     'utf8',
   );
 
-  // The module only references electron-updater through a type-only import so
-  // it stays loadable in a plain node process. A value import would drag in
-  // electron and break every test that touches this file.
+  // Provider-only modules stay loadable in plain Node. The native package
+  // entrypoint would drag in Electron and break every test touching this file.
   assert.equal(/^\s*import .*['"]electron-updater['"]/mu.test(compiled), false);
   assert.equal(/require\(['"]electron-updater['"]\)/u.test(compiled), false);
   assert.equal(/^\s*import .*['"]electron['"]/mu.test(compiled), false);

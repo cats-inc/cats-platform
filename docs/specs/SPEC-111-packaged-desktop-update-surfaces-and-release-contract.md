@@ -693,6 +693,14 @@ fixture checks. Published assets are never replaced to add this feature retroact
    prereleases, so an updater configured for stable only can never find a
    preview's successor -- which would defeat the reason previews embed a
    descriptor at all.
+   Preview discovery accepts only plain `vX.Y.Z` tags and orders candidates by
+   version, not Atom feed position: that feed also contains bare development
+   tags. A candidate needs matching per-platform metadata with safe versioned
+   asset names, positive sizes, SHA-512 checksums and the platform's update
+   format. Missing/invalid metadata permits trying the next version; network,
+   authorization and service failures remain errors. No valid candidate must
+   not be reported as up to date. Native download, checksum, signature and
+   installation behavior, and official stable-feed selection, are retained.
 
 ### 10. Failure and Recovery
 

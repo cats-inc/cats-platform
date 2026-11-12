@@ -223,8 +223,8 @@ const ERROR_CODE_PATTERNS: ReadonlyArray<[DesktopUpdateErrorCode, RegExp]> = [
   ['checksum_mismatch', /sha512|sha256|checksum|integrity/iu],
   ['signature_rejected', /signature|publishername|not signed|authenticode/iu],
   ['download_cancelled', /cancel/iu],
-  ['unsupported_package', /unsupported|not supported|no published versions|dev-app-update/iu],
-  ['metadata_invalid', /latest\.yml|latest-mac\.yml|metadata|unable to parse|invalid yml/iu],
+  ['unsupported_package', /unsupported|not supported|no published versions|ERR_UPDATER_NO_PUBLISHED_VERSIONS|dev-app-update/iu],
+  ['metadata_invalid', /latest\.yml|latest-mac\.yml|metadata|unable to parse|invalid yml|ERR_UPDATER_(?:INVALID_UPDATE_INFO|INVALID_RELEASE_FEED|CHANNEL_FILE_NOT_FOUND|NO_FILES_PROVIDED|NO_CHECKSUM)/iu],
   ['provider_rejected', /http (4|5)\d\d|status code (4|5)\d\d|forbidden|not found|rate limit/iu],
 ];
 
