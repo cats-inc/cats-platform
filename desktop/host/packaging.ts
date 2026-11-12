@@ -194,7 +194,29 @@ async function collectPlatformKnowledgeAssets(packageRoot: string) {
 // Each entry must appear at cats-platform/node_modules/<name> AND in the staging
 // output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
 // be listed explicitly so packaging is deterministic.
-const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web'] as const;
+// sharp decodes and cleans every companion image; @img/colour and detect-libc are its runtime
+// dependencies (its semver is nested inside it).
+const APP_SIDECAR_RUNTIME_DEPENDENCIES = [
+  'js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web', 'sharp', '@img/colour', 'detect-libc',
+] as const;
+
+/**
+ * sharp's prebuilt native packages for every architecture an OS's installers cover. macOS ships one
+ * universal app, so it needs both; Windows and Linux stage one set per OS, as App ingress does, and
+ * sharp loads the package for `process.arch` at run time. macOS and Linux keep libvips in a
+ * separate package; Windows carries it inside the sharp package.
+ */
+export function imageNativePackages(platforms: readonly string[]): string[] {
+  const modules: Record<string, string[]> = {
+    windows: ['sharp-win32-x64', 'sharp-win32-arm64'],
+    macos: ['sharp-darwin-x64', 'sharp-darwin-arm64', 'sharp-libvips-darwin-x64', 'sharp-libvips-darwin-arm64'],
+    linux: ['sharp-linux-x64', 'sharp-linux-arm64', 'sharp-libvips-linux-x64', 'sharp-libvips-linux-arm64'],
+  };
+  return [...new Set(platforms.flatMap(platform => {
+    if (!modules[platform]) throw new Error('Unsupported image native platform.');
+    return modules[platform].map(name => `@img/${name}`);
+  }))];
+}
 export function appIngressNativePackages(platforms: readonly string[]): string[] {
   const modules: Record<string, string[]> = {
     windows: ['win32-x64-msvc', 'win32-arm64-msvc'],
@@ -221,6 +243,23 @@ async function appSidecarDependencies(packageRoot: string, platforms: readonly s
       if (!nativeFiles.some(file => file.endsWith('.node'))) throw new Error('Missing native binary.');
     } catch (error) {
       throw new Error(`Prepare App ingress native target ${name}@${required} before staging; use scripts/prepare-app-ingress.mjs.`, { cause: error });
+    }
+    dependencies.push(name);
+  }
+  const sharp = JSON.parse(await readFile(join(packageRoot, 'node_modules/sharp/package.json'), 'utf8')) as {
+    optionalDependencies?: Record<string, string>;
+  };
+  for (const name of imageNativePackages(platforms)) {
+    const required = sharp.optionalDependencies?.[name];
+    if (!required) throw new Error(`Unsupported sharp native target: ${name}`);
+    try {
+      const installed = JSON.parse(await readFile(join(packageRoot, 'node_modules', name, 'package.json'), 'utf8'));
+      if (installed.version !== required) throw new Error('Native module version mismatch.');
+      const files = await readdir(join(packageRoot, 'node_modules', name, 'lib'));
+      const expected = name.includes('libvips') ? (file: string) => file.includes('libvips') : (file: string) => file.endsWith('.node');
+      if (!files.some(expected)) throw new Error('Missing native binary.');
+    } catch (error) {
+      throw new Error(`Prepare image native target ${name}@${required} before staging; use scripts/prepare-app-ingress.mjs.`, { cause: error });
     }
     dependencies.push(name);
   }

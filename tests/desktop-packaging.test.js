@@ -33,6 +33,7 @@ import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
   appIngressNativePackages,
+  imageNativePackages,
 } from '../build/desktop/packaging.js';
 
 async function seedFile(path, contents = '') {
@@ -176,17 +177,24 @@ async function seedAppSidecarRuntimeDependencies(packageRoot) {
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
   const natives = appIngressNativePackages(['windows', 'macos', 'linux']);
-  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web', ...natives]) {
+  const images = imageNativePackages(['windows', 'macos', 'linux']);
+  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web',
+    'sharp', '@img/colour', 'detect-libc', ...natives, ...images]) {
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'package.json'),
       JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js',
-        ...(dependency === '@ngrok/ngrok' ? { optionalDependencies: Object.fromEntries(natives.map(name => [name, '0.0.0-test'])) } : {}) }, null, 2),
+        ...(dependency === '@ngrok/ngrok' ? { optionalDependencies: Object.fromEntries(natives.map(name => [name, '0.0.0-test'])) } : {}),
+        ...(dependency === 'sharp' ? { optionalDependencies: Object.fromEntries(images.map(name => [name, '0.0.0-test'])) } : {}) }, null, 2),
     );
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'index.js'),
       'module.exports = {};\n',
     );
     if (natives.includes(dependency)) await seedFile(join(packageRoot, 'node_modules', dependency, 'fixture.node'));
+    if (images.includes(dependency)) {
+      await seedFile(join(packageRoot, 'node_modules', dependency, 'lib',
+        dependency.includes('libvips') ? 'libvips-fixture.so' : 'fixture.node'));
+    }
   }
 }
 
@@ -1484,6 +1492,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'js-yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'argparse', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'fflate', 'package.json'));
+  // Companion images: sharp, its runtime dependencies and the natives for each staged OS.
+  for (const dependency of ['sharp', '@img/colour', 'detect-libc', ...imageNativePackages(plan.targets.map((target) => target.platform))]) {
+    await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', dependency, 'package.json'));
+  }
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'));

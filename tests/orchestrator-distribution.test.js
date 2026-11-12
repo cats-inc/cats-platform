@@ -69,7 +69,7 @@ async function packedPlatform(root) {
   await runFile('tar', ['-xzf', tarball, '-C', extracted], { windowsHide: true, timeout: 30_000 });
   const packageRoot = join(extracted, 'package');
   // Copy already installed production dependencies; no npm install or network access.
-  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web']) {
+  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web', 'sharp', '@img/colour', 'detect-libc']) {
     await cp(join(repoRoot, 'node_modules', dependency), join(packageRoot, 'node_modules', dependency), { recursive: true });
   }
   return packageRoot;
@@ -105,7 +105,7 @@ async function runtimePackagingFixture(root) {
 
 async function stageDesktop(packageRoot, root, layout) {
   const { resolveDesktopHostConfig } = await import(pathToFileURL(join(packageRoot, 'build/desktop/config.js')).href);
-  const { stageDesktopPackagingOutputs, appIngressNativePackages } = await import(pathToFileURL(join(packageRoot, 'build/desktop/packaging.js')).href);
+  const { stageDesktopPackagingOutputs, appIngressNativePackages, imageNativePackages } = await import(pathToFileURL(join(packageRoot, 'build/desktop/packaging.js')).href);
   // This knowledge-distribution fixture stages Windows targets on every CI OS.
   // Fulfill native asset inventory explicitly; it does not execute the tunnel.
   const ngrok = JSON.parse(await readFile(join(packageRoot, 'node_modules/@ngrok/ngrok/package.json'), 'utf8'));
@@ -114,6 +114,13 @@ async function stageDesktop(packageRoot, root, layout) {
     assert.ok(version, `Missing ngrok native target: ${name}`);
     await seedFile(join(packageRoot, 'node_modules', name, 'package.json'), JSON.stringify({ name, version }));
     await seedFile(join(packageRoot, 'node_modules', name, 'fixture.node'), 'knowledge-distribution fixture; not executable');
+  }
+  const sharp = JSON.parse(await readFile(join(packageRoot, 'node_modules/sharp/package.json'), 'utf8'));
+  for (const name of imageNativePackages(['windows'])) {
+    const version = sharp.optionalDependencies?.[name];
+    assert.ok(version, `Missing sharp native target: ${name}`);
+    await seedFile(join(packageRoot, 'node_modules', name, 'package.json'), JSON.stringify({ name, version }));
+    await seedFile(join(packageRoot, 'node_modules', name, 'lib', 'fixture.node'), 'knowledge-distribution fixture; not executable');
   }
   // Knowledge delivery needs only the renderer staging contract, not a Vite
   // build. Always replace extracted assets so local build output cannot affect

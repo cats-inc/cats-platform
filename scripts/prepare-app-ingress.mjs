@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Prepare exact optional native dependencies for every architecture in a selected Desktop stage.
+// Prepare exact optional native dependencies for every architecture in a selected Desktop stage:
+// App ingress (ngrok) and companion image processing (sharp).
 // Usage: node scripts/prepare-app-ingress.mjs --platform <windows|macos|linux|all>
 import { readFile, mkdir, cp } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { appIngressNativePackages } from '../build/desktop/packaging.js';
+import { appIngressNativePackages, imageNativePackages } from '../build/desktop/packaging.js';
 import { resolveCommandInvocation } from './build-desktop-installer.mjs';
 
 const args = process.argv.slice(2);
@@ -15,13 +16,19 @@ if (args.includes('--help')) {
   if (args.length !== 2 || args[0] !== '--platform') throw new Error('Select a Desktop platform.');
   const platforms = args[1] === 'all' ? ['windows', 'macos', 'linux'] : [args[1]];
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const pkg = JSON.parse(await readFile(new URL('../node_modules/@ngrok/ngrok/package.json', import.meta.url), 'utf8'));
-  const names = appIngressNativePackages(platforms);
-  const selected = names.map(name => {
-    const version = pkg.optionalDependencies?.[name];
-    if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new Error('Expected an exact native dependency version.');
-    return `${name}@${version}`;
-  });
+  const exact = async (owner, names) => {
+    const pkg = JSON.parse(await readFile(new URL(`../node_modules/${owner}/package.json`, import.meta.url), 'utf8'));
+    return names.map(name => {
+      const version = pkg.optionalDependencies?.[name];
+      if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new Error('Expected an exact native dependency version.');
+      return `${name}@${version}`;
+    });
+  };
+  const names = [...appIngressNativePackages(platforms), ...imageNativePackages(platforms)];
+  const selected = [
+    ...await exact('@ngrok/ngrok', appIngressNativePackages(platforms)),
+    ...await exact('sharp', imageNativePackages(platforms)),
+  ];
   // --force permits foreign CPU/OS packages for cross builds. Lifecycle scripts remain disabled.
   // Use an isolated prefix so npm cannot prune or upgrade the build's locked dependencies.
   // npm verifies registry integrity; neither the source manifest nor its lockfile is rewritten.
@@ -33,7 +40,7 @@ if (args.includes('--help')) {
     const child = spawn(invocation.command, invocation.args,
       { cwd: root, stdio: 'inherit', shell: false, windowsHide: true });
     child.once('error', reject);
-    child.once('exit', code => code === 0 ? resolve() : reject(new Error('Native ingress preparation failed.')));
+    child.once('exit', code => code === 0 ? resolve() : reject(new Error('Native dependency preparation failed.')));
   });
   for (const name of names) {
     await cp(path.join(prefix, 'node_modules', name), path.join(root, 'node_modules', name), { recursive: true, force: true });
