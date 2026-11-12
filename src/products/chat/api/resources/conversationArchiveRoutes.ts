@@ -1,16 +1,13 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
-import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { assertWritableConversation } from '../scopedConversationState.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 import { ConversationArchiveError } from '../../state/database/archiveJobs.js';
+import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 
 export async function assertChannelWritable(context: ChatApiRouteContext, channelId: string): Promise<void> {
-  const store = context.dependencies.chatStore;
-  const channel = store.readChannelHeader ? await store.readChannelHeader(channelId)
-    : (await store.read()).channels.find(channel => channel.id === channelId);
-  if (!channel) throw new ChatApiError(404, 'channel_not_found', 'The selected conversation is unavailable.');
-  assertConversationWritable(channel);
+  await assertWritableConversation(context.dependencies.chatStore, channelId);
 }
 
 /** The platform's ordinary product authentication/CSRF gate owns admission. */
@@ -39,6 +36,7 @@ export async function routeConversationArchive(context: ChatApiRouteContext): Pr
     // A durable handoff may have committed even when the requesting transport
     // disappears. Other subscriptions must reconcile after every terminal attempt.
     if (attempted) {
+      notifyStreamTargetChanged(channelId);
       publishRoomMutation(context.dependencies.eventHub, channelId, 'updated');
       context.dependencies.eventHub?.emit({ kind: 'recents_changed', channelId, timestamp: new Date().toISOString() });
     }

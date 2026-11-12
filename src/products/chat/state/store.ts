@@ -85,6 +85,8 @@ export interface ChatStore extends CoreStore {
   withDataReset?<T>(operation: () => Promise<T>): Promise<T>;
   /** A dispatch-local view: metadata plus only the requested channel's transcript. */
   readChannelState?(id: string): Promise<ChatState>;
+  /** One consistent target set. Metadata-only views must never reach a snapshot writer. */
+  readChannelStates?(ids: readonly string[], options?: { metadataOnly?: boolean }): Promise<ChatState>;
   readChannelHeader?(id: string): Promise<Omit<ChatChannelState, 'messages'> | null>;
   readMessagePage?(id: string, limit?: number, before?: string): Promise<MessagePage>;
   searchMessages?(query: string, options?: MessageSearchOptions): Promise<MessageSearchHit[]>;

@@ -248,10 +248,20 @@ export class DatabaseChatStore implements ChatStore {
   }
 
   async readChannelState(id: string): Promise<ChatState> {
+    return this.readChannelStates([id]);
+  }
+
+  async readChannelStates(ids: readonly string[], options: { metadataOnly?: boolean } = {}): Promise<ChatState> {
     return this.run(async (session, envelope) => {
-      const channel = session.conversations.channel(id);
+      const selected = [...new Set(ids)].map(id => ({ id, position: session.conversations.position(id) }))
+        .filter((entry): entry is { id: string; position: number } => entry.position !== null)
+        .sort((left, right) => left.position - right.position);
+      const channels = selected.map(({ id }) => {
+        if (!options.metadataOnly) return session.conversations.channel(id)!;
+        return { ...session.conversations.header(id)!, messages: [] };
+      });
       return { ...structuredClone(envelope.chat), parallelChatGroups: session.conversations.groups(),
-        channels: channel ? [channel] : [] };
+        channels };
     });
   }
 

@@ -20,6 +20,7 @@ import {
 } from '../../state/model/index.js';
 import { resolveTranscriptOrCanonicalChatMessage } from '../../state/chatCoreInterop.js';
 import { assertConversationWritable } from '../../shared/conversationArchive.js';
+import { readConversationCatalog, readConversationMetadata } from '../scopedConversationState.js';
 import type {
   CancelParallelChatGroupInput,
   RelayParallelChatMessageInput,
@@ -74,7 +75,7 @@ async function handleSendParallelChatGroupMessage(
   try {
     const body = await readJsonBody<SendParallelChatMessageInput>(context.request);
 
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationMetadata(context.dependencies.chatStore, []);
     const group = requireParallelChatGroup(state, groupId);
     if (!group.memberChannelIds.includes(body.activeChannelId)) {
       sendRestError(
@@ -162,7 +163,7 @@ async function handleCancelParallelChatGroup(
     const body = await readJsonBody<CancelParallelChatGroupInput>(context.request);
     const now = nowFrom(context.dependencies);
     const nowIso = now.toISOString();
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationCatalog(context.dependencies.chatStore);
     const group = requireParallelChatGroup(state, groupId);
     if (!group.memberChannelIds.includes(body.activeChannelId)) {
       sendRestError(

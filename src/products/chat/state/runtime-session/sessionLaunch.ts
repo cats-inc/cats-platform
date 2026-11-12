@@ -170,6 +170,7 @@ export async function startAttachedTargetSession(input: {
     ? { ...channelSessionPolicy, spawnCwd: replacementSpawnCwd }
     : channelSessionPolicy;
   let createdExecutionTarget: RuntimeSessionExecutionTarget | null = null;
+  let createdSessionId: string | null = null;
   const sessionLifecycleMetadata: TargetSessionLifecycleMetadata = {
     targetStateId,
     laneId,
@@ -214,6 +215,7 @@ export async function startAttachedTargetSession(input: {
       taskExecutionContext,
       runtimeEnvelope,
     });
+    createdSessionId = createdTargetSession.session.id;
     createdExecutionTarget = createdTargetSession.executionTarget;
     nextState = persistCreatedTargetExecutionTarget({
       state: nextState,
@@ -257,6 +259,12 @@ export async function startAttachedTargetSession(input: {
       taskExecutionContext,
     };
   } catch (error) {
+    // This new session has not been returned to a store writer. In particular,
+    // attachment setup can fail before persistStartedTargetSession sees its ID.
+    if (createdSessionId) {
+      try { await runtimeClient.closeSession(createdSessionId); }
+      catch { process.stderr.write('[cats-channel-session] failed to close a session after setup failure\n'); }
+    }
     // A saved choice the catalog no longer offers is the user's to replace; say
     // what is gone instead of the supervision boundary's rejection prefix.
     const unmappableSelection = error instanceof RuntimeSupervisionRejectedError

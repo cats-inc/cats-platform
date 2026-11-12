@@ -44,6 +44,7 @@ import {
 } from './channelActivation.js';
 import { recordCompanionOwnerPresence } from '../../companion/life/presence.js';
 import { assertChannelWritable } from './conversationArchiveRoutes.js';
+import { readConversationCatalog, readConversationMetadata, readConversationState } from '../scopedConversationState.js';
 
 function buildStreamSpeakerPayload(input: {
   containerId?: string | null;
@@ -126,11 +127,13 @@ async function readChannelReadyStreamSnapshot(
   hasActiveWorkflowTurn: boolean;
   concurrentBarrierReleased: boolean;
   signalVersion: number;
+  archived: boolean;
+  canonical: ReturnType<typeof resolveChannelLifecycleCanonicalMetadata>;
 }> {
   const signalVersion = readStreamTargetSignalVersion(channelId);
-  const state = await context.dependencies.chatStore.read();
+  const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
   const channel = requireChannel(state, channelId);
-  const hasActiveWorkflowTurn = hasChannelActiveWorkflowTurn(channel);
+  const hasActiveWorkflowTurn = channel.status !== 'archived' && hasChannelActiveWorkflowTurn(channel);
   const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
   const activeConcurrentTargets = activeTurn?.workflowShape === 'concurrent'
     ? activeTurn.targetStatuses.filter((target) =>
@@ -151,6 +154,8 @@ async function readChannelReadyStreamSnapshot(
       activeConcurrentTargets.length <= 1
       || activeConcurrentTargets.every((target) => readyTargetStateIds.has(target.id)),
     signalVersion,
+    archived: channel.status === 'archived',
+    canonical: resolveChannelLifecycleCanonicalMetadata(state, channelId),
   };
 }
 
@@ -170,8 +175,9 @@ async function streamChannelTarget(input: {
     return;
   }
 
-  const streamState = await context.dependencies.chatStore.read();
+  const streamState = await readConversationMetadata(context.dependencies.chatStore, channelId);
   const streamChannel = requireChannel(streamState, channelId);
+  if (streamChannel.status === 'archived') return;
   const activeTurn = streamChannel.roomRouting?.workflow?.activeTurn ?? null;
   const lifecycleCanonicalMetadata = resolveChannelLifecycleCanonicalMetadata(streamState, channelId);
   const {
@@ -351,7 +357,7 @@ async function handleRestCancelChannel(
     requireValidChatScopeId(chatScopeId);
     const now = nowFrom(context.dependencies);
     const nowIso = now.toISOString();
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
     const channel = requireChannel(state, channelId);
     const shouldRequestCancellation = hasActiveChannelTurn(channel);
 
@@ -392,7 +398,7 @@ async function handleRestDeactivateChannel(
     await context.dependencies.mutationGate.run(channelId, async () => {
       const deactivation = await deactivateChannelLocked(context.dependencies, channelId);
       await recordCompanionOwnerPresence({
-        state: await context.dependencies.chatStore.read(),
+        state: await readConversationCatalog(context.dependencies.chatStore),
         channelId,
         presence: 'sleeping',
         changed: deactivation.closedSessionCount > 0,
@@ -425,7 +431,7 @@ async function handleRestActivateChannel(
       const activation = await activateChannelLocked(context.dependencies, channelId);
       const now = new Date(activation.startedAt);
       await recordCompanionOwnerPresence({
-        state: await context.dependencies.chatStore.read(),
+        state: await readConversationCatalog(context.dependencies.chatStore),
         channelId,
         presence: 'awake',
         changed: !activation.leadWasReady
@@ -477,7 +483,7 @@ async function handleRestStreamChannel(
     sseHeadersSent = true;
 
     if (!streamTarget?.sessionId) {
-      const settledState = await context.dependencies.chatStore.read();
+      const settledState = await readConversationMetadata(context.dependencies.chatStore, channelId);
       const lifecycleCanonicalMetadata = resolveChannelLifecycleCanonicalMetadata(
         settledState,
         channelId,
@@ -605,6 +611,12 @@ async function handleRestStreamChannel(
 
     while (!abortController.signal.aborted && !context.response.writableEnded) {
       const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
+      if (snapshot.archived) {
+        abortController.abort();
+        writeSseEvent(context, 'session_closed', { type: 'session_closed',
+          ...buildStreamSpeakerPayload({ ...snapshot.canonical, ...streamTarget }) });
+        break;
+      }
       attachReadyTargets(snapshot.readyTargets, snapshot.signalVersion);
       if (snapshot.concurrentBarrierReleased && !concurrentBarrierReleased) {
         concurrentBarrierRequiredAttachKeys = snapshot.readyTargets
@@ -673,7 +685,7 @@ async function handleRestGetExport(
     requireValidChatScopeId(chatScopeId);
     sendChannelExport(
       context,
-      await context.dependencies.chatStore.read(),
+      await readConversationState(context.dependencies.chatStore, channelId),
       channelId,
     );
   } catch (error) {

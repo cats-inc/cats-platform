@@ -1,6 +1,8 @@
 import { publishRoomMutation } from '../transportEventPublisher.js';
 import type { ChatState } from '../contracts.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
+import { readConversationMetadata, readConversationsState } from '../scopedConversationState.js';
+import { ChatApiError } from '../routeErrors.js';
 
 export function requireParallelChatGroup(
   state: ChatState,
@@ -65,15 +67,18 @@ export async function withLockedParallelChatGroup<T>(
     group: ChatState['parallelChatGroups'][number],
   ) => Promise<T>,
 ): Promise<T> {
-  const state = await context.dependencies.chatStore.read();
-  const group = requireParallelChatGroup(state, groupId);
-
-  return runLockedChannels(
-    context,
-    group.memberChannelIds,
-    async () => {
-      const lockedState = await context.dependencies.chatStore.read();
-      return operation(lockedState, requireParallelChatGroup(lockedState, groupId));
-    },
-  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const metadata = await readConversationMetadata(context.dependencies.chatStore, []);
+    const ids = requireParallelChatGroup(metadata, groupId).memberChannelIds;
+    const result = await runLockedChannels(context, ids, async () => {
+      const state = await readConversationsState(context.dependencies.chatStore, ids);
+      const group = requireParallelChatGroup(state, groupId);
+      const locked = new Set(ids);
+      if (locked.size !== new Set(group.memberChannelIds).size
+        || group.memberChannelIds.some(id => !locked.has(id))) return { retry: true as const };
+      return { retry: false as const, value: await operation(state, group) };
+    });
+    if (!result.retry) return result.value;
+  }
+  throw new ChatApiError(409, 'parallel_group_changed', 'The parallel conversation changed. Reload and try again.');
 }

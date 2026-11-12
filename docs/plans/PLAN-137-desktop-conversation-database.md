@@ -66,8 +66,11 @@ at tag `state-db-p1`; do not take current Bot main, which intentionally reverted
   Runtime dispatch writers and REST send/retry, rename, coordinator, participant and product
   scope changes use target-only state. Metadata list/scope/Project readers and transport
   fanout avoid unrelated history. Prepared owner participant changes have independent
-  field-conflict admission and safe new-session cleanup. Session/control and multi-member
-  consumers remain to be finished/audited; Core/global projections retain their explicit cost.
+  field-conflict admission and safe new-session cleanup. Session activation/sleep, streams,
+  cancellation polls, attachment reads/uploads and export now use target state or metadata.
+  Parallel audience capture releases/reacquires gates on membership changes. Final
+  multi-member mutations remain to be finished/audited; Core/global projections retain their
+  explicit cost.
 - [ ] Verified compressed JSONL archive with interrupted-operation recovery/readback.
   Codec foundation retains raw records, group/Core context, member/whole/logical digests and
   bounded cold paging. Schema-4 catalog/content revisions, full logical hydration/write
@@ -179,6 +182,9 @@ No fixture touches the user's running profile. Reuse checks while their inputs r
 | 2026-11-13 | New real SQLite/HTTP cases cover malformed sibling messages with global read/write forbidden, same/trim-equal member rename and atomic group metadata refusal, cat add/retarget/remove/reactivate, temporary removal with concurrent append/edit, uncommitted-session cleanup, recovery after durable commit without closing an attached session, attachment-sync failure before lease publication, actual eligible continuation dispatch and cold broadcast/relay/upload/participant refusal before Runtime or workspace creation. Independent read-only reviews closed membership-loss, idempotent rename, pre-lease session cleanup and raw-store continuation findings; no blocking P1/P2 remains in this slice. Session/control and multi-member scoping, full live acceptance, measurements/million-entry checks and hosted three-OS CI remain open. |
 | 2026-11-13 | Electron execution evidence: two direct PowerShell invocations returned zero with empty output files; neither was accepted as a test pass. Read-only process queries found no matching child. A runtime probe identified Electron 41.2.0 / Node 24.14.0; a Node `spawn` wrapper then explicitly awaited the actual Electron child and retained the complete **61/61** summary above. This does not explain or close the earlier independent multi-process startup failure. |
 
+| 2026-11-13 | Session/control checkpoint: final server build and fixture typecheck passed. The final affected scoped API/stream/cancel/session-start/signal matrix passed **38/38 Node**; rebuilt session lifecycle/provider rotation/Runtime contract bundles passed **37/37 Node**. The expanded scoped store/message/archive/session/control matrix passed **67/67 actual Electron 41.2.0 / Node 24.14.0**, zero skipped, with the Node wrapper awaiting the child and retaining its complete summary. Counts overlap prior checkpoints and are not additive. |
+| 2026-11-13 | New real SQLite/HTTP cases cover body-free target sets, healthy-target activation/attachments/stream/cancel/export/sleep with malformed siblings and global reads/writes forbidden, damaged cold evidence with header-only read-only refusal and retained attachment access, audience recapture under changed gates, activation publication racing an independent store's archive, durable-commit recovery retaining an attached session, setup failure before lease publication, and an open idle Runtime stream ending after another store archives without an event-hub signal. Independent read-only reviews closed pre-lease session leaks and cross-writer stream observation findings, with no remaining P1/P2 in this delta. These checks use separate store instances in one test process; they do not replace multi-process or live-provider acceptance. Final multi-member writes, remaining consumer audit, measurements/million-entry checks and hosted three-OS CI remain open. |
+
 *Created: 2026-11-12. Last updated: 2026-11-13.*
 
 ## Next integration checkpoint
@@ -189,7 +195,7 @@ owner's actual profile. Keep the worktree and continue product consumers, mainte
 host packaging and acceptance. The ordinary startup deadline is 75 seconds; the first validated
 state progress event extends it once to ten minutes, and subsequent events cannot renew it.
 
-Next work: finish session/control and multi-member scoped consumers, isolated
+Next work: finish multi-member scoped mutations and the remaining consumer audit, isolated
 live/active-parallel/group and cross-product paging/search acceptance, and the
 still-unexplained Electron multi-process startup failure (retain the
 new safe diagnostic evidence); then post-port

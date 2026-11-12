@@ -35,12 +35,14 @@ export function awaitNextStreamTarget(
 
   return new Promise<void>((resolve) => {
     let settled = false;
+    let poll: ReturnType<typeof setTimeout> | undefined;
 
     function settle(): void {
       if (settled) {
         return;
       }
       settled = true;
+      if (poll) clearTimeout(poll);
       signal.removeEventListener('abort', onAbort);
 
       const waiters = channelWaiters.get(channelId);
@@ -75,5 +77,7 @@ export function awaitNextStreamTarget(
     }
 
     signal.addEventListener('abort', onAbort, { once: true });
+    // Another profile process can change a target without this process's event hub.
+    poll = setTimeout(settle, 1000);
   });
 }

@@ -10,11 +10,13 @@ import { DatabaseChatStore } from '../build/server/products/chat/state/databaseS
 import { normalizeImportedChatSnapshot } from '../build/server/products/chat/state/store.js';
 import { openStateDatabase } from '../build/server/platform/persistence/state-db/stateDatabase.js';
 import { databasePath } from '../build/server/products/chat/state/database/profileFormat.js';
+import { archiveDirectory } from '../build/server/products/chat/state/database/archiveAssets.js';
 import { createChannel, removeChannelParticipant, updateChannelParticipant } from '../build/server/products/chat/state/model/index.js';
 import { mergePreparedParticipantMutation, updateConversationState } from '../build/server/products/chat/api/scopedConversationState.js';
 import { maybeAutoResumeRecoveredCatContinuation } from '../build/server/products/chat/api/routeContinuationRecovery.js';
 import { buildWorkflowContinuationReplayRequest, readWorkflowContinuationReplay } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 import { createWorkflowEvent, createWorkflowTurn } from '../build/server/products/chat/state/room-routing/workflow.js';
+import { withLockedParallelChatGroup } from '../build/server/products/chat/api/resources/parallelChatGroupSupport.js';
 import { snapshot } from './fixtures/desktop-state-snapshot.mjs';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
@@ -63,7 +65,7 @@ async function fixture(t, { grouped = false, temporary = false, runtimeSessions 
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   await server.startupRecovery; await server.appHostingReady(); runtimeCalls.length = 0;
   const url = `http://127.0.0.1:${server.address().port}`;
-  const request = (route, method = 'GET', body) => fetch(`${url}${route}`, { method,
+  const request = (route, method = 'GET', body, signal) => fetch(`${url}${route}`, { method, signal,
     headers: { cookie: auth.cookie, 'x-cats-csrf-token': auth.csrfToken, 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   const [id, other] = source.chat.channels.map(channel => channel.id);
@@ -285,4 +287,201 @@ test('cold broadcast, relay, attachment and participant mutations refuse before 
   assert.deepEqual(f.runtimeCalls, []);
   assert.deepEqual((await f.store.readChannel(f.id)).messages, before.messages);
   for (const folder of ['cold-workspace', 'hot-workspace']) await assert.rejects(access(path.join(f.root, folder)), { code: 'ENOENT' });
+});
+
+test('target metadata sets preserve database order and never decode any message body', async t => {
+  const f = await fixture(t); f.noGlobal();
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  try { db.run('update messages set json = ?', '{deliberately invalid body'); } finally { db.close(); }
+  const selected = await f.store.readChannelStates([f.other, f.id, f.other, 'missing'], { metadataOnly: true });
+  assert.deepEqual(selected.channels.map(channel => channel.id), [f.id, f.other]);
+  assert.ok(selected.channels.every(channel => channel.messages.length === 0));
+  assert.equal((await f.store.readChannelStates([], { metadataOnly: true })).channels.length, 0);
+  assert.equal((await f.store.readChannelStates(['missing'], { metadataOnly: true })).channels.length, 0);
+  await assert.rejects(f.store.readChannelState(f.id), { code: 'invalid_database_record' });
+});
+
+test('activation, attachments, stream, cancel, export and sleep use only the healthy target', { timeout: 20_000 }, async t => {
+  const f = await fixture(t, { runtimeSessions: true });
+  const db = openStateDatabase({ file: databasePath(f.config.chatStatePath), mode: 'writer' });
+  try { db.run('update messages set json = ? where channel_id = ?', '{invalid sibling', f.other); } finally { db.close(); }
+  f.runtimeClient.streamSession = async (_id, emit) => {
+    f.runtimeCalls.push('stream');
+    await emit({ event: 'text', data: { text: 'Synthetic streamed text' } });
+    await emit({ event: 'result', data: { segments: [{ kind: 'text', text: 'Synthetic streamed text' }] } });
+  };
+  f.runtimeClient.cancelSession = async () => { f.runtimeCalls.push('cancel'); };
+  f.noGlobal();
+  const activated = await ok(await f.request(`/api/channels/${f.id}/activations`, 'POST'));
+  assert.ok(activated.activation.results.some(result => result.status === 'started'));
+  const files = [{ name: 'fixture.txt', data: Buffer.from('Metadata-only upload').toString('base64') }];
+  await ok(await f.request(`/api/channels/${f.id}/attachments`, 'POST', { files }));
+  const attachment = await f.request(`/api/channels/${f.id}/attachments/fixture.txt`);
+  assert.equal(attachment.status, 200); assert.equal(await attachment.text(), 'Metadata-only upload');
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await f.request(`/api/channels/${f.id}/stream`, 'GET', undefined, controller.signal);
+    assert.equal(response.status, 200); assert.match(await response.text(), /Synthetic streamed text/);
+  } finally { clearTimeout(timer); controller.abort(); }
+  const cancelled = await ok(await f.request(`/api/channels/${f.id}/cancel`, 'POST'));
+  assert.equal(cancelled.cancellation.cancelledSessionCount, 1);
+  const exported = await ok(await f.request(`/api/channels/${f.id}/exports/latest`));
+  assert.ok(exported.channel.messages.some(message => message.id === `${f.id}-message`));
+  const stopped = await ok(await f.request(`/api/channels/${f.id}/deactivate`, 'POST'));
+  assert.equal(stopped.deactivation.closedSessionCount, 1);
+  assert.ok(f.runtimeCalls.includes('stream')); assert.ok(f.runtimeCalls.includes('cancel'));
+  assert.ok(f.runtimeCalls.some(call => Array.isArray(call) && call[0] === 'close'));
+});
+
+test('corrupt cold evidence cannot force transcript reads for readonly admission, attachments or a closed stream', { timeout: 20_000 }, async t => {
+  const f = await fixture(t);
+  const workspace = path.join(f.root, 'retained-workspace'); await mkdir(path.join(workspace, '.cats-attachments'), { recursive: true });
+  await writeFile(path.join(workspace, '.cats-attachments', 'retained.txt'), 'Retained synthetic file');
+  await f.store.updateChannel(f.id, channel => {
+    channel.repoPath = workspace;
+    channel.catAssignments[0].execution.lease = { ...channel.catAssignments[0].execution.lease,
+      sessionId: 'retained-idle-session', status: 'ready', cwd: workspace };
+    return { channel };
+  });
+  const archived = await f.store.archiveConversation(f.id, 'archive');
+  const assets = archiveDirectory(databasePath(f.config.chatStatePath));
+  const manifest = JSON.parse(await readFile(path.join(assets, `${archived.archiveId}.manifest.json`), 'utf8'));
+  const payload = path.join(assets, manifest.file), bytes = await readFile(payload);
+  await writeFile(payload, bytes.subarray(0, bytes.length - 1));
+  f.noGlobal();
+  f.store.readChannelState = async () => { throw Error('Readonly cold admission must not hydrate history'); };
+  const metadataRead = f.store.readChannelStates.bind(f.store);
+  f.store.readChannelStates = (ids, options) => {
+    assert.equal(options?.metadataOnly, true); return metadataRead(ids, options);
+  };
+  const channel = await f.store.readChannelHeader(f.id), cat = channel.catAssignments[0];
+  for (const [route, method, body] of [
+    [`/api/channels/${f.id}/activations`, 'POST', undefined],
+    [`/api/channels/${f.id}`, 'PATCH', { coordinatorParticipantId: cat.participantId }],
+    [`/api/channels/${f.id}/participants/${cat.participantId}`, 'PATCH', { model: 'denied' }],
+    [`/api/channels/${f.id}/participants/${cat.participantId}`, 'DELETE', undefined],
+    [`/api/channels/${f.id}/cats/${cat.catId}`, 'PUT', {}],
+    [`/api/channels/${f.id}/cats/${cat.catId}`, 'DELETE', undefined],
+    [`/api/channels/${f.id}/attachments`, 'POST', { files: [{ name: 'denied', data: 'eA==' }] }],
+  ]) {
+    const response = await f.request(route, method, body);
+    assert.equal(response.status, 409, await response.clone().text());
+    assert.equal((await response.json()).error.code, 'conversation_archived');
+  }
+  const attachment = await f.request(`/api/channels/${f.id}/attachments/retained.txt`);
+  assert.equal(attachment.status, 200); assert.equal(await attachment.text(), 'Retained synthetic file');
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await f.request(`/api/channels/${f.id}/stream`, 'GET', undefined, controller.signal);
+    assert.equal(response.status, 200); assert.match(await response.text(), /session_closed/);
+  } finally { clearTimeout(timer); controller.abort(); }
+  assert.deepEqual(f.runtimeCalls, []);
+  assert.equal((await f.request(`/api/channels/${f.id}/messages`)).status, 422);
+  assert.equal((await f.request(`/api/channels/${f.other}/messages`)).status, 200);
+});
+
+test('a changed parallel audience is recaptured only after acquiring every current member gate', async t => {
+  const f = await fixture(t, { grouped: true, temporary: true });
+  const group = f.source.chat.parallelChatGroups[0], activeGates = new Set(), entries = [];
+  const update = f.store.updateSnapshot.bind(f.store); let changed = false, operations = 0;
+  f.noGlobal();
+  const result = await withLockedParallelChatGroup({ dependencies: { chatStore: f.store, mutationGate: {
+    async run(id, operation) {
+      entries.push(id); activeGates.add(id);
+      try {
+        if (!changed) {
+          changed = true;
+          await update(({ chat, core }) => {
+            chat.parallelChatGroups[0].memberChannelIds.push(f.id); return { chat, core };
+          });
+        }
+        return await operation();
+      } finally { activeGates.delete(id); }
+    },
+  } } }, group.id, async (state, current) => {
+    operations++;
+    assert.equal(current.memberChannelIds.length, 3);
+    assert.ok(current.memberChannelIds.every(id => activeGates.has(id)));
+    assert.deepEqual(new Set(state.channels.map(channel => channel.id)), new Set(current.memberChannelIds));
+    return 'captured';
+  });
+  assert.equal(result, 'captured'); assert.equal(operations, 1); assert.equal(entries.length, 5);
+});
+
+test('activation publication after another store archives the channel closes the new unattached Runtime session', { timeout: 20_000 }, async t => {
+  const f = await fixture(t, { runtimeSessions: true });
+  const competitor = new DatabaseChatStore(f.config.chatStatePath); await competitor.initialize();
+  try {
+    const create = f.runtimeClient.createSession.bind(f.runtimeClient);
+    f.runtimeClient.createSession = async input => {
+      const session = await create(input); await competitor.archiveConversation(f.id, 'archive'); return session;
+    };
+    f.noGlobal();
+    const response = await f.request(`/api/channels/${f.id}/activations`, 'POST');
+    assert.equal(response.status, 409, await response.clone().text());
+    assert.equal((await response.json()).error.code, 'conversation_archived');
+    assert.ok(f.runtimeCalls.some(call => Array.isArray(call) && call[1] === 'fixture-new-session'));
+    assert.equal((await f.store.readChannelHeader(f.id)).status, 'archived');
+  } finally { await competitor.close(); }
+});
+
+test('activation cleanup retains a session attached by an interrupted durable publication', async t => {
+  const f = await fixture(t, { runtimeSessions: true }); let interrupted = false;
+  f.setCheckpoint(phase => {
+    if (phase === 'database_committed' && f.runtimeCalls.includes('create') && !interrupted) {
+      interrupted = true; throw Error('Injected activation publication interruption');
+    }
+  });
+  f.noGlobal();
+  const response = await f.request(`/api/channels/${f.id}/activations`, 'POST');
+  assert.equal(response.status, 400, await response.clone().text()); assert.ok(interrupted);
+  const current = await f.store.readChannelHeader(f.id);
+  assert.equal(current.catAssignments[0].execution.lease.sessionId, 'fixture-new-session');
+  assert.ok(!f.runtimeCalls.some(call => Array.isArray(call) && call[1] === 'fixture-new-session'));
+});
+
+test('activation setup failure closes a created session before attachment sync can publish its lease', async t => {
+  const f = await fixture(t, { runtimeSessions: true });
+  const workspace = path.join(f.root, 'activation-workspace'); await mkdir(path.join(workspace, '.cats-attachments'), { recursive: true });
+  await writeFile(path.join(workspace, '.cats-attachments', 'fixture.txt'), 'Synthetic attachment');
+  const badTarget = path.join(f.root, 'activation-not-a-directory'); await writeFile(badTarget, 'Synthetic blocker');
+  const create = f.runtimeClient.createSession.bind(f.runtimeClient);
+  f.runtimeClient.createSession = async input => ({ ...await create(input), cwd: badTarget });
+  await f.store.updateChannel(f.id, channel => { channel.repoPath = workspace; return { channel }; });
+  f.noGlobal();
+  const response = await ok(await f.request(`/api/channels/${f.id}/activations`, 'POST'));
+  assert.ok(response.activation.results.every(result => result.status !== 'started'));
+  assert.equal((await f.store.readChannelHeader(f.id)).catAssignments[0].execution.lease.status, 'error');
+  assert.ok(f.runtimeCalls.some(call => Array.isArray(call) && call[1] === 'fixture-new-session'));
+  assert.equal(await readFile(badTarget, 'utf8'), 'Synthetic blocker');
+});
+
+test('an open idle Runtime stream observes another store archive without an event and releases its Runtime subscription', { timeout: 20_000 }, async t => {
+  const f = await fixture(t);
+  await f.store.updateChannel(f.id, channel => {
+    channel.catAssignments[0].execution.lease = { ...channel.catAssignments[0].execution.lease,
+      sessionId: 'idle-stream-session', status: 'ready', cwd: path.join(f.root, 'idle-workspace') };
+    return { channel };
+  });
+  let attachedResolve, released = 0;
+  const attached = new Promise(resolve => { attachedResolve = resolve; });
+  f.runtimeClient.streamSession = async (_id, emit, options) => {
+    await emit({ event: 'text', data: { text: 'Idle synthetic stream' } }); attachedResolve();
+    await new Promise(resolve => {
+      if (options.signal.aborted) resolve();
+      else options.signal.addEventListener('abort', resolve, { once: true });
+    });
+    released++;
+  };
+  f.noGlobal();
+  const competitor = new DatabaseChatStore(f.config.chatStatePath); await competitor.initialize();
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await f.request(`/api/channels/${f.id}/stream`, 'GET', undefined, controller.signal);
+    await attached;
+    await competitor.archiveConversation(f.id, 'archive');
+    const output = await response.text();
+    assert.match(output, /Idle synthetic stream/); assert.match(output, /session_closed/);
+    assert.equal(released, 1); assert.equal(controller.signal.aborted, false);
+  } finally { clearTimeout(timer); controller.abort(); await competitor.close(); }
 });

@@ -2,10 +2,36 @@ import { isDeepStrictEqual } from 'node:util';
 import type { ChatChannelState, ChatState } from './contracts.js';
 import type { ChatChannelMutationContext, ChatStore } from '../state/store.js';
 import { ChatApiError } from './routeErrors.js';
+import { assertConversationWritable } from '../shared/conversationArchive.js';
 
 /** A dispatch-local state, never an input to a global snapshot write. */
 export function readConversationState(store: ChatStore, id: string): Promise<ChatState> {
   return store.readChannelState?.(id) ?? store.read();
+}
+
+/** Metadata-only, target-scoped input for stream/control read models. Never write it. */
+export function readConversationMetadata(store: ChatStore, ids: string | readonly string[]): Promise<ChatState> {
+  return store.readChannelStates?.(typeof ids === 'string' ? [ids] : ids, { metadataOnly: true }) ?? store.read();
+}
+
+export function readConversationsState(store: ChatStore, ids: readonly string[]): Promise<ChatState> {
+  return store.readChannelStates?.(ids) ?? store.read();
+}
+
+export async function assertWritableConversation(store: ChatStore, id: string): Promise<void> {
+  const channel = store.readChannelHeader ? await store.readChannelHeader(id)
+    : (await store.read()).channels.find(channel => channel.id === id);
+  if (!channel) throw new ChatApiError(404, 'channel_not_found', 'The selected conversation is unavailable.');
+  assertConversationWritable(channel);
+}
+
+export async function readWritableConversationState(store: ChatStore, id: string): Promise<ChatState> {
+  await assertWritableConversation(store, id);
+  const state = await readConversationState(store, id);
+  const channel = state.channels.find(channel => channel.id === id);
+  if (!channel) throw new ChatApiError(404, 'channel_not_found', 'The selected conversation is unavailable.');
+  assertConversationWritable(channel);
+  return state;
 }
 
 /** Metadata-only inputs for read-only product models that never inspect messages. */

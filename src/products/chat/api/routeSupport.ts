@@ -3,8 +3,10 @@ import { enrichConversationPresentation } from '../shared/conversationPresentati
 import { presentationChat, presentedChannelWindow } from './presentationReadModels.js';
 import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.js';
 import { updateChatState } from '../state/store.js';
-import { readConversationState, updateConversationState, mergePreparedParticipantMutation } from './scopedConversationState.js';
+import { readConversationState, readWritableConversationState, assertWritableConversation,
+  updateConversationState, mergePreparedParticipantMutation } from './scopedConversationState.js';
 import { assertConversationWritable } from '../shared/conversationArchive.js';
+import { closeUnreferencedConversationSessions } from './conversationRuntimeCleanup.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { GuideCatRecord } from '../../../core/types.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
@@ -600,6 +602,7 @@ export async function persistUpdatedChannelParticipant(
     modelSelection?: ProviderModelSelection | null;
   },
 ): Promise<ChatState> {
+  await assertWritableConversation(context.dependencies.chatStore, channelId);
   return updateConversationState(context.dependencies.chatStore, channelId, (state) => {
     assertConversationWritable(requireChannel(state, channelId));
     return updateChannelParticipant(
@@ -729,7 +732,7 @@ export async function persistCatAssignmentUpdate(
   input: AssignChannelCatInput,
 ): Promise<{ persisted: ChatState; isNew: boolean }> {
   const now = nowFrom(context.dependencies);
-  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
+  const currentState = await readWritableConversationState(context.dependencies.chatStore, channelId);
   const currentChannel = requireChannel(currentState, channelId);
   assertConversationWritable(currentChannel);
   const existingAssignment = currentChannel.catAssignments.find(
@@ -947,7 +950,7 @@ export async function persistCatAssignmentUpdate(
         },
       );
     } catch (sessionError) {
-      if (createdSessionId) await closeUnreferencedParticipantSessions(context, channelId, [createdSessionId]);
+      if (createdSessionId) await closeUnreferencedConversationSessions(context.dependencies, channelId, [createdSessionId]);
       const errorMessage = sessionError instanceof Error ? sessionError.message : 'Unknown runtime error';
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
         status: 'error',
@@ -1015,7 +1018,7 @@ export async function persistCatAssignmentRemoval(
   channelId: string,
   catId: string,
 ): Promise<void> {
-  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
+  const currentState = await readWritableConversationState(context.dependencies.chatStore, channelId);
   const channel = requireChannel(currentState, channelId);
   assertConversationWritable(channel);
   const assignment = channel.catAssignments.find(
@@ -1039,7 +1042,7 @@ export async function persistChannelParticipantRemoval(
   channelId: string,
   participantId: string,
 ): Promise<void> {
-  const currentState = await readConversationState(context.dependencies.chatStore, channelId);
+  const currentState = await readWritableConversationState(context.dependencies.chatStore, channelId);
   const channel = requireChannel(currentState, channelId);
   assertConversationWritable(channel);
   const participant = resolveChannelParticipantAssignments(channel)
@@ -1116,32 +1119,9 @@ async function persistPreparedParticipantState(context: ChatApiRouteContext, bas
     });
   } catch (error) {
     const existing = new Set(collectLinkedChannelSessionIds(before));
-    await closeUnreferencedParticipantSessions(context, channelId,
+    await closeUnreferencedConversationSessions(context.dependencies, channelId,
       collectLinkedChannelSessionIds(desired).filter(id => !existing.has(id)));
     throw error;
-  }
-}
-
-async function closeUnreferencedParticipantSessions(context: ChatApiRouteContext, channelId: string,
-  sessionIds: string[]): Promise<void> {
-  if (!sessionIds.length) return;
-  // A publication error may follow a durable commit. Recover/read the current
-  // header before closing anything that may already have been attached.
-  let retained: Set<string>;
-  try {
-    const store = context.dependencies.chatStore;
-    const header = store.readChannelHeader ? await store.readChannelHeader(channelId)
-      : (await readConversationState(store, channelId)).channels.find(channel => channel.id === channelId);
-    retained = new Set(header ? collectLinkedChannelSessionIds({ ...header, messages: [] }) : []);
-  } catch {
-    process.stderr.write('[cats-participant-update] Runtime cleanup needs a verified current conversation\n');
-    return;
-  }
-  for (const id of new Set(sessionIds)) {
-    if (!retained.has(id)) {
-      try { await context.dependencies.runtimeClient.closeSession(id); }
-      catch { process.stderr.write('[cats-participant-update] failed to close an uncommitted Runtime session\n'); }
-    }
   }
 }
 

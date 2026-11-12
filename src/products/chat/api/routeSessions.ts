@@ -8,6 +8,7 @@ import { requireChannel } from '../state/model/index.js';
 import { ChatApiError } from './routeErrors.js';
 import type { ChatState } from './contracts.js';
 import type { ChatApiDependencies, ChatApiRouteContext } from './routeSupport.js';
+import { readConversationMetadata } from './scopedConversationState.js';
 
 function normalizeSessionIds(
   sessionIds: Array<string | null | undefined>,
@@ -205,10 +206,10 @@ export async function waitForCancelledChannelTurns(
   channelIds: string[],
 ): Promise<ChatState> {
   const deadline = Date.now() + CHANNEL_CANCELLATION_SETTLE_TIMEOUT_MS;
-  let latestState = await context.dependencies.chatStore.read();
+  let latestState = await readConversationMetadata(context.dependencies.chatStore, channelIds);
 
   while (Date.now() < deadline) {
-    latestState = await context.dependencies.chatStore.read();
+    latestState = await readConversationMetadata(context.dependencies.chatStore, channelIds);
     const pendingRequest = channelIds.some((channelId) =>
       channelDispatchCancellationRegistry.read(channelId) != null,
     );

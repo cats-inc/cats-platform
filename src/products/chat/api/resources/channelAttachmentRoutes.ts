@@ -11,7 +11,7 @@ import {
   sendRestError,
 } from '../routeSupport.js';
 import { persistAttachmentsForChannels, sanitizeAttachmentName } from '../../state/channelAttachments.js';
-import { readConversationState } from '../scopedConversationState.js';
+import { assertWritableConversation, readConversationMetadata } from '../scopedConversationState.js';
 
 async function handleRestUploadAttachments(
   context: ChatApiRouteContext,
@@ -35,7 +35,8 @@ async function handleRestUploadAttachments(
     }
 
     const attachments = await context.dependencies.mutationGate.run(channelId, async () => {
-      const state = await readConversationState(context.dependencies.chatStore, channelId);
+      await assertWritableConversation(context.dependencies.chatStore, channelId);
+      const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
       return (await persistAttachmentsForChannels({
         state,
         channelIds: [channelId],
@@ -93,7 +94,7 @@ async function handleRestServeAttachment(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    const state = await readConversationState(context.dependencies.chatStore, channelId);
+    const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
     const channel = state.channels.find((entry) => entry.id === channelId);
     if (!channel) {
       sendRestError(context, 404, 'not_found', 'Channel not found.');

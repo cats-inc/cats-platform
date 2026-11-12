@@ -432,6 +432,7 @@ async function handleRestPatchChannel(
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<UpdateChannelInput>(context.request);
     await context.dependencies.mutationGate.run(channelId, async () => {
+      if (body.coordinatorParticipantId !== undefined) await assertChannelWritable(context, channelId);
       let persisted = await readConversationState(context.dependencies.chatStore, channelId);
 
       if (body.title !== undefined) {

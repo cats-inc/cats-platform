@@ -1,6 +1,7 @@
 import type { ChannelActivationResult } from '../contracts.js';
-import { updateChatState } from '../../state/store.js';
-import { mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
+import { createLockedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { readConversationState, readWritableConversationState } from '../scopedConversationState.js';
+import { closeUnreferencedConversationSessions, trackCreatedRuntimeSessions } from '../conversationRuntimeCleanup.js';
 import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   requireChannel,
@@ -57,24 +58,21 @@ export async function activateChannelLocked(
   leadWasReady: boolean;
 }> {
   const now = dependencies.now?.() ?? new Date();
-  const baseline = await dependencies.chatStore.read();
+  const baseline = await readWritableConversationState(dependencies.chatStore, channelId);
   const leadWasReady = resolveLeadParticipantLease(requireChannel(baseline, channelId))?.status === 'ready';
-  const activation = await activateChannelSessions(
-    baseline,
-    channelId,
-    dependencies.runtimeClient,
-    now,
-    {
-      companionStore: dependencies.companionStore,
-      memoryService: dependencies.memoryService,
-      chatStatePath: dependencies.config.chatStatePath,
-      runtimeDataDir: dependencies.config.runtimeDataDir,
-    },
-  );
-  await updateChatState(dependencies.chatStore, (latest) =>
-    mergeCompletedDispatchState(latest, baseline, activation.state, channelId, now));
-  notifyStreamTargetChanged(channelId);
-  return { startedAt: now.toISOString(), results: activation.results, leadWasReady };
+  const tracked = trackCreatedRuntimeSessions(dependencies.runtimeClient);
+  try {
+    const activation = await activateChannelSessions(baseline, channelId, tracked.runtimeClient, now, {
+      companionStore: dependencies.companionStore, memoryService: dependencies.memoryService,
+      chatStatePath: dependencies.config.chatStatePath, runtimeDataDir: dependencies.config.runtimeDataDir,
+    });
+    await createLockedDispatchChatStore(dependencies.chatStore, channelId, baseline, () => now,
+      tracked.runtimeClient).write(activation.state);
+    notifyStreamTargetChanged(channelId);
+    return { startedAt: now.toISOString(), results: activation.results, leadWasReady };
+  } finally {
+    await closeUnreferencedConversationSessions(dependencies, channelId, [...tracked.pending]);
+  }
 }
 
 export async function deactivateChannelLocked(
@@ -82,7 +80,7 @@ export async function deactivateChannelLocked(
   channelId: string,
 ): Promise<{ closedAt: string; closedSessionCount: number }> {
   const now = dependencies.now?.() ?? new Date();
-  const state = await dependencies.chatStore.read();
+  const state = await readConversationState(dependencies.chatStore, channelId);
   const channel = requireChannel(state, channelId);
   const sessionIds = collectActiveChannelSessionIds(channel);
 
@@ -106,8 +104,8 @@ export async function deactivateChannelLocked(
     }
   }
 
-  await updateChatState(dependencies.chatStore, (latest) =>
-    mergeCompletedDispatchState(latest, state, nextState, channelId, now));
+  await createLockedDispatchChatStore(dependencies.chatStore, channelId, state, () => now,
+    dependencies.runtimeClient).write(nextState);
   notifyStreamTargetChanged(channelId);
   return { closedAt: now.toISOString(), closedSessionCount: sessionIds.length };
 }

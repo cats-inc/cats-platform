@@ -11,6 +11,7 @@ import {
   resolveChannelCanonicalIdentity,
 } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
+import { readConversationMetadata } from '../scopedConversationState.js';
 import {
   awaitNextStreamTarget,
   readStreamTargetSignalVersion,
@@ -411,8 +412,9 @@ export async function waitForChannelStreamTarget(
 ): Promise<ChannelStreamTarget | null> {
   while (!signal.aborted) {
     const observedSignalVersion = readStreamTargetSignalVersion(channelId);
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
     const channel = requireChannel(state, channelId);
+    if (channel.status === 'archived') return null;
     const resolvedStreamTarget = resolveChannelStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
     if (streamTarget?.sessionId) {
@@ -459,8 +461,9 @@ export async function waitForNextChannelStreamTarget(
   const previousAttachKey = buildChannelStreamTargetAttachKey(previousTarget);
   while (!signal.aborted) {
     const observedSignalVersion = readStreamTargetSignalVersion(channelId);
-    const state = await context.dependencies.chatStore.read();
+    const state = await readConversationMetadata(context.dependencies.chatStore, channelId);
     const channel = requireChannel(state, channelId);
+    if (channel.status === 'archived') return null;
     if (!hasActiveWorkflowTurn(channel)) {
       return null;
     }

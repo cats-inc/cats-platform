@@ -106,6 +106,10 @@ Authenticated product clients can POST `/api/channels/:id/archive` or
 subscription queries return bounded cold windows with an archive descriptor; raw and display
 pages redact private proposal payloads. Cold history is absent from the hot search index until
 explicit restore. Send/retry/session activation refuse archived targets before Runtime access.
+Archiving also ends open Runtime streams; other profile writers are observed through a
+one-second metadata backstop. Read-only admission and retained attachment downloads do not
+require decoding cold transcript evidence. A damaged cold transcript still returns 422
+when its messages or restore proofs are requested.
 Terminal attempts notify subscriptions even when the initiating client disconnects after a
 durable commit. Controlled archive conflicts are 409, missing targets 404, damaged cold proofs
 422 and unavailable operations 503; cancellation is 408 when a response remains connected.

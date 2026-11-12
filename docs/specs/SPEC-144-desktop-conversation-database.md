@@ -156,8 +156,25 @@ verifies the recovered current header before closing a newly created unreference
 attachment setup failures also track sessions created before their lease was recorded.
 Recovered participant continuations keep their actual replay reads/writes on the target
 channel. Transport fanout reads only that channel and uses catalog metadata for bindings.
-Generic Core writes and multi-conversation operations still retain complete projections;
-remaining session/control consumers and post-port measurements are open validation.
+Generic Core writes and final multi-conversation mutations still retain complete projections;
+remaining consumers and post-port measurements are open validation.
+
+Session activation/sleep now read and publish through the target-scoped store. Stream
+readiness, cancellation polling and attachment paths use metadata-only target sets: empty
+IDs mean no channels, duplicate IDs are removed, missing IDs are skipped and database
+collection order is retained. These read models never reach a snapshot writer. Companion
+owner-presence decisions still use the complete header catalog to preserve canonical
+direct-lane selection. Exports explicitly hydrate only the selected transcript.
+Parallel audience capture acquires every current member gate; a changed set releases the
+old gates and retries up to three times before `parallel_group_changed` (409). Final
+multi-member mutations remain to be moved off the complete snapshot path.
+
+Activation tracks Runtime creations independently of returned leases, including failures
+before attachment setup or publication. Cleanup checks the recovering current header and
+retains a session already attached by a durable commit. Low-level setup failure closes its
+new session before returning an error state. Archived metadata ends an existing Runtime
+stream and aborts its subscription. Local archive attempts signal these readers; a
+cancellable one-second metadata backstop observes writers outside that event hub.
 
 The query API uses `GET /api/channels/:id/messages?limit=&before=` with newest-first
 windows presented chronologically, cached `total` and exclusive `nextCursor`. Invalid
