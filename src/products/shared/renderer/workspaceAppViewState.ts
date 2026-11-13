@@ -92,6 +92,17 @@ export function deriveAppRouteState(input: {
   };
 }
 
+/** The Add cat panel is on screen; it is the one surface that renders workspace feedback inline. */
+export function isAddCatPanelShown(input: {
+  addCatOpen: boolean;
+  selectedChannel: SelectedChannelView | null;
+  showingNewChatDraft: boolean;
+  draftDefaultRecipientCatId: string | null;
+}): boolean {
+  return input.addCatOpen
+    && (Boolean(input.selectedChannel) || (input.showingNewChatDraft && !input.draftDefaultRecipientCatId));
+}
+
 export function deriveAppViewState(input: {
   pathname: string;
   payload: AppShellPayload;
@@ -145,8 +156,9 @@ export function deriveAppViewState(input: {
   const assignableCatCount = selectableCats.length;
   const draftCatIdSet = new Set(draftCatIds);
   const showDirectLaneBoot = Boolean(routeDirectLaneSummary && !directLaneChannel);
-  const showAddCatPanel =
-    addCatOpen && (Boolean(selectedChannel) || (showingNewChatDraft && !draftDefaultRecipientCatId));
+  const showAddCatPanel = isAddCatPanelShown({
+    addCatOpen, selectedChannel, showingNewChatDraft, draftDefaultRecipientCatId,
+  });
 
   return {
     surface,

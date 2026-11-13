@@ -62,8 +62,10 @@ import {
 import {
   deriveAppRouteState,
   deriveAppViewState,
+  isAddCatPanelShown,
   type AppLoadState,
 } from "./workspaceAppViewState.js";
+import { resolveWorkspaceFeedbackDelivery } from "./workspaceFeedbackDelivery.js";
 import {
   ProductAppStateBoundary,
 } from "./ProductRendererFrame.js";
@@ -728,6 +730,22 @@ export function createWorkspaceProductApp({
       draftDefaultRecipientCatId,
       showingMyCatDirectLane,
     });
+    // Failed sends, retries and other actions report through `feedback`. Only the Add cat panel renders it,
+    // so anywhere else it becomes a toast (workspaceFeedbackDelivery.ts).
+    const addCatPanelShown = isAddCatPanelShown({
+      addCatOpen, selectedChannel, showingNewChatDraft, draftDefaultRecipientCatId,
+    });
+    const heldInlineFeedbackRef = useRef("");
+    useEffect(() => {
+      const delivery = resolveWorkspaceFeedbackDelivery({
+        feedback,
+        shownInline: addCatPanelShown,
+        heldInline: heldInlineFeedbackRef.current,
+      });
+      heldInlineFeedbackRef.current = delivery.heldInline;
+      if (delivery.toast) showToast(delivery.toast);
+      if (delivery.clear) setFeedback("");
+    }, [feedback, addCatPanelShown, showToast, setFeedback]);
     const { operatorState, setOperatorState } = useOperatorLoop(
       readyPayload,
       operatorRefreshKey,
