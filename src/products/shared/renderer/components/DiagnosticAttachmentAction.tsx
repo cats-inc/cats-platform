@@ -5,6 +5,7 @@ import { messageKeys } from '../../../../shared/i18n/index.js';
 import { isBrowserLiveTraceEnabled, readBrowserLiveTrace } from '../../../../shared/liveTrace.js';
 import { diagnosticText, diagnosticTrace, readDiagnosticWithin, type ConversationDiagnosticReport } from '../../diagnosticReport.js';
 import { readBrowserErrorDiagnostics } from '../browserDiagnostics.js';
+import { DiagnosticsIcon } from './composerMenuIcons.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 
 interface DiagnosticAttachmentActionProps {
@@ -71,7 +72,7 @@ export function DiagnosticAttachmentAction({ payload, currentChannelId, disabled
   return <>
     <button type="button" className="composerPlusMenuItem" disabled={disabled || !channels.length}
       onClick={() => { setReport(null); setFailed(false); setLoading(false); setOpen(true); }}>
-      <span aria-hidden="true">＋</span>{t(messageKeys.chatDiagnosticsAction)}
+      <DiagnosticsIcon />{t(messageKeys.chatDiagnosticsAction)}
     </button>
     {open ? <dialog ref={dialogRef} className="conversationDiagnosticsDialog"
       aria-label={t(messageKeys.chatDiagnosticsAction)} onCancel={event => { event.preventDefault(); setOpen(false); }}>

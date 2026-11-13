@@ -65,7 +65,7 @@ import {
   isAddCatPanelShown,
   type AppLoadState,
 } from "./workspaceAppViewState.js";
-import { resolveWorkspaceFeedbackDelivery } from "./workspaceFeedbackDelivery.js";
+import { useWorkspaceFeedbackToast } from "./hooks/useWorkspaceFeedbackToast.js";
 import {
   ProductAppStateBoundary,
 } from "./ProductRendererFrame.js";
@@ -465,7 +465,7 @@ export function createWorkspaceProductApp({
       confirm: appConfirm,
       handleClose: appHandleClose,
     } = useConfirmDialog();
-    const { toasts, showToast } = useToast();
+    const { toasts, showToast, dismissToast } = useToast();
     const {
       notifications,
       notify: showNotification,
@@ -731,21 +731,16 @@ export function createWorkspaceProductApp({
       showingMyCatDirectLane,
     });
     // Failed sends, retries and other actions report through `feedback`. Only the Add cat panel renders it,
-    // so anywhere else it becomes a toast (workspaceFeedbackDelivery.ts).
-    const addCatPanelShown = isAddCatPanelShown({
-      addCatOpen, selectedChannel, showingNewChatDraft, draftDefaultRecipientCatId,
+    // so anywhere else it is one error toast that follows the state (workspaceFeedbackDelivery.ts).
+    useWorkspaceFeedbackToast({
+      feedback,
+      setFeedback,
+      shownInline: isAddCatPanelShown({
+        addCatOpen, selectedChannel, showingNewChatDraft, draftDefaultRecipientCatId,
+      }),
+      showToast,
+      dismissToast,
     });
-    const heldInlineFeedbackRef = useRef("");
-    useEffect(() => {
-      const delivery = resolveWorkspaceFeedbackDelivery({
-        feedback,
-        shownInline: addCatPanelShown,
-        heldInline: heldInlineFeedbackRef.current,
-      });
-      heldInlineFeedbackRef.current = delivery.heldInline;
-      if (delivery.toast) showToast(delivery.toast);
-      if (delivery.clear) setFeedback("");
-    }, [feedback, addCatPanelShown, showToast, setFeedback]);
     const { operatorState, setOperatorState } = useOperatorLoop(
       readyPayload,
       operatorRefreshKey,

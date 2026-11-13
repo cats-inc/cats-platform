@@ -151,6 +151,12 @@
   background: var(--panel-hover);
 }
 
+.composerPlusMenuSeparator {
+  height: 1px;
+  margin: 4px 10px;
+  background: var(--border);
+}
+
 .conversationDiagnosticsDialog {
   width: min(640px, calc(100vw - 40px));
   max-height: 80vh;

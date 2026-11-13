@@ -101,6 +101,25 @@ test('chat composer shows the screenshot attachment action when wired', () => {
   assert.doesNotMatch(markup, /data-tooltip="Capture a screen, window, or tab"/u);
 });
 
+test('the plus menu lists attachments first and sets diagnostics apart with a glyph of its own', () => {
+  const markup = renderToStaticMarkup(
+    <ConversationComposerArea
+      {...createComposerProps({
+        channelPlusMenuOpen: true,
+        onTakeScreenshot: () => {},
+      })}
+    />,
+  );
+  const menu = markup.slice(markup.indexOf('class="composerPlusMenu"'));
+  const order = ['Add photos and files', 'Take screenshot', 'composerPlusMenuSeparator', 'Attach conversation diagnostics']
+    .map((text) => menu.indexOf(text));
+  assert.ok(order.every((index) => index >= 0), `all menu entries render: ${order.join(', ')}`);
+  assert.deepEqual([...order].sort((x, y) => x - y), order);
+  // The menu's own button is the only plus; diagnostics draws a pulse line instead of "＋".
+  assert.doesNotMatch(menu, /＋/u);
+  assert.match(menu, /<svg[^>]*aria-hidden="true"[^>]*>\s*<path d="M1\.5 8\.5h2\.75L6 4l4 8[^"]*"[^>]*><\/path><\/svg>Attach conversation diagnostics/u);
+});
+
 test('chat composer can send an attachment-only screenshot draft', () => {
   const markup = renderToStaticMarkup(
     <ConversationComposerArea

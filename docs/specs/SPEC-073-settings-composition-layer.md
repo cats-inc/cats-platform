@@ -74,6 +74,14 @@ composition primitives.
   reflects the new state (a flipped toggle, a re-rendered avatar). Toast
   is reserved for errors and for changes whose effect is not immediately
   visible.
+- **Levels** (2026-11-14): `showToast(message, { level: 'error' })` stays
+  until the owner closes it with ✕, so the reason can be read; an `info`
+  toast (the default) fades after three seconds, and a toast with an
+  action stays as ADR-147 describes. A toast that mirrors state its owner
+  may clear passes a `key`: the next toast with that key replaces it and
+  `dismissToast(key)` removes it. Chat, Work and Code show workspace
+  `feedback` this way (`useWorkspaceFeedbackToast`). Existing Settings
+  error toasts keep the default level until they are moved deliberately.
 - The primitives in this SPEC therefore **MUST NOT** expose `feedback`
   / `error` slots, and migrators **MUST** strip any inline feedback
   rendering they encounter, replacing it with toast usage.

@@ -49,6 +49,7 @@ import {
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
+import { AttachFilesIcon, ScreenshotRegionIcon } from './composerMenuIcons.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import {
   ParticipantAddMenu,
@@ -1028,19 +1029,13 @@ export function NewConversationDraft({
             </button>
             {plusMenuOpen ? (
               <div className="composerPlusMenu">
-                <DiagnosticAttachmentAction payload={payload} disabled={isSubmittingFirstTurn}
-                  onAttach={file => { onDraftFilesChange([...draftFiles, file]); onTogglePlusMenu(); }} />
                 <button
                   className="composerPlusMenuItem"
                   type="button"
                   disabled={isSubmittingFirstTurn}
                   onClick={onFileSelect}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
-                    <path d="M8 2v8" />
-                    <path d="M4 6l4-4 4 4" />
-                  </svg>
+                  <AttachFilesIcon />
                   {t(messageKeys.chatNewChatDraftAddPhotosAndFiles)}
                 </button>
                 {onTakeScreenshot ? (
@@ -1050,10 +1045,7 @@ export function NewConversationDraft({
                     disabled={isSubmittingFirstTurn || screenshotCaptureDisabled}
                     onClick={onTakeScreenshot}
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
-                      <circle cx="8" cy="8.5" r="2.5" />
-                    </svg>
+                    <ScreenshotRegionIcon />
                     {t(messageKeys.chatNewChatDraftTakeScreenshot)}
                   </button>
                 ) : null}
@@ -1072,6 +1064,10 @@ export function NewConversationDraft({
                     {folderActionLabel}
                   </button>
                 ) : null}
+                {/* Attachments first, as chat apps order them; diagnostics is a support tool, set apart. */}
+                <div className="composerPlusMenuSeparator" role="separator" />
+                <DiagnosticAttachmentAction payload={payload} disabled={isSubmittingFirstTurn}
+                  onAttach={file => { onDraftFilesChange([...draftFiles, file]); onTogglePlusMenu(); }} />
               </div>
             ) : null}
           </div>

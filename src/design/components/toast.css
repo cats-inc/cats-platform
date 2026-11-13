@@ -22,8 +22,8 @@
   animation: toastIn 0.2s ease-out;
 }
 
-/* ADR-147: a toast with a button stays until it is used or dismissed. */
-.toastWithAction {
+/* ADR-147: a toast with a button stays until it is used or dismissed; so does an error. */
+.toastDismissible {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -31,9 +31,15 @@
   padding: 10px 10px 10px 20px;
 }
 
-.toastWithAction .toastMessage {
+.toastDismissible .toastMessage {
   flex: 1 1 auto;
   min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* An error keeps the toast's look and marks its leading edge with the danger color. */
+.toastError {
+  box-shadow: inset 4px 0 0 var(--danger, #C0392B), var(--shadow-raised);
 }
 
 .toastAction,
