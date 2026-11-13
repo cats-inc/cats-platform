@@ -82,6 +82,11 @@ composition primitives.
   `dismissToast(key)` removes it. Chat, Work and Code show workspace
   `feedback` this way (`useWorkspaceFeedbackToast`). Existing Settings
   error toasts keep the default level until they are moved deliberately.
+- **Position** (2026-11-14): while a conversation composer is on screen,
+  toasts sit 12 px above it, centered on it (`useToastAnchor` in
+  `src/design/components/toastAnchor.ts`), so a toast that stays never
+  covers the composer's buttons. Elsewhere, Settings included, they stay
+  24 px above the bottom of the window.
 - The primitives in this SPEC therefore **MUST NOT** expose `feedback`
   / `error` slots, and migrators **MUST** strip any inline feedback
   rendering they encounter, replacing it with toast usage.

@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import { ToastContainer } from '../../../../../design/components/Toast.js';
+import { useToastAnchor } from '../../../../../design/components/toastAnchor.js';
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { useVoiceInputComposer } from '../../hooks/useVoiceInputComposer.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
@@ -17,6 +18,7 @@ import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot
 import type { ChatComposerStackParticipantView } from './conversationViewSupport.js';
 import { DiagnosticAttachmentAction } from '../DiagnosticAttachmentAction.js';
 import { AttachFilesIcon, ScreenshotRegionIcon } from '../composerMenuIcons.js';
+import { ComposerSendIcon } from '../composerSendIcon.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
@@ -171,9 +173,11 @@ export function ConversationComposerArea({
     : t(messageKeys.chatComposerAreaSendToThisChatAria);
   const composerStopLabel = t(messageKeys.chatComposerAreaStopButtonLabel);
   const switchSendModeLabel = t(messageKeys.chatComposerAreaSwitchSendModeLabel);
+  // Toasts sit above this composer rather than over its buttons (toastAnchor.ts).
+  const toastAnchorRef = useToastAnchor<HTMLDivElement>();
 
   return (
-    <div className={stackClassName}>
+    <div className={stackClassName} ref={toastAnchorRef}>
     {(surfaceTag || composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
       <div className="composerHeaderRow">
         <div className="composerHeaderLeft">
@@ -286,6 +290,7 @@ export function ConversationComposerArea({
               className="composerPlusButton"
               type="button"
               aria-label={t(messageKeys.chatComposerAreaAttachAria)}
+              data-tooltip={t(messageKeys.chatComposerAreaAttachAria)}
               disabled={composerBusy}
               onClick={onToggleChannelPlusMenu}
             >
@@ -350,7 +355,7 @@ export function ConversationComposerArea({
               type="button"
               aria-label={voiceInputLabel}
               aria-pressed={voiceInputListening}
-              title={voiceInputPrivacyMessage ?? undefined}
+              data-tooltip={voiceInputPrivacyMessage ?? voiceInputLabel}
               disabled={composerBusy}
               onClick={toggleVoiceInput}
             >
@@ -370,6 +375,7 @@ export function ConversationComposerArea({
               className="composerSendButton composerCancelButton"
               type="button"
               aria-label={t(messageKeys.chatNewChatDraftCancelSendAria)}
+              data-tooltip={t(messageKeys.chatNewChatDraftCancelSendAria)}
               onClick={() => onCancelPendingSend?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -383,6 +389,7 @@ export function ConversationComposerArea({
               disabled={stopBusy}
               type="button"
               aria-label={composerStopLabel}
+              data-tooltip={composerStopLabel}
               onClick={() => void onStopMessage?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -396,6 +403,7 @@ export function ConversationComposerArea({
                 disabled={!hasSendableContent || composerBusy || compareBusy}
                 type="submit"
                 aria-label={sendLabel}
+                data-tooltip={sendLabel}
               >
                 {compareSendScope === 'all_members' ? (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -413,6 +421,7 @@ export function ConversationComposerArea({
                 className="composerSplitSendToggle"
                 type="button"
                 aria-label={switchSendModeLabel}
+                data-tooltip={switchSendModeLabel}
                 onClick={() => onCompareSendScopeChange?.(compareSendScope === 'all_members' ? 'active_only' : 'all_members')}
               >
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -426,11 +435,9 @@ export function ConversationComposerArea({
               disabled={!hasSendableContent || composerBusy || compareBusy}
               type="submit"
               aria-label={t(messageKeys.chatNewChatDraftSendAria)}
+              data-tooltip={t(messageKeys.chatNewChatDraftSendAria)}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 13V3" />
-                <path d="M3 7l5-5 5 5" />
-              </svg>
+              <ComposerSendIcon direct={isDirectLane} />
             </button>
           )}
         </div>
