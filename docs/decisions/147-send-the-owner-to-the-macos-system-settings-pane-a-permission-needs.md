@@ -70,7 +70,9 @@ macOS helper adds that pane when it is built.
   ([setup guide](../setup-guide.md)). It needs a signed build and a real prompt; until
   then the toast and the named pane remain the recovery.
 - The toast component gains an optional action. Toasts without one keep their
-  three-second behaviour.
+  three-second behaviour. Since 2026-11-14 an `error`-level toast also stays until it
+  is closed ([SPEC-073](../specs/SPEC-073-settings-composition-layer.md) Feedback
+  Conventions).
 - Windows keeps its plain messages; its Settings deep links (`ms-settings:`) can follow
   the same pattern later.
 
