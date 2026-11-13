@@ -16,6 +16,7 @@ import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot.js';
 import type { ChatComposerStackParticipantView } from './conversationViewSupport.js';
 import { DiagnosticAttachmentAction } from '../DiagnosticAttachmentAction.js';
+import { AttachFilesIcon, ScreenshotRegionIcon } from '../composerMenuIcons.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
@@ -295,23 +296,13 @@ export function ConversationComposerArea({
             </button>
             {channelPlusMenuOpen ? (
               <div className="composerPlusMenu">
-                <DiagnosticAttachmentAction key={payload.chat.selectedChannelId} payload={payload}
-                  currentChannelId={payload.chat.selectedChannelId} disabled={composerBusy}
-                  onAttach={file => {
-                    onChannelFilesChange([...channelFiles, file]);
-                    onToggleChannelPlusMenu();
-                  }} />
                 <button
                   className="composerPlusMenuItem"
                   type="button"
                   disabled={composerBusy}
                   onClick={onChannelFileSelect}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
-                    <path d="M8 2v8" />
-                    <path d="M4 6l4-4 4 4" />
-                  </svg>
+                  <AttachFilesIcon />
                   {t(messageKeys.chatNewChatDraftAddPhotosAndFiles)}
                 </button>
                 {onTakeScreenshot ? (
@@ -321,13 +312,18 @@ export function ConversationComposerArea({
                     disabled={composerBusy || screenshotCaptureDisabled}
                     onClick={onTakeScreenshot}
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
-                      <circle cx="8" cy="8.5" r="2.5" />
-                    </svg>
+                    <ScreenshotRegionIcon />
                     {t(messageKeys.chatNewChatDraftTakeScreenshot)}
                   </button>
                 ) : null}
+                {/* Attachments first, as chat apps order them; diagnostics is a support tool, set apart. */}
+                <div className="composerPlusMenuSeparator" role="separator" />
+                <DiagnosticAttachmentAction key={payload.chat.selectedChannelId} payload={payload}
+                  currentChannelId={payload.chat.selectedChannelId} disabled={composerBusy}
+                  onAttach={file => {
+                    onChannelFilesChange([...channelFiles, file]);
+                    onToggleChannelPlusMenu();
+                  }} />
               </div>
             ) : null}
           </div>
