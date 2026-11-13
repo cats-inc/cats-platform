@@ -15,6 +15,7 @@ import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { buildCatSettingsPath } from '../../../../shared/catsDirectoryPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import { ToastContainer } from '../../../../design/components/Toast.js';
+import { useToastAnchor } from '../../../../design/components/toastAnchor.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
@@ -471,6 +472,8 @@ export function NewConversationDraft({
     hideParallelHint: hideDraftParallelHint = false,
   } = builderControls ?? {};
   const { t } = useI18n();
+  // Toasts sit above the lead composer rather than over its buttons (toastAnchor.ts).
+  const toastAnchorRef = useToastAnchor<HTMLFormElement>();
   const composerPlaceholder = draftCopy?.composerPlaceholder
     ?? t(messageKeys.chatNewChatDraftComposerPlaceholder);
   const folderActionLabel = draftCopy?.folderActionLabel
@@ -959,6 +962,7 @@ export function NewConversationDraft({
 
   const leadFormJsx = (
     <form
+      ref={toastAnchorRef}
       className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
       onSubmit={(event) => void onSendMessage(event)}
     >

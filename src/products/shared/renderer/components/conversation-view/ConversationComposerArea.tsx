@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import { ToastContainer } from '../../../../../design/components/Toast.js';
+import { useToastAnchor } from '../../../../../design/components/toastAnchor.js';
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { useVoiceInputComposer } from '../../hooks/useVoiceInputComposer.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
@@ -171,9 +172,11 @@ export function ConversationComposerArea({
     : t(messageKeys.chatComposerAreaSendToThisChatAria);
   const composerStopLabel = t(messageKeys.chatComposerAreaStopButtonLabel);
   const switchSendModeLabel = t(messageKeys.chatComposerAreaSwitchSendModeLabel);
+  // Toasts sit above this composer rather than over its buttons (toastAnchor.ts).
+  const toastAnchorRef = useToastAnchor<HTMLDivElement>();
 
   return (
-    <div className={stackClassName}>
+    <div className={stackClassName} ref={toastAnchorRef}>
     {(surfaceTag || composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
       <div className="composerHeaderRow">
         <div className="composerHeaderLeft">
