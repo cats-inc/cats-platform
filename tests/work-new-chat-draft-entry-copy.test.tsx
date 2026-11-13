@@ -97,6 +97,19 @@ function renderDraft(props: NewChatDraftProps, locale?: 'zh-TW'): string {
   );
 }
 
+test('the new-chat send button is a paper plane in a direct message with one cat, else the up arrow', () => {
+  const sendButton = (markup: string) => markup.match(/<button class="composerSendButton"[^>]*type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
+  const draft = sendButton(renderDraft(createProps()));
+  assert.match(draft, /d="M8 13V3"/u);
+  assert.match(draft, /data-tooltip="Send"/u);
+  const direct = sendButton(renderDraft(createProps({
+    allowAddCat: false,
+    draftCatIds: ['cat-lead'],
+    draftDefaultRecipientCatId: 'cat-lead',
+  })));
+  assert.match(direct, /d="M14\.5 1\.5 1\.5 6\.5l5\.5 2\.5 2\.5 5\.5z"/u);
+});
+
 test('work starter chips localize in zh-TW', () => {
   const markup = renderDraft(createProps(), 'zh-TW');
 

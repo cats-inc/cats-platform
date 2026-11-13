@@ -120,6 +120,23 @@ test('the plus menu lists attachments first and sets diagnostics apart with a gl
   assert.match(menu, /<svg[^>]*aria-hidden="true"[^>]*>\s*<path d="M1\.5 8\.5h2\.75L6 4l4 8[^"]*"[^>]*><\/path><\/svg>Attach conversation diagnostics/u);
 });
 
+test('the send button is the up arrow, and a paper plane in a direct message', () => {
+  const arrow = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ isDirectLane: false })} />);
+  const plane = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ isDirectLane: true })} />);
+  const sendButton = (markup: string) => markup.match(/<button class="composerSendButton"[^>]*type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
+  assert.match(sendButton(arrow), /d="M8 13V3"/u);
+  assert.doesNotMatch(sendButton(arrow), /M14\.5 1\.5/u);
+  assert.match(sendButton(plane), /d="M14\.5 1\.5 1\.5 6\.5l5\.5 2\.5 2\.5 5\.5z"/u);
+  assert.doesNotMatch(sendButton(plane), /d="M8 13V3"/u);
+});
+
+test('every icon button in the composer row has a hover tooltip', () => {
+  const markup = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ onTakeScreenshot: () => {} })} />);
+  const buttons = markup.match(/<button class="composer(?:PlusButton|SendButton|SplitSend\w*)[^"]*"[^>]*>/gu) ?? [];
+  assert.ok(buttons.length >= 2, `found ${buttons.length} composer buttons`);
+  for (const button of buttons) assert.match(button, /data-tooltip="[^"]+"/u, button);
+});
+
 test('chat composer can send an attachment-only screenshot draft', () => {
   const markup = renderToStaticMarkup(
     <ConversationComposerArea

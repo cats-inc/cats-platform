@@ -51,6 +51,7 @@ import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
 import { AttachFilesIcon, ScreenshotRegionIcon } from './composerMenuIcons.js';
+import { ComposerSendIcon } from './composerSendIcon.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import {
   ParticipantAddMenu,
@@ -1023,6 +1024,7 @@ export function NewConversationDraft({
               className="composerPlusButton"
               type="button"
               aria-label={t(messageKeys.chatNewChatDraftBranchAttachAria)}
+              data-tooltip={t(messageKeys.chatNewChatDraftBranchAttachAria)}
               disabled={isSubmittingFirstTurn}
               onClick={onTogglePlusMenu}
             >
@@ -1162,7 +1164,9 @@ export function NewConversationDraft({
                   : t(messageKeys.chatNewChatDraftStartVoiceInputAria)
               }
               aria-pressed={voiceInputListening}
-              title={voiceInputPrivacyMessage ?? undefined}
+              data-tooltip={voiceInputPrivacyMessage ?? (voiceInputListening
+                ? t(messageKeys.chatNewChatDraftStopVoiceInputAria, { privacyMessageSuffix: '' })
+                : t(messageKeys.chatNewChatDraftStartVoiceInputAria))}
               disabled={isSubmittingFirstTurn}
               onClick={toggleVoiceInput}
             >
@@ -1182,6 +1186,7 @@ export function NewConversationDraft({
               className="composerSendButton composerCancelButton"
               type="button"
               aria-label={t(messageKeys.chatNewChatDraftCancelSendAria)}
+              data-tooltip={t(messageKeys.chatNewChatDraftCancelSendAria)}
               onClick={() => onCancelPendingSend?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -1201,6 +1206,9 @@ export function NewConversationDraft({
               aria-label={isParallelMode
                 ? t(messageKeys.chatNewChatDraftSendAllChatsAria)
                 : t(messageKeys.chatNewChatDraftSendAria)}
+              data-tooltip={isParallelMode
+                ? t(messageKeys.chatNewChatDraftSendAllChatsAria)
+                : t(messageKeys.chatNewChatDraftSendAria)}
             >
               {isParallelMode ? (
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1208,10 +1216,7 @@ export function NewConversationDraft({
                   <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 13V3" />
-                  <path d="M3 7l5-5 5 5" />
-                </svg>
+                <ComposerSendIcon direct={isDirectLaneContext} />
               )}
             </button>
           )}
@@ -1488,6 +1493,7 @@ export function NewConversationDraft({
                   type="button"
                   className="composerPlusButton"
                   aria-label={t(messageKeys.chatNewChatDraftBranchAttachAria)}
+                  data-tooltip={t(messageKeys.chatNewChatDraftBranchAttachAria)}
                   disabled
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
