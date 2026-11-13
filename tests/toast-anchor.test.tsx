@@ -36,8 +36,12 @@ test('a mounted composer sets the anchor and unmounting it removes the anchor', 
   HTMLElement.prototype.getBoundingClientRect = function rect() {
     return { top: window.innerHeight - 200, left: 100, width: 600, height: 150 } as DOMRect;
   };
+  // Frames run at once here: other tests in this process replace requestAnimationFrame with stubs that never call back.
+  const originalFrame = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => { callback(0); return 0; };
   t.after(() => {
     HTMLElement.prototype.getBoundingClientRect = original;
+    globalThis.requestAnimationFrame = originalFrame;
     cleanup();
     resetTestDom();
   });

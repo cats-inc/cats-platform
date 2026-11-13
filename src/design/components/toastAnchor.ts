@@ -49,9 +49,14 @@ function apply(): void {
 }
 
 function schedule(): void {
-  if (frame) return;
-  if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(apply);
-  else apply();
+  if (typeof requestAnimationFrame !== 'function') {
+    apply();
+    return;
+  }
+  // A frame that never runs (one a stub swallows, or one left by a page that has gone) must not block every
+  // later update, so a pending frame is replaced rather than trusted. Still at most one update per frame.
+  if (frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+  frame = requestAnimationFrame(apply);
 }
 
 function register(element: HTMLElement): void {
