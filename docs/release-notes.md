@@ -2,6 +2,87 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-14 — Desktop 0.17.1 standard preview: toasts, transcript times and direct messages
+
+Selected distribution: Desktop **0.17.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**, optional preview **Agency 0.1.0** installer.
+
+- **Failures show again.** Chat, Work and Code had stopped saying why an action
+  failed: a failed send restored the draft with no message. Workspace feedback
+  is now one error toast that stays until it is closed or the action works
+  again, and a new failure replaces it. The Add cat panel keeps its message
+  inline. (cats-platform#463, cats-platform#464)
+- **Toasts.** An error toast stays until closed, with `role="alert"` and a
+  danger edge; other toasts keep the three-second fade. While a composer is on
+  screen, toasts sit just above it instead of covering it, and above the
+  scroll-to-latest button when that shows. (cats-platform#464,
+  cats-platform#465, cats-platform#466)
+- **Composer.** The plus menu uses a paperclip for files, a dragged-out region
+  for a screenshot (zh-TW 擷取畫面) and a pulse line for diagnostics, which now
+  follows a separator. The composer's icon buttons show tooltips. In Chat, a
+  direct message with a cat that has an active Telegram binding and a stored bot
+  token sends with a paper plane; elsewhere, and in Work and Code, send keeps
+  the up arrow. (cats-platform#464, cats-platform#465, cats-platform#466)
+- **Transcript times.** Every bubble except a system line ends with its time,
+  with the full date and time in its tooltip; a reply still being written shows
+  none. Each new local day starts with a divider (Today, Yesterday, then the
+  date, with the year for another year) that relabels at local midnight. A
+  direct message no longer repeats the cat's own face and name over its
+  replies; other cats' messages and group conversations keep them. Cats Bot's
+  notes follow the same rules. (cats-platform#466)
+- **Source selection:** cats-runtime@512c074713cbe563124f21c4ed9218e0b408c33f; main@512c074713cbe563124f21c4ed9218e0b408c33f.
+- **Exact source and modules.** Platform main at selection is
+  `3c4609f067bb7f2db40e85d0564be59c9ebc7ce1`. Freeze the completed bump commit
+  in `release/v0.17.1`; the workflow records that exact Desktop source without
+  a self-reference in this file. Runtime **0.6.2** is unchanged from 0.17.0,
+  with no changes left out at selection. Shared conversation UI **0.1.0** keeps
+  content digest `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`
+  and tarball SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  The nine shared-tool pins retain cats-one
+  `f8b0d8a6e566b44d788ffc77912665ef46b738d3`, also its main at selection.
+  Catlas/orchestrator knowledge stays at revision `2026-11-13.1` for `0.17.x`.
+- **Bundled inputs.** Usage **0.5.4** remains pinned to
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`; Apps main at selection
+  is `015448936e3685091b09f7d9966104cdd952e68c`. Agency **0.1.0** keeps SHA-256
+  `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`;
+  Plugins main at selection is `12411d5dc7d045d007267e73cff7fd494b631cfa`.
+  Exact App/Plugin artifacts and their installation/compatibility gates are retained.
+- **Compatibility, backup and recovery.** This is a compatible patch on 0.17.x:
+  renderer changes only, with no data migration, persisted-format, App SDK or
+  provider configuration change. Upgrading from 0.16.x retains 0.17.0's
+  migrations and recovery rules below. Before installation, stop processes using
+  the data roots and back up `~/.cats`, configured overrides and workspace
+  attachment directories. If startup or installation fails, preserve those roots
+  and reinstall 0.17.1 or return to 0.17.0 with processes stopped; those
+  versions use the same persisted formats.
+- **Signing and publication.** Run exact-source ci.yaml on `release/v0.17.1`,
+  then dispatch desktop-release.yml from that same SHA with `tag=v0.17.1`, the
+  Runtime SHA above and `unsigned=false`. Windows x64/arm64 ship NSIS installers,
+  macOS ships a universal x64/arm64 DMG and updater ZIP, and Linux ships
+  amd64/arm64 DEBs. Standard expected trust is macOS **signed + notarized**,
+  Windows **unsigned: no certificate**, Linux **n/a**. Per-platform receipts and
+  native signing/notarization checks establish actual trust. Same-team signed
+  macOS, Windows NSIS and Linux DEB retain their update paths.
+- **Known limits.** An error toast sits above the composer, so while a provider
+  approval is pending it can cover that approval's buttons, or an open plus menu,
+  until it is closed. In a new-chat draft it can cover the folder row above the
+  composer. The notice that a deleted conversation's Runtime sessions were kept
+  now shows as an error toast instead of not at all.
+- **Validation boundary.** Each change passed its PR's full CI, and an
+  independent review of the whole release diff found nothing blocking and no
+  persisted-data change. Release gates enforce full CI for the exact frozen bump
+  source, packaged identity/startup, source receipts, updater metadata, checksums
+  and signing. The toast position was checked in a static harness, and the
+  transcript times, day dividers, faces and paper plane by component tests, not
+  in a running Desktop. Installed upgrade/rollback on every OS and credentialed
+  provider execution are not claimed. Platform npm, Runtime npm, Apps, Plugins
+  and cats-one remain separate publication targets.
+
+Publication results: the `v0.17.1` GitHub Standard Preview, its source/build
+receipts, checksums, provenance and Actions run.
+
 ## 2026-11-13 — Desktop 0.17.0 standard preview: conversation database
 
 Selected distribution: Desktop **0.17.0 standard-profile preview**, App SDK
