@@ -110,6 +110,7 @@ import { ConversationArchiveControls, ConversationArchiveFeedback } from './Conv
 import { useTranscriptHistoryReset } from '../../hooks/useTranscriptHistoryReset.js';
 import { TranscriptHistoryControls } from './TranscriptHistoryControls.js';
 import { TranscriptSearch } from './TranscriptSearch.js';
+import { catReachesTelegram } from '../../directMessageTelegram.js';
 import './transcriptQueries.css';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
@@ -1270,6 +1271,7 @@ export function ConversationView({
         resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
         resolveParticipantDisplayName={resolveParticipantDisplayName}
         showLiveProgressDetails={conversationBehavior.showLiveProgressDetails}
+        directLaneCatId={isDirectLane ? directLaneCat?.id ?? null : null}
         resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
         buildConcurrentClusterActions={archive.readOnly ? undefined : buildConcurrentClusterActions}
         buildTranscriptMessageActions={archive.readOnly ? undefined : buildTranscriptMessageActions}
@@ -1300,6 +1302,7 @@ export function ConversationView({
         defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
         composerStackParticipants={composerStackParticipants}
         isDirectLane={isDirectLane}
+        directSendsToTelegram={isDirectLane && catReachesTelegram(payload.chat.botBindings, directLaneCat?.id, behaviorSurface)}
         activeWorkflowShape={activeWorkflowShape}
         onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
         activeAudienceKeys={activeAudienceKeys}

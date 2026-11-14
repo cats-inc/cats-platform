@@ -34,6 +34,7 @@ import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
 import { isAdminCat } from '../../../catGroups.js';
+import { messageTime, messageTimestamp, readMessageTime } from '../../messageTime.js';
 
 const relayActions: Array<{
   command: ParallelChatRelayCommandKind;
@@ -91,6 +92,11 @@ export interface TranscriptMessageItemProps {
     catRecord?: ChatCat | null,
   ) => string;
   showSpeakerHeader?: boolean;
+  /**
+   * A direct message is a talk between the owner and one cat, whose face is the top bar's: that cat's bubbles
+   * carry no face or name (another cat's still do), as in Cats Bot's notes.
+   */
+  hideSpeakerCatId?: string | null;
   showProgressDetails?: boolean;
 }
 
@@ -122,9 +128,10 @@ export function TranscriptMessageItem({
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
   showSpeakerHeader = true,
+  hideSpeakerCatId = null,
   showProgressDetails = false,
 }: TranscriptMessageItemProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const speaker = resolveTranscriptMessageSpeaker(message, cats, t);
   const displayBody = resolveLocalizedChatMessageBody(message, t);
   const presentation = readConversationPresentation(message.metadata?.presentation);
@@ -174,7 +181,13 @@ export function TranscriptMessageItem({
   const conversationProposal = message.senderKind === 'system' && message.metadata?.event === 'conversation_proposal'
     ? message.metadata.conversationProposal as { id?: unknown; status?: unknown } | undefined
     : undefined;
-  const speakerHeader = (showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
+  const speakerCatId = transcriptParticipantCat?.id ?? (speaker.kind === 'cat' ? speaker.cat?.id : null) ?? null;
+  const directMessageCat = hideSpeakerCatId !== null && speakerCatId === hideSpeakerCatId;
+  // When a message was sent, inside its (last) bubble; a reply still being written has no time yet.
+  const sentAt = message.senderKind !== 'system' && (!presentation || presentation.phase === 'sealed')
+    ? readMessageTime(message.createdAt) : null;
+  const speakerHeader = (showSpeakerHeader && !directMessageCat
+    && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
           transcriptParticipant ? (
             <div className="transcriptMessageTop">
               <div
@@ -277,6 +290,11 @@ export function TranscriptMessageItem({
           body={displayBody}
           metadata={message.metadata}
         /> : null}
+        {last && sentAt ? (
+          <span className="transcriptMessageTime" data-tooltip={messageTimestamp(sentAt, locale)}>
+            {messageTime(sentAt, locale)}
+          </span>
+        ) : null}
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
           <div className="userTurnStatus userTurnStatusFailed">
             {t(messageKeys.chatTranscriptMessageFailedStatusLabel)}

@@ -41,6 +41,8 @@ export interface ConversationComposerAreaProps {
   defaultRecipientParticipantId: string | null;
   composerStackParticipants: ChatComposerStackParticipantView[];
   isDirectLane: boolean;
+  /** A direct message whose cat reaches Telegram sends with Telegram's paper plane (directMessageTelegram.ts). */
+  directSendsToTelegram?: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -89,6 +91,7 @@ export function ConversationComposerArea({
   defaultRecipientParticipantId,
   composerStackParticipants,
   isDirectLane,
+  directSendsToTelegram = false,
   activeWorkflowShape,
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
@@ -441,7 +444,7 @@ export function ConversationComposerArea({
               aria-label={t(messageKeys.chatNewChatDraftSendAria)}
               data-tooltip={t(messageKeys.chatNewChatDraftSendAria)}
             >
-              <ComposerSendIcon direct={isDirectLane} />
+              <ComposerSendIcon direct={isDirectLane && directSendsToTelegram} />
             </button>
           )}
         </div>

@@ -643,3 +643,30 @@
   font-size: 0.82rem;
   color: var(--text);
 }
+
+/* When a message was sent, inside its (last) bubble, as Cats Bot's notes show it; the tooltip has the whole
+   date and time (shared/renderer/messageTime.ts). */
+.transcriptMessageTime {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+/* The line that starts a new day: Today, Yesterday, then the date. */
+.transcriptDayDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.transcriptDayDivider::before,
+.transcriptDayDivider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}

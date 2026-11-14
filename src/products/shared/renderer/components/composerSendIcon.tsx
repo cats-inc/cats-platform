@@ -1,6 +1,7 @@
 /**
- * The composer's send glyph on its 16 px grid with a 1.5 stroke: the up arrow, and a paper plane in a direct
- * message with one cat, as Cats Bot sends in its direct message (`composerIcons.tsx`, same paths).
+ * The composer's send glyph on its 16 px grid with a 1.5 stroke: the up arrow, and Telegram's paper plane in a
+ * direct message whose cat reaches Telegram (`directMessageTelegram.ts`), as Cats Bot draws its direct message's
+ * (`composerIcons.tsx`, same paths).
  */
 export function ComposerSendIcon({ direct }: { direct: boolean }) {
   return (

@@ -64,6 +64,8 @@ export interface ConcurrentClusterRendererProps<Participant> {
     catRecord?: ChatCat | null,
   ) => string;
   showProgressDetails: boolean;
+  /** In a direct message, the lane's cat: its face is the top bar's, so its bubbles carry none, live ones too. */
+  hideSpeakerCatId?: string | null;
   actions?: ReadonlyArray<ConcurrentClusterAction>;
 }
 
@@ -443,7 +445,10 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
         return (
           <ConversationResponse key={segment.id}
             response={{ version: 1, id: segment.id, phase: segment.phase, blocks: segment.contentBlocks }}
-            speaker={<SegmentSpeakerHeader
+            speaker={props.hideSpeakerCatId
+              && (presentation.segmentParticipantCat?.id ?? presentation.speakerCat?.id) === props.hideSpeakerCatId
+              ? null
+              : <SegmentSpeakerHeader
                 segmentParticipant={presentation.segmentParticipant}
                 segmentParticipantCat={presentation.segmentParticipantCat}
                 speakerCat={presentation.speakerCat}

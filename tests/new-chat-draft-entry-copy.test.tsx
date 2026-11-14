@@ -90,6 +90,20 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
+test('a Chat direct draft sends with Telegram\'s paper plane only when its cat reaches Telegram', () => {
+  const sendButton = (markup: string) => markup.match(/<button class="composerSendButton"[^>]*type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
+  const direct = { allowAddCat: false, draftCatIds: ['cat-lead'], draftDefaultRecipientCatId: 'cat-lead' };
+  assert.match(sendButton(renderToStaticMarkup(<NewChatDraft {...createProps(direct)} />)), /d="M8 13V3"/u);
+  const payload = createPayload();
+  const bound = { ...payload, chat: { ...payload.chat, botBindings: [{
+    id: 'binding', platform: 'telegram', botName: 'milo_bot', catId: 'cat-lead', catName: 'Milo',
+    inboundMode: 'polling', roomMode: 'direct', isBossBinding: false, status: 'active', outboundFanoutEnabled: true,
+    updatedAt: '', webhookPath: '', hasBotToken: true, hasWebhookSecret: false,
+  }] } } as AppShellPayload;
+  assert.match(sendButton(renderToStaticMarkup(<NewChatDraft {...createProps({ ...direct, payload: bound })} />)),
+    /d="M14\.5 1\.5 1\.5 6\.5l5\.5 2\.5 2\.5 5\.5z"/u);
+});
+
 test('lead-scoped public new chat draft keeps fresh copy with a selected audience chip', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft

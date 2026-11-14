@@ -1,6 +1,8 @@
 import {
+  Fragment,
   useEffect,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type Ref,
   type RefCallback,
@@ -41,6 +43,34 @@ import type {
 import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/conversation-view/LiveTranscriptIndicator.js';
 import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
 import { reconcileConversationPresentationLive } from '../../../../../shared/conversationPresentationLive.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import {
+  currentDayKey,
+  dayLabel,
+  dayStartKeys,
+  messageTimestamp,
+  readMessageTime,
+  subscribeDay,
+} from '../../messageTime.js';
+
+/**
+ * The line that starts a new day in the transcript: Today, Yesterday, then the date. It alone follows the day
+ * clock, so at midnight Today becomes Yesterday without redrawing the transcript.
+ */
+function TranscriptDayDivider({ at }: { at: Date }) {
+  const { t, locale } = useI18n();
+  // The server snapshot is the same day: server rendering (tests, previews) labels the dividers as the client does.
+  useSyncExternalStore(subscribeDay, currentDayKey, currentDayKey);
+  return (
+    <div className="transcriptDayDivider" role="separator" data-tooltip={messageTimestamp(at, locale)}>
+      <span>{dayLabel(at, new Date(), locale, {
+        today: t(messageKeys.chatTranscriptDayToday),
+        yesterday: t(messageKeys.chatTranscriptDayYesterday),
+      })}</span>
+    </div>
+  );
+}
 
 export interface TranscriptMessageActionContext {
   message: SelectedChannelView['messages'][number];
@@ -98,6 +128,8 @@ export interface ConversationTranscriptPanelProps {
     catRecord?: ChatCat | null,
   ) => string;
   showLiveProgressDetails?: boolean;
+  /** In a direct message, the lane's cat: its face is the top bar's, so its bubbles carry none. */
+  directLaneCatId?: string | null;
   resolveConcurrentClusterPresentationMode: (
     input: ConcurrentClusterContext,
   ) => ConcurrentChatPresentationMode;
@@ -143,6 +175,7 @@ export function ConversationTranscriptPanel({
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
   showLiveProgressDetails = false,
+  directLaneCatId = null,
   resolveConcurrentClusterPresentationMode,
   buildConcurrentClusterActions,
   buildTranscriptMessageActions,
@@ -242,53 +275,69 @@ export function ConversationTranscriptPanel({
         resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
         resolveParticipantDisplayName={resolveParticipantDisplayName}
         showSpeakerHeader
+        hideSpeakerCatId={directLaneCatId}
       />
     );
   }
+
+  function renderItem(item: (typeof renderItems)[number]): ReactNode {
+    if (item.kind === 'concurrent_cluster') {
+      const clusterContext: ConcurrentClusterContext = {
+        turnId: item.turnId,
+        sourceMessageId: item.sourceMessageId,
+        segmentCount: item.segments.length,
+        clusterKind: 'durable',
+      };
+      const resolvedClusterMode = resolveConcurrentClusterPresentationMode(clusterContext);
+      if (resolvedClusterMode === 'inline_stack') {
+        return item.messages.map((message) => renderTranscriptMessage(message));
+      }
+      const clusterActions = buildConcurrentClusterActions?.({
+        ...clusterContext,
+        resolvedMode: resolvedClusterMode,
+      }) ?? [];
+      return (
+        <ConcurrentClusterRenderer
+          key={item.key}
+          mode={resolvedClusterMode}
+          segments={item.segments}
+          cats={cats}
+          selectedChannelId={selectedChannelId}
+          disabledMentionNames={disabledMentionNames}
+          liveSpeakerParticipant={null}
+          liveSpeakerParticipantCat={null}
+          resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
+          resolveParticipantCatRecord={resolveParticipantCatRecord}
+          buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+          buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+          resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+          resolveParticipantDisplayName={resolveParticipantDisplayName}
+          showProgressDetails={showLiveProgressDetails}
+          hideSpeakerCatId={directLaneCatId}
+          actions={clusterActions}
+        />
+      );
+    }
+    return renderTranscriptMessage(item.message);
+  }
+
+  // When a transcript item was sent: a message's time, a cluster's first message's. Each new day gets a divider
+  // above its first item, counting only the messages shown (the verbose switch has filtered them already).
+  function renderItemTime(item: (typeof renderItems)[number]): Date | null {
+    return readMessageTime(item.kind === 'message' ? item.message.createdAt : item.messages[0]?.createdAt);
+  }
+  const dayStarts = dayStartKeys(renderItems, renderItemTime, (item) => item.key);
 
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
         {historyControls}
-        {renderItems.map((item) => {
-          if (item.kind === 'concurrent_cluster') {
-            const clusterContext: ConcurrentClusterContext = {
-              turnId: item.turnId,
-              sourceMessageId: item.sourceMessageId,
-              segmentCount: item.segments.length,
-              clusterKind: 'durable',
-            };
-            const resolvedClusterMode = resolveConcurrentClusterPresentationMode(clusterContext);
-            if (resolvedClusterMode === 'inline_stack') {
-              return item.messages.map((message) => renderTranscriptMessage(message));
-            }
-            const clusterActions = buildConcurrentClusterActions?.({
-              ...clusterContext,
-              resolvedMode: resolvedClusterMode,
-            }) ?? [];
-            return (
-              <ConcurrentClusterRenderer
-                key={item.key}
-                mode={resolvedClusterMode}
-                segments={item.segments}
-                cats={cats}
-                selectedChannelId={selectedChannelId}
-                disabledMentionNames={disabledMentionNames}
-                liveSpeakerParticipant={null}
-                liveSpeakerParticipantCat={null}
-                resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
-                resolveParticipantCatRecord={resolveParticipantCatRecord}
-                buildParticipantAvatarClassName={buildParticipantAvatarClassName}
-                buildParticipantAvatarStyle={buildParticipantAvatarStyle}
-                resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
-                resolveParticipantDisplayName={resolveParticipantDisplayName}
-                showProgressDetails={showLiveProgressDetails}
-                actions={clusterActions}
-              />
-            );
-          }
-          return renderTranscriptMessage(item.message);
-        })}
+        {renderItems.map((item) => (
+          <Fragment key={item.key}>
+            {dayStarts.has(item.key) ? <TranscriptDayDivider at={renderItemTime(item)!} /> : null}
+            {renderItem(item)}
+          </Fragment>
+        ))}
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}
@@ -304,6 +353,7 @@ export function ConversationTranscriptPanel({
             resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
             resolveParticipantDisplayName={resolveParticipantDisplayName}
             showProgressDetails={showLiveProgressDetails}
+            hideSpeakerCatId={directLaneCatId}
             concurrentPresentationMode={(() => {
               const liveTurnId = workflow.activeTurn?.id;
               if (!liveTurnId) {
