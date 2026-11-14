@@ -2683,6 +2683,8 @@ export const messageKeys = {
   chatTranscriptMessageDebateWithOthersLabel:
     'chat.transcriptMessageDebateWithOthersLabel',
   chatTranscriptMessageCopyLabel: 'chat.transcriptMessageCopyLabel',
+  chatTranscriptDayToday: 'chat.transcriptDayToday',
+  chatTranscriptDayYesterday: 'chat.transcriptDayYesterday',
   chatTranscriptMessageRetryResponseLabel: 'chat.transcriptMessageRetryResponseLabel',
   chatTranscriptMessageRelayToOthersLabel: 'chat.transcriptMessageRelayToOthersLabel',
   chatTranscriptMessageFailedStatusLabel: 'chat.transcriptMessageFailedStatusLabel',

@@ -97,17 +97,21 @@ function renderDraft(props: NewChatDraftProps, locale?: 'zh-TW'): string {
   );
 }
 
-test('the new-chat send button is a paper plane in a direct message with one cat, else the up arrow', () => {
+test('the Work new-chat send button is the up arrow, in a direct message too', () => {
   const sendButton = (markup: string) => markup.match(/<button class="composerSendButton"[^>]*type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
   const draft = sendButton(renderDraft(createProps()));
   assert.match(draft, /d="M8 13V3"/u);
   assert.match(draft, /data-tooltip="Send"/u);
-  const direct = sendButton(renderDraft(createProps({
-    allowAddCat: false,
-    draftCatIds: ['cat-lead'],
-    draftDefaultRecipientCatId: 'cat-lead',
-  })));
-  assert.match(direct, /d="M14\.5 1\.5 1\.5 6\.5l5\.5 2\.5 2\.5 5\.5z"/u);
+  const directProps = { allowAddCat: false, draftCatIds: ['cat-lead'], draftDefaultRecipientCatId: 'cat-lead' };
+  assert.match(sendButton(renderDraft(createProps(directProps))), /d="M8 13V3"/u, 'no Telegram binding: the arrow');
+  const bound = createPayload({ botBindings: [{
+    id: 'binding', platform: 'telegram', botName: 'milo_bot', catId: 'cat-lead', catName: 'Milo', inboundMode: 'polling',
+    roomMode: 'direct', isBossBinding: false, status: 'active', outboundFanoutEnabled: true, updatedAt: '',
+    webhookPath: '', hasBotToken: true, hasWebhookSecret: false,
+  } as AppShellPayload['chat']['botBindings'][number]] });
+  // Bindings route into Chat's lanes only: Work's direct draft keeps the arrow even for a bound cat
+  // (Chat's draft sends with the plane, new-chat-draft-entry-copy.test.tsx).
+  assert.match(sendButton(renderDraft(createProps({ ...directProps, payload: bound }))), /d="M8 13V3"/u);
 });
 
 test('work starter chips localize in zh-TW', () => {

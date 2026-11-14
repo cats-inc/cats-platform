@@ -2571,6 +2571,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.transcriptMessageCounterWithOthersLabel': '與其他人反駁',
   'chat.transcriptMessageDebateWithOthersLabel': '與其他人辯論',
   'chat.transcriptMessageCopyLabel': '複製訊息',
+  'chat.transcriptDayToday': '今天',
+  'chat.transcriptDayYesterday': '昨天',
   'chat.transcriptMessageRetryResponseLabel': '重試回覆',
   'chat.transcriptMessageRelayToOthersLabel': '轉發給其他人',
   'chat.transcriptMessageFailedStatusLabel': '回覆失敗',

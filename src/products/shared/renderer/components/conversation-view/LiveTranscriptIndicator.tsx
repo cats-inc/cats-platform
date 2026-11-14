@@ -47,6 +47,7 @@ export function LiveTranscriptIndicator<Participant>(
       resolveParticipantAvatarUrl={props.resolveParticipantAvatarUrl}
       resolveParticipantDisplayName={props.resolveParticipantDisplayName}
       showProgressDetails={props.showProgressDetails}
+      hideSpeakerCatId={props.hideSpeakerCatId}
       actions={segments.length > 1 ? concurrentActions : []}
     />
   );

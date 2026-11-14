@@ -120,12 +120,16 @@ test('the plus menu lists attachments first and sets diagnostics apart with a gl
   assert.match(menu, /<svg[^>]*aria-hidden="true"[^>]*>\s*<path d="M1\.5 8\.5h2\.75L6 4l4 8[^"]*"[^>]*><\/path><\/svg>Attach conversation diagnostics/u);
 });
 
-test('the send button is the up arrow, and a paper plane in a direct message', () => {
+test('the send button is the up arrow, and a paper plane only in a direct message that reaches Telegram', () => {
   const arrow = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ isDirectLane: false })} />);
-  const plane = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ isDirectLane: true })} />);
+  const direct = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({ isDirectLane: true })} />);
+  const plane = renderToStaticMarkup(<ConversationComposerArea {...createComposerProps({
+    isDirectLane: true, directSendsToTelegram: true })} />);
   const sendButton = (markup: string) => markup.match(/<button class="composerSendButton"[^>]*type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
   assert.match(sendButton(arrow), /d="M8 13V3"/u);
   assert.doesNotMatch(sendButton(arrow), /M14\.5 1\.5/u);
+  // A direct message whose cat has no Telegram binding sends with the arrow, as Cats Bot's does.
+  assert.match(sendButton(direct), /d="M8 13V3"/u);
   assert.match(sendButton(plane), /d="M14\.5 1\.5 1\.5 6\.5l5\.5 2\.5 2\.5 5\.5z"/u);
   assert.doesNotMatch(sendButton(plane), /d="M8 13V3"/u);
 });

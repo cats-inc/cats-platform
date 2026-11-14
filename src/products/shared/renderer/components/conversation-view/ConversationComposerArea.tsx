@@ -41,6 +41,8 @@ export interface ConversationComposerAreaProps {
   defaultRecipientParticipantId: string | null;
   composerStackParticipants: ChatComposerStackParticipantView[];
   isDirectLane: boolean;
+  /** A direct message whose cat reaches Telegram sends with Telegram's paper plane (directMessageTelegram.ts). */
+  directSendsToTelegram?: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -89,6 +91,7 @@ export function ConversationComposerArea({
   defaultRecipientParticipantId,
   composerStackParticipants,
   isDirectLane,
+  directSendsToTelegram = false,
   activeWorkflowShape,
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
@@ -175,6 +178,9 @@ export function ConversationComposerArea({
   const switchSendModeLabel = t(messageKeys.chatComposerAreaSwitchSendModeLabel);
   // Toasts sit above this composer rather than over its buttons (toastAnchor.ts).
   const toastAnchorRef = useToastAnchor<HTMLDivElement>();
+  // While the scroll-to-latest button shows, it hangs where the toasts would go; it takes over as their anchor
+  // (a higher priority than the composer's), and when it goes they return to the composer.
+  const scrollButtonToastAnchorRef = useToastAnchor<HTMLButtonElement>(1);
 
   return (
     <div className={stackClassName} ref={toastAnchorRef}>
@@ -216,6 +222,7 @@ export function ConversationComposerArea({
     >
       {hasConversationStarted && !isNearBottom ? (
         <button
+          ref={scrollButtonToastAnchorRef}
           className="scrollToBottomButton"
           type="button"
           aria-label={t(messageKeys.chatComposerAreaScrollToLatestAria)}
@@ -437,7 +444,7 @@ export function ConversationComposerArea({
               aria-label={t(messageKeys.chatNewChatDraftSendAria)}
               data-tooltip={t(messageKeys.chatNewChatDraftSendAria)}
             >
-              <ComposerSendIcon direct={isDirectLane} />
+              <ComposerSendIcon direct={isDirectLane && directSendsToTelegram} />
             </button>
           )}
         </div>

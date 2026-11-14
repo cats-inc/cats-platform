@@ -2626,6 +2626,8 @@ export const enCatalog: MessageCatalog = {
   'chat.transcriptMessageCounterWithOthersLabel': 'Counter with others',
   'chat.transcriptMessageDebateWithOthersLabel': 'Debate with others',
   'chat.transcriptMessageCopyLabel': 'Copy message',
+  'chat.transcriptDayToday': 'Today',
+  'chat.transcriptDayYesterday': 'Yesterday',
   'chat.transcriptMessageRetryResponseLabel': 'Retry response',
   'chat.transcriptMessageRelayToOthersLabel': 'Relay to others',
   'chat.transcriptMessageFailedStatusLabel': 'Response failed',

@@ -52,6 +52,7 @@ import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
 import { AttachFilesIcon, ScreenshotRegionIcon } from './composerMenuIcons.js';
 import { ComposerSendIcon } from './composerSendIcon.js';
+import { catReachesTelegram } from '../directMessageTelegram.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import {
   ParticipantAddMenu,
@@ -1216,7 +1217,8 @@ export function NewConversationDraft({
                   <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
                 </svg>
               ) : (
-                <ComposerSendIcon direct={isDirectLaneContext} />
+                <ComposerSendIcon direct={isDirectLaneContext
+                  && catReachesTelegram(payload.chat.botBindings, draftDefaultRecipientCatId, assistSurface)} />
               )}
             </button>
           )}

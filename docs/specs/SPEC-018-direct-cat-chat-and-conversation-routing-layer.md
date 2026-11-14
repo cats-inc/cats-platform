@@ -161,6 +161,30 @@ Dispatch
 - If the lane is entered through Telegram or another transport, that external
   thread should attach through a transport binding rather than by turning the
   transport thread into the runtime session identity.
+- Presentation (2026-11-14, as Cats Bot's notes, cats-bot SPEC-003 FR-13,
+  FR-15, FR-16):
+  - The lane is a talk between the owner and one Cat, whose face is the top
+    bar's (gold-ringed for the Boss Cat): that Cat's bubbles carry no face or
+    name; another Cat's message keeps its own. Group conversations keep every
+    face (`TranscriptMessageItem` `hideSpeakerCatId`).
+  - The lane's Cat's reply being written carries no face either, so its
+    bubble does not change when it seals.
+  - The send button is Telegram's paper plane only in a Chat direct lane whose
+    Cat has an active Telegram binding with its bot token stored (a Boss Cat's
+    binding names its Cat too; `directMessageTelegram.ts`). Bindings route into
+    Chat's lanes only, so Work and Code direct lanes, every other
+    conversation and a Cat without one use the up arrow. Unlike Cats Bot,
+    Desktop does not check that an owner chat is bound.
+- Every transcript (all conversations, 2026-11-14): each message bubble but a
+  system line closes with the time it was sent, to the minute, inside it; its
+  tooltip has the whole date and time. A reply still being written has no time
+  yet. Concurrent replies laid out side by side (compare cards, focus rail)
+  keep their layout without times; stacked inline they show them.
+  Each new local day starts with a divider (Today, Yesterday, then the date,
+  with the year once it is another year), relabelled at midnight; an item
+  timed before the one above it starts no day. Times and
+  dividers show whatever the verbose messages and live progress details
+  switches say (`shared/renderer/messageTime.ts`).
 
 ### Mention Behavior
 
