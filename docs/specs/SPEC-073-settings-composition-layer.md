@@ -85,7 +85,11 @@ composition primitives.
 - **Position** (2026-11-14): while a conversation composer is on screen,
   toasts sit 12 px above it, centered on it (`useToastAnchor` in
   `src/design/components/toastAnchor.ts`), so a toast that stays never
-  covers the composer's buttons. Elsewhere, Settings included, they stay
+  covers the composer's buttons. While the composer's scroll-to-latest
+  button shows, it is the anchor instead (`useToastAnchor(1)`: a higher
+  priority wins over the most recently mounted composer), so toasts sit
+  above that button rather than over it, and return to the composer when
+  it goes. Elsewhere, Settings included, they stay
   24 px above the bottom of the window.
 - The primitives in this SPEC therefore **MUST NOT** expose `feedback`
   / `error` slots, and migrators **MUST** strip any inline feedback

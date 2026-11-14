@@ -27,7 +27,14 @@ export function resolveToastAnchor(
   return { bottom: Math.round(viewport.height - rect.top + gap), x: Math.round(rect.left + rect.width / 2) };
 }
 
-const anchors: HTMLElement[] = [];
+/** Registered anchors; the highest priority wins, then the most recently mounted (`current`). */
+const anchors: Array<{ element: HTMLElement; priority: number }> = [];
+
+function current(): HTMLElement | undefined {
+  let best: { element: HTMLElement; priority: number } | undefined;
+  for (const anchor of anchors) if (!best || anchor.priority >= best.priority) best = anchor;
+  return best?.element;
+}
 let observer: ResizeObserver | null = null;
 let frame = 0;
 
@@ -35,7 +42,7 @@ function apply(): void {
   frame = 0;
   if (typeof document === 'undefined') return;
   const style = document.documentElement.style;
-  const element = anchors[anchors.length - 1];
+  const element = current();
   const anchor = element?.isConnected
     ? resolveToastAnchor(element.getBoundingClientRect(), { height: window.innerHeight })
     : null;
@@ -59,8 +66,8 @@ function schedule(): void {
   frame = requestAnimationFrame(apply);
 }
 
-function register(element: HTMLElement): void {
-  anchors.push(element);
+function register(element: HTMLElement, priority: number): void {
+  anchors.push({ element, priority });
   if (anchors.length === 1) {
     window.addEventListener('resize', schedule);
     // The composer moves when the conversation scrolls; capture catches scrolling in any container.
@@ -72,8 +79,11 @@ function register(element: HTMLElement): void {
 }
 
 function unregister(element: HTMLElement): void {
-  const index = anchors.lastIndexOf(element);
-  if (index >= 0) anchors.splice(index, 1);
+  for (let index = anchors.length - 1; index >= 0; index -= 1) {
+    if (anchors[index]!.element !== element) continue;
+    anchors.splice(index, 1);
+    break;
+  }
   observer?.unobserve(element);
   if (anchors.length === 0) {
     window.removeEventListener('resize', schedule);
@@ -82,13 +92,17 @@ function unregister(element: HTMLElement): void {
   schedule();
 }
 
-/** A ref for the composer that toasts should sit above; the most recently mounted one wins. */
-export function useToastAnchor<T extends HTMLElement>(): RefCallback<T> {
-  const current = useRef<T | null>(null);
+/**
+ * A ref for the composer that toasts should sit above; the most recently mounted one wins. Something that
+ * hangs over a composer while it shows (its scroll-to-latest button) passes a higher `priority`, so it wins
+ * whatever the order React attaches the refs in (a child's ref is attached before its parent's).
+ */
+export function useToastAnchor<T extends HTMLElement>(priority = 0): RefCallback<T> {
+  const mounted = useRef<T | null>(null);
   return useCallback((element: T | null) => {
-    if (current.current === element) return;
-    if (current.current) unregister(current.current);
-    current.current = element;
-    if (element) register(element);
-  }, []);
+    if (mounted.current === element) return;
+    if (mounted.current) unregister(mounted.current);
+    mounted.current = element;
+    if (element) register(element, priority);
+  }, [priority]);
 }
