@@ -1786,7 +1786,7 @@ ${SETUP_WIZARD_CSS}
        card is built from the readiness audit instead (see
        buildLocalModelCard). */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
-      'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
+      'claude_code', 'antigravity', 'cursor_agent', 'kimi', 'kiro', 'junie',
       'goose', 'grok', 'devin', 'muse'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
@@ -1812,6 +1812,7 @@ ${SETUP_WIZARD_CSS}
       junie: 'Junie',
       auggie: 'Auggie',
       pi: 'Pi',
+      kimi: 'Kimi Code',
       grok: 'Grok',
       cline: 'Cline',
       devin: 'Devin',

@@ -5,7 +5,7 @@
  */
 export const SETUP_PROVIDER_ORDER = [
   'codex', 'claude', 'antigravity', 'grok', 'muse', 'cursor', 'copilot', 'opencode',
-  'kilo', 'cline', 'auggie', 'pi', 'kiro', 'junie', 'devin', 'goose', 'ollama', 'openclaw',
+  'kilo', 'cline', 'auggie', 'pi', 'kimi', 'kiro', 'junie', 'devin', 'goose', 'ollama', 'openclaw',
 ];
 
 /**

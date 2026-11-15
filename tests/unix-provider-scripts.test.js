@@ -39,6 +39,7 @@ const linuxScripts = [
   'install-cursor-agent.sh',
   'install-goose.sh',
   'install-junie.sh',
+  'install-kimi-code.sh',
   'install-kiro-cli.sh',
   'upgrade-cli-tools.sh',
   'check-installation.sh',
@@ -62,6 +63,7 @@ const macosScripts = [
   'install-cursor-agent.sh',
   'install-goose.sh',
   'install-junie.sh',
+  'install-kimi-code.sh',
   'install-kiro-cli.sh',
   'upgrade-cli-tools.sh',
   'check-installation.sh',
@@ -112,6 +114,7 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
     await assertHelp(join(rootDir, 'scripts', platform, 'install-cursor-agent.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-goose.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-junie.sh'));
+    await assertHelp(join(rootDir, 'scripts', platform, 'install-kimi-code.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-kiro-cli.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-grok.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-meta-cli.sh'));
@@ -191,6 +194,100 @@ test('Unix Grok helpers detect only grok and uninstall only fixed installer-owne
       await rm(home, { recursive: true, force: true });
       await rm(unrelatedBin, { recursive: true, force: true });
     }
+  }
+});
+
+test('Unix Kimi Code helpers detect only the fixed install path and keep ~/.kimi-code data', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const home = await mkdtemp(join(tmpdir(), `cats-${platform}-kimi-home-`));
+    const otherBin = await mkdtemp(join(tmpdir(), `cats-${platform}-kimi-path-`));
+    const kimiHome = join(home, '.kimi-code');
+    const kimiBin = join(kimiHome, 'bin');
+    const kimiPath = join(kimiBin, 'kimi');
+    const backupPath = join(kimiBin, 'kimi.bak');
+    const configPath = join(kimiHome, 'config.toml');
+    const credentialPath = join(kimiHome, 'credentials', 'kimi-code.json');
+    const pathOnlyKimi = join(otherBin, 'kimi');
+    const helperPath = join(rootDir, 'scripts', platform, 'install-kimi-code.sh');
+    const bashPath = relative(rootDir, helperPath).replace(/\\/gu, '/');
+    const fixturePath = `${toBashPath(otherBin)}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`;
+    const runHelper = (args) => process.platform === 'win32'
+      ? execFile(bashExecutable, [
+          '-c',
+          'export HOME="$CATS_KIMI_TEST_HOME" PATH="$CATS_KIMI_TEST_PATH"; unset KIMI_INSTALL_DIR; exec /bin/bash "$CATS_KIMI_TEST_SCRIPT" "$CATS_KIMI_TEST_ARG1" "$CATS_KIMI_TEST_ARG2"',
+        ], {
+          cwd: rootDir,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            CATS_KIMI_TEST_HOME: toBashPath(home),
+            CATS_KIMI_TEST_PATH: fixturePath,
+            CATS_KIMI_TEST_SCRIPT: bashPath,
+            CATS_KIMI_TEST_ARG1: args[0],
+            CATS_KIMI_TEST_ARG2: args[1],
+            WSLENV: [
+              process.env.WSLENV,
+              'CATS_KIMI_TEST_HOME',
+              'CATS_KIMI_TEST_PATH',
+              'CATS_KIMI_TEST_SCRIPT',
+              'CATS_KIMI_TEST_ARG1',
+              'CATS_KIMI_TEST_ARG2',
+            ].filter(Boolean).join(':'),
+          },
+        })
+      : execFile(bashExecutable, [bashPath, ...args], {
+          cwd: rootDir,
+          encoding: 'utf8',
+          env: { ...process.env, HOME: toBashPath(home), PATH: fixturePath, KIMI_INSTALL_DIR: '' },
+        });
+
+    try {
+      await mkdir(join(kimiHome, 'credentials'), { recursive: true });
+      await writeFile(configPath, 'default_model = "fixture"\n');
+      await writeFile(credentialPath, '{"refresh_token":"preserved"}');
+      // A kimi only on PATH (legacy kimi-cli or an npm build) is not the native install.
+      await writeFile(pathOnlyKimi, '#!/usr/bin/env bash\nprintf "kimi, version 0.9.0\\n"\n');
+      await chmod(pathOnlyKimi, 0o755);
+
+      const missing = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(missing.installed, false, JSON.stringify(missing));
+      assert.deepEqual(missing.plannedActions, ['install_kimi_cli']);
+
+      await mkdir(kimiBin, { recursive: true });
+      await writeFile(kimiPath, '#!/usr/bin/env bash\nprintf "2.5.3\\n"\n');
+      await writeFile(backupPath, 'previous build');
+      await chmod(kimiPath, 0o755);
+
+      const installed = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(installed.installed, true, JSON.stringify(installed));
+      assert.equal(installed.commandPath, toBashPath(kimiPath));
+      assert.equal(installed.detectedVersion, '2.5.3');
+
+      const removed = JSON.parse((await runHelper(['--uninstall', '--json'])).stdout);
+      assert.equal(removed.status, 'uninstalled', JSON.stringify(removed));
+      await assert.rejects(access(kimiPath));
+      await assert.rejects(access(backupPath));
+      await access(pathOnlyKimi);
+      assert.equal(await readFile(configPath, 'utf8'), 'default_model = "fixture"\n');
+      assert.equal(await readFile(credentialPath, 'utf8'), '{"refresh_token":"preserved"}');
+      assert.doesNotMatch(JSON.stringify(removed), /credentials|config\.toml/u);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+      await rm(otherBin, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Unix Kimi Code helpers ask the installer\'s version endpoint and clean only kimi.bak', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const common = await readFile(join(rootDir, 'scripts', platform, 'provider-cli-common.sh'), 'utf8');
+    const versions = await readFile(join(rootDir, 'scripts', platform, 'provider-version-common.sh'), 'utf8');
+    assert.match(common, /https:\/\/code\.kimi\.ai\/kimi-code\/install\.sh/u);
+    assert.match(common, /\( cd "\$workdir" && bash "\$installer_path" \) < \/dev\/null/u);
+    assert.match(common, /KIMI_NO_MODIFY_PATH/u);
+    assert.match(versions, /'https:\/\/code\.kimi\.ai\/kimi-code\/latest'/u);
+    assert.match(versions, /kimi\) cats_kimi_code_latest_version ;;/u);
+    assert.match(versions, /rm -f -- "\$root\/kimi\.bak"/u);
   }
 });
 

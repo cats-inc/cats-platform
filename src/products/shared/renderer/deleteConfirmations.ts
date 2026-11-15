@@ -25,7 +25,7 @@ export interface DeleteChannelContext {
 // Runtime removes discovery transcripts and native-session state for these CLIs.
 const nativeTranscriptProviders = new Set([
   'claude', 'junie', 'cline', 'grok', 'muse', 'copilot', 'antigravity',
-  'auggie', 'codex', 'pi', 'cursor', 'kiro', 'goose', 'opencode', 'kilo',
+  'auggie', 'codex', 'pi', 'kimi', 'cursor', 'kiro', 'goose', 'opencode', 'kilo',
 ]);
 
 export function channelDeleteTargets(chat: DeleteChannelContext, channelId: string): DeleteProviderTarget[] {

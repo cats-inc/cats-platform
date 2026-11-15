@@ -210,6 +210,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-CursorAgent.ps1'); Label = 'bundled Windows native Cursor installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Goose.ps1'); Label = 'bundled Windows native Goose installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Junie.ps1'); Label = 'bundled Windows native Junie installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KimiCode.ps1'); Label = 'bundled Windows native Kimi Code installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KiroCli.ps1'); Label = 'bundled Windows native Kiro installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Ollama.ps1'); Label = 'bundled Windows Ollama installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Check-WindowsSetupReadiness.ps1'); Label = 'bundled Windows setup readiness audit helper' },
@@ -231,6 +232,13 @@ $grokPreview = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $grokHe
   -Force -DryRun -Json -AllowAdmin | ConvertFrom-Json
 Assert-True ($grokPreview.status -eq 'preview') `
   'bundled Windows Grok helper dry-run mode completed'
+
+# Preview only: a check would start an installed kimi.exe, which takes up to 30 s.
+$kimiHelperPath = Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KimiCode.ps1'
+$kimiPreview = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $kimiHelperPath `
+  -Force -DryRun -Json -AllowAdmin -InstallState installed -DetectedVersion '0.0.0' | ConvertFrom-Json
+Assert-True ($kimiPreview.helper -eq 'windows-kimi-native-installer' -and $kimiPreview.status -eq 'preview') `
+  'bundled Windows Kimi Code helper dry-run mode completed'
 
 $clineHelperPath = Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Cline.ps1'
 $clineCheck = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $clineHelperPath `
@@ -269,6 +277,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-claud
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-cursor-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Cursor installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-goose-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Goose installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-junie-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Junie installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kimi-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kimi Code installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kiro-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kiro installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-ollama-local-model-installer-script' }).Count -ge 1) 'Windows target includes the bundled Ollama installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-setup-readiness-audit-script' }).Count -ge 1) 'Windows target includes the bundled setup readiness audit asset'

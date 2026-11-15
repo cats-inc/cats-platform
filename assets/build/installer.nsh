@@ -4,8 +4,9 @@
 ; Install-Codex.ps1 / Install-Copilot.ps1 / ... wrappers around
 ; _NpmCliInstaller.ps1, native Antigravity setup, etc.) refuse to run under an
 ; elevated shell because every CLI provider we install (Claude / Antigravity /
-; Cursor / Goose / Junie / npm-global CLIs / Ollama) is user-scoped:
-; binaries land in $env:USERPROFILE\.local\bin or %LOCALAPPDATA%, auth files
+; Cursor / Goose / Junie / Kimi Code / npm-global CLIs / Ollama) is user-scoped:
+; binaries land in $env:USERPROFILE\.local\bin, $env:USERPROFILE\.kimi-code\bin
+; or %LOCALAPPDATA%, auth files
 ; live under the user's profile, and the npm
 ; prefix is per-user. An all-users install would put Cats.exe under
 ; Program Files but every spawned helper would either reject elevation or

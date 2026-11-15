@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-153: Port Kimi Code into packaged setup and the provider catalog](153-port-kimi-code-into-packaged-setup-and-the-provider-catalog.md)
+  — accepted, 2026-11-16. Native Kimi Code helpers on Windows, macOS and Linux that count
+  only `~/.kimi-code/bin`, never wait on the installer's prompt, upgrade only when behind,
+  keep `~/.kimi-code` data on uninstall, and place `kimi` after Pi and before Kiro.
 - [ADR-152: Pilot a state database in Cats Desktop before Cats Bot](152-pilot-a-state-database-in-cats-desktop-before-cats-bot.md)
   — accepted for implementation, 2026-11-12; SPEC-144 and PLAN-137 are authorized and in
   progress. The Phase 0 baseline exceeds the proposed gate at 1x in local Node/Electron;

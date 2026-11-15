@@ -47,7 +47,7 @@ for (const locale of ['en', 'zh-TW'] as const) {
     confirm!();
     assert.equal(deleted, 1);
   });
-  for (const provider of ['claude', 'junie', 'cline', 'grok', 'muse', 'copilot', 'antigravity']) {
+  for (const provider of ['claude', 'junie', 'cline', 'grok', 'muse', 'copilot', 'antigravity', 'kimi']) {
     test(`${locale} dialog names ${provider} and warns that native transcripts cannot be recovered`, () => {
       const options = buildDeleteChannelConfirmation('A conversation', [{ provider, instance: 'cli/native' }], t);
       const markup = renderToStaticMarkup(<ConfirmDialog dialog={{ options }} onClose={() => {}} />);

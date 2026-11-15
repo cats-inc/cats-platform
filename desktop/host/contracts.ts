@@ -151,6 +151,7 @@ export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'junie',
   'auggie',
   'pi',
+  'kimi',
   'grok',
   'cline',
   'devin',
