@@ -278,6 +278,7 @@ packaging and installer flows.
 - `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Install-Goose.ps1`
 - `scripts/windows/Install-Junie.ps1`
+- `scripts/windows/Install-KimiCode.ps1`
 - `scripts/windows/Install-KiroCli.ps1`
 - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
@@ -337,6 +338,27 @@ unrecognised installer. Because the wizard is skipped, authentication is always
 still owed after a successful install: run `devin auth login` once and check
 with `devin auth status`. Uninstall removes the versioned tree under
 `%LOCALAPPDATA%\devin\cli` as well as the entry point.
+
+`Install-KimiCode.ps1` and `install-kimi-code.sh` wrap Moonshot AI's Kimi Code
+installer from its global mirror (`code.kimi.ai/kimi-code/install.ps1` and
+`install.sh`). The binary lands in `~/.kimi-code/bin/kimi(.exe)`;
+`KIMI_INSTALL_DIR` replaces `~/.kimi-code`. Detection, version reads and
+verification look only at that fixed path, because a `kimi` elsewhere on PATH can
+be the archived Python kimi-cli (which the installer renames `kimi-legacy`) or an
+npm/Homebrew build. `kimi --version` starts a 160 MB binary that takes up to 30
+seconds on Windows, so the Windows helper bounds it at 60 seconds and reads it
+only when needed. `-Upgrade` asks the installer's own
+`code.kimi.ai/kimi-code/latest` endpoint (or `KIMI_VERSION`) first and skips the
+download when current; success is the version read afterwards. The Windows
+installer ends its failure path with `Read-Host`, which the non-interactive child
+turns into an exit instead of a wait. After a verified upgrade the helpers remove
+the previous build the installer keeps (`kimi.exe.bak` and
+`kimi.exe.<hex>.bak` on Windows, `kimi.bak` on macOS and Linux). Both honour
+`KIMI_NO_MODIFY_PATH`. A fresh install still owes `kimi login`
+(`kimi login --region mainland-cn` for mainland China accounts). On Windows Kimi
+runs commands through Git Bash; a missing one is a warning. Uninstall removes the
+binary, its backups and, in the default tree, the `fd.exe` Kimi extracts beside it;
+`~/.kimi-code` itself, with `config.toml`, credentials and sessions, stays.
 
 `Install-MetaCli.ps1` and `install-meta-cli.sh` wrap Meta's Muse installer.
 What that installer places is a *launcher*, not the agent: it downloads
@@ -405,6 +427,7 @@ runtime:
 - `scripts/linux/install-cursor-agent.sh`
 - `scripts/linux/install-goose.sh`
 - `scripts/linux/install-junie.sh`
+- `scripts/linux/install-kimi-code.sh`
 - `scripts/linux/install-kiro-cli.sh`
 - `scripts/linux/upgrade-cli-tools.sh`
 - `scripts/linux/check-installation.sh`
@@ -427,6 +450,7 @@ runtime:
 - `scripts/macos/install-cursor-agent.sh`
 - `scripts/macos/install-goose.sh`
 - `scripts/macos/install-junie.sh`
+- `scripts/macos/install-kimi-code.sh`
 - `scripts/macos/install-kiro-cli.sh`
 - `scripts/macos/upgrade-cli-tools.sh`
 - `scripts/macos/check-installation.sh`
@@ -438,7 +462,7 @@ These helpers cover the same first-pass self-hosted provider baseline that
   Homebrew or a user-local tarball)
 - Git through Homebrew on macOS; on Linux a check that names the
   `apt-get`/`dnf`/`yum` install command, since these helpers never use sudo
-- native installers for Claude Code, Antigravity, Grok, Cursor Agent, Goose, Junie, and Kiro
+- native installers for Claude Code, Antigravity, Grok, Cursor Agent, Goose, Junie, Kimi Code, and Kiro
 - npm global-prefix setup for user-scoped installs
 - per-CLI npm-global installers for Codex, Copilot, OpenCode, Kilo,
   Auggie, and Pi

@@ -25,9 +25,11 @@ test('native version gates preserve current/newer builds and distinguish Cursor 
  (Test-CatsNativeUpgrade -Provider grok -InstalledVersion '2.0.0' -LatestVersion '1.2.3'),
  (Test-CatsNativeUpgrade -Provider cursor -InstalledVersion '2026.09.16-abcd' -LatestVersion '2026.09.16-defg'),
  (Test-CatsNativeUpgrade -Provider junie -InstalledVersion 'junie 1.0 (252.3.7)' -LatestVersion '252.3.6'),
- (Test-CatsNativeUpgrade -Provider devin -InstalledVersion '1.2.3' -LatestVersion '')
+ (Test-CatsNativeUpgrade -Provider devin -InstalledVersion '1.2.3' -LatestVersion ''),
+ (Test-CatsNativeUpgrade -Provider kimi -InstalledVersion '2.5.3' -LatestVersion '2.5.3'),
+ (Test-CatsNativeUpgrade -Provider kimi -InstalledVersion '2.5.3' -LatestVersion '2.6.0')
 ) | ConvertTo-Json`);
-  assert.deepEqual(JSON.parse(stdout).map((r) => r.shouldInstall), [false, false, true, false, true]);
+  assert.deepEqual(JSON.parse(stdout).map((r) => r.shouldInstall), [false, false, true, false, true, false, true]);
 });
 
 test('native outcomes do not invent changes from a no-op or a skipped installer', windows, async () => {
@@ -53,7 +55,7 @@ Invoke-CatsRemoteInstaller -ScriptText 'param(); [Console]::Error.WriteLine("fix
 });
 
 test('native mutation previews stop before downloads and installers', windows, async () => {
-  for (const helper of ['CursorAgent', 'Junie', 'Goose', 'ClaudeCode', 'KiroCli']) {
+  for (const helper of ['CursorAgent', 'Junie', 'Goose', 'ClaudeCode', 'KiroCli', 'KimiCode']) {
     const dir = await mkdtemp(join(tmpdir(), 'cats-native-preview-'));
     const path = literal(join(process.cwd(), `scripts/windows/Install-${helper}.ps1`));
     const { stdout } = await run(`$env:USERPROFILE = ${literal(dir)}

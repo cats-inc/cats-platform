@@ -32,9 +32,11 @@ export const NPM_PROVIDERS = new Set([
 
 // Native CLIs that ship without a VC++ runtime dependency: each started on a clean
 // Windows 11 with no redistributable, and none imports vcruntime140 or msvcp140
-// (Cats Bot PLAN-010 Phase 3, 2026-10-31). Cursor's crepectl, Kiro CLI and Goose
-// import it; providers not checked keep the step.
-export const VC_RUNTIME_FREE_PROVIDERS = new Set(['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie']);
+// (Cats Bot PLAN-010 Phase 3, 2026-10-31). Kimi Code 2.5.3's kimi.exe and the fd.exe
+// it extracts name neither DLL (a byte search on 2026-11-16, not yet a clean-machine
+// start). Cursor's crepectl, Kiro CLI and Goose import it; providers not checked keep
+// the step.
+export const VC_RUNTIME_FREE_PROVIDERS = new Set(['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie', 'kimi']);
 
 export function nativeSetupTarget(provider: string): SelectedProviderTarget {
   if (provider === 'ollama') return { provider, backend: 'local', instance: 'local' };

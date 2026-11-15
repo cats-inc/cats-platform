@@ -66,6 +66,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-claude-code.sh
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-cursor-agent.sh" 'bundled Linux Cursor Agent installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-goose.sh" 'bundled Linux Goose installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-junie.sh" 'bundled Linux Junie installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kimi-code.sh" 'bundled Linux Kimi Code installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kiro-cli.sh" 'bundled Linux Kiro installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/check-installation.sh" 'bundled Linux readiness audit helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/provider-version-common.sh" 'bundled native version library'
@@ -107,10 +108,12 @@ assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-antigravi
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-grok-native-installer-script'), 'Linux target includes the bundled Grok installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-cline-native-installer-script'), 'Linux target includes the bundled Cline installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-devin-native-installer-script'), 'Linux target includes the bundled Devin installer asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-kimi-native-installer-script'), 'Linux target includes the bundled Kimi Code installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-muse-native-installer-script'), 'Linux target includes the bundled Meta Muse installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-setup-readiness-audit-script'), 'Linux target includes the bundled readiness audit asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-provider-cli-common-support-script'), 'Linux target includes the Linux provider helper asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-common-support-script'), 'Linux target includes the Linux npm helper asset');
+assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kimi' && provider.platform === 'linux'), 'installer contract keeps Kimi Code in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kiro' && provider.platform === 'linux'), 'installer contract keeps Kiro in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'grok' && provider.platform === 'linux'), 'installer contract keeps Grok in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'cline' && provider.platform === 'linux'), 'installer contract keeps Cline in the Linux bundled local-provider rollout');

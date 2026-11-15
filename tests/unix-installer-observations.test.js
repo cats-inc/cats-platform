@@ -46,6 +46,29 @@ test -d "$JUNIE_DATA_DIR/versions/3.0.0"`);
   }
 });
 
+test('Unix Kimi gate follows KIMI_VERSION and cleanup removes only the kept kimi.bak', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const { stdout } = await run(platform, `
+. ${quote(bashPath(join(process.cwd(), `scripts/${platform}/provider-version-common.sh`)))}
+KIMI_VERSION=2.5.3 cats_native_latest_version kimi; echo
+cats_native_version_state kimi '2.5.3' '2.5.3'; echo
+cats_native_version_state kimi '2.5.3' '2.6.0'; echo
+unset KIMI_INSTALL_DIR
+mkdir -p "$HOME/.kimi-code/bin"
+printf old > "$HOME/.kimi-code/bin/kimi.bak"
+printf new > "$HOME/.kimi-code/bin/kimi"
+cats_cleanup_native_versions kimi '2.5.3'
+test ! -e "$HOME/.kimi-code/bin/kimi.bak"
+test -f "$HOME/.kimi-code/bin/kimi"
+export KIMI_INSTALL_DIR="$HOME/../outside-kimi"
+mkdir -p "$KIMI_INSTALL_DIR/bin"
+printf old > "$KIMI_INSTALL_DIR/bin/kimi.bak"
+cats_cleanup_native_versions kimi '2.5.3'
+test -f "$KIMI_INSTALL_DIR/bin/kimi.bak"`);
+    assert.deepEqual(stdout.trim().split('\n'), ['2.5.3', 'current', 'older']);
+  }
+});
+
 const npmFixture = `
 load_nvm_if_present() { :; }
 fixture_cli() { :; }

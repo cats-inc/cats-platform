@@ -761,6 +761,7 @@ Linux:
 ./scripts/linux/install-cursor-agent.sh
 ./scripts/linux/install-goose.sh
 ./scripts/linux/install-junie.sh
+./scripts/linux/install-kimi-code.sh
 ./scripts/linux/install-kiro-cli.sh
 ./scripts/linux/upgrade-cli-tools.sh
 ./scripts/linux/check-installation.sh --strict
@@ -783,6 +784,7 @@ macOS:
 ./scripts/macos/install-cursor-agent.sh
 ./scripts/macos/install-goose.sh
 ./scripts/macos/install-junie.sh
+./scripts/macos/install-kimi-code.sh
 ./scripts/macos/install-kiro-cli.sh
 ./scripts/macos/upgrade-cli-tools.sh
 ./scripts/macos/check-installation.sh --json
@@ -796,7 +798,7 @@ Coverage in this slice:
   the `apt-get`/`dnf`/`yum` install command, because these helpers never use
   sudo
 - native CLI install and upgrade for Claude Code, Antigravity, Grok, Cursor
-  Agent, Goose, Junie, and Kiro
+  Agent, Goose, Junie, Kimi Code, and Kiro
 - npm global-prefix/PATH repair for user-scoped installs
 - per-CLI npm-global install and upgrade for Codex, Copilot,
   OpenCode, Kilo, Auggie, and Pi (one script per CLI, no bulk install)
@@ -812,6 +814,14 @@ correct PATH entry, detects only the `grok` command, and never treats a generic
 `XAI_API_KEY`. Uninstall removes only the fixed `grok` binary and adjacent
 installer-owned `agent` alias; it preserves `~/.grok/auth.json`, sessions, and
 configuration.
+
+Kimi Code installs under `~/.kimi-code/bin` (`KIMI_INSTALL_DIR` replaces
+`~/.kimi-code`). Its helpers count only that fixed path as installed, so a `kimi`
+elsewhere on PATH, such as the archived Python kimi-cli or an npm build, is not
+taken for it. After installation, run `kimi login`; mainland China accounts use
+`kimi login --region mainland-cn`. Uninstall removes the binary and the previous
+build the installer kept, and preserves `~/.kimi-code/config.toml`, credentials
+and sessions. See [ADR-153](decisions/153-port-kimi-code-into-packaged-setup-and-the-provider-catalog.md).
 
 These helpers are shipped as part of the npm package so self-hosted operators
 can use them after `npm install` or `npx`. Supported helpers are also staged as
@@ -856,6 +866,9 @@ Coverage in this slice:
 - user-scoped Grok install/check/upgrade/force/uninstall against
   `%USERPROFILE%\.grok\bin\grok.exe`, with the same fixed-path alias safety as
   the Unix helpers
+- user-scoped Kimi Code install/check/upgrade/force/uninstall against
+  `%USERPROFILE%\.kimi-code\bin\kimi.exe`, with a bounded `kimi --version`
+  probe, a Git Bash warning, and no Visual C++ runtime step
 
 These helpers are repo-owned script surfaces and supported entries are staged
 for the packaged setup wizard/bootstrap flow.

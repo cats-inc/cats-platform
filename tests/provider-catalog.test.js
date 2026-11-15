@@ -17,14 +17,14 @@ import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatal
 test('provider choices follow the product display order with additional providers last', () => {
   assert.deepEqual(PRODUCT_PROVIDER_ORDER, [
     'codex', 'claude', 'antigravity', 'grok', 'muse', 'cursor', 'copilot', 'opencode',
-    'kilo', 'cline', 'auggie', 'pi', 'kiro', 'junie', 'devin', 'goose', 'ollama', 'openclaw',
+    'kilo', 'cline', 'auggie', 'pi', 'kimi', 'kiro', 'junie', 'devin', 'goose', 'ollama', 'openclaw',
   ]);
   assert.deepEqual(['custom', 'pi', 'claude', 'codex', 'custom-2', 'ollama']
     .sort(compareProductProviderOrder), ['codex', 'claude', 'pi', 'ollama', 'custom', 'custom-2']);
 });
 
 test('model defaults stay empty until an exact Runtime target has been observed', () => {
-    assert.equal(PRODUCT_PROVIDER_ORDER.length,18);
+    assert.equal(PRODUCT_PROVIDER_ORDER.length,19);
     for (const provider of PRODUCT_PROVIDER_ORDER) {
       assert.equal(getDefaultModel(provider),''); assert.deepEqual(getProviderModels(provider),[]);
     }

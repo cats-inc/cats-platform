@@ -165,7 +165,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.doesNotMatch(html, /legacyCliGate/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'devin', 'muse'\s*\]/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kimi', 'kiro', 'junie',\s*'goose', 'grok', 'devin', 'muse'\s*\]/);
   // Ollama is not a CLI provider at all, so it does not belong in the
   // inventory-driven row.
   assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'ollama'/);

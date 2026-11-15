@@ -52,6 +52,9 @@ export const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProvid
   junie: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
+  kimi: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
   kiro: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],

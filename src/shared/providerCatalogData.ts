@@ -11,6 +11,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'cline',
   'auggie',
   'pi',
+  'kimi',
   'kiro',
   'junie',
   'devin',

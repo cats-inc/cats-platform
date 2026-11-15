@@ -71,7 +71,7 @@ writeFileSync(settingsFile, SETTINGS_HTML);
 
 function installFakeHost(spec) {
   const NPM = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline'];
-  const LABELS = { codex: 'Codex', claude: 'Claude', antigravity: 'Antigravity', grok: 'Grok', muse: 'Meta Muse', cursor: 'Cursor', copilot: 'GitHub Copilot', opencode: 'OpenCode', kilo: 'Kilo', cline: 'Cline', auggie: 'Auggie', pi: 'Pi', kiro: 'Kiro', junie: 'Junie', devin: 'Devin', goose: 'Goose', ollama: 'Ollama', openclaw: 'OpenClaw' };
+  const LABELS = { codex: 'Codex', claude: 'Claude', antigravity: 'Antigravity', grok: 'Grok', muse: 'Meta Muse', cursor: 'Cursor', copilot: 'GitHub Copilot', opencode: 'OpenCode', kilo: 'Kilo', cline: 'Cline', auggie: 'Auggie', pi: 'Pi', kimi: 'Kimi Code', kiro: 'Kiro', junie: 'Junie', devin: 'Devin', goose: 'Goose', ollama: 'Ollama', openclaw: 'OpenClaw' };
   const targetOf = (id) => id === 'ollama' ? { provider: id, backend: 'local', instance: 'local' }
     : id === 'openclaw' ? { provider: id, backend: 'agent', instance: 'gateway' }
       : id === 'devin' ? { provider: id, backend: 'agent', instance: 'acp' }
@@ -261,7 +261,7 @@ function installFakeHost(spec) {
       return bootstrap();
     },
     setupWizard: {
-      facts: async () => clone({ platform: os, helpers: helperFacts, signIn: { claude: 'claude', codex: 'codex login', grok: 'grok login' }, order: spec.order, npmProviders: NPM, vcRuntimeFree: ['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie'], ollamaSuggestions: ['qwen2.5-coder:7b'], state: state.wizardState, systemRestartHelpers: spec.systemRestartHelpers || [], setupComplete: Boolean(spec.setupComplete) }),
+      facts: async () => clone({ platform: os, helpers: helperFacts, signIn: { claude: 'claude', codex: 'codex login', grok: 'grok login' }, order: spec.order, npmProviders: NPM, vcRuntimeFree: ['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie', 'kimi'], ollamaSuggestions: ['qwen2.5-coder:7b'], state: state.wizardState, systemRestartHelpers: spec.systemRestartHelpers || [], setupComplete: Boolean(spec.setupComplete) }),
       runHelper: async (helperId, mode, options) => {
         record('runHelper', helperId, mode, options || null);
         const row = rowOf(helperId);

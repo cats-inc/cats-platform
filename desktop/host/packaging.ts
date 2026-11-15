@@ -821,6 +821,22 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
+    id: 'kimi',
+    label: 'Kimi Code CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-kimi-native-installer',
+      'linux-kimi-native-installer',
+      'macos-kimi-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows/Install-KimiCode.ps1,linux/install-kimi-code.sh,macos/install-kimi-code.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Bundled through the repo-owned native Kimi Code installer wrapper, which runs the official code.kimi.ai installer non-interactively and detects only the fixed ~/.kimi-code/bin path.',
+      'A fresh install still owes kimi login; the helper reports it as a manual step. Windows also needs Git Bash, reported as a warning when missing.',
+    ],
+  },
+  {
     id: 'kiro',
     label: 'Kiro CLI',
     pack: 'native_cli_pack',
