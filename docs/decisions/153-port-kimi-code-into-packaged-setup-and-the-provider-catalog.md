@@ -80,8 +80,10 @@ authorize a release or version bump.
 
 - The Unix helpers report the sign-in step on every mutation result, as Devin's do; the
   Windows helper reports it only after a fresh install.
-- Kimi has no Desktop usage-quota refresh and is not in the session-delete warning list
-  until Runtime offers a quota query and removes Kimi's native session state.
+- Kimi has no Desktop usage-quota refresh until Runtime offers a quota query.
+- Kimi is in the session-delete warning list. Runtime deletes Kimi's native session through
+  Kimi's own `kimi acp` `session/delete` (Runtime ADR-054), so deleting a conversation also
+  removes Kimi's transcript, and that cannot be undone.
 - Cats Bot keeps its five providers and its pinned copies of the shared Unix helpers.
 - Verified on native Windows 11 on 2026-11-16:
   - `Install-KimiCode.ps1 -CheckOnly` reported the existing install, 2.5.3, under both Windows
