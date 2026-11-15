@@ -174,6 +174,33 @@ test('the conversation side panel carries neither participants nor an execution 
   assert.deepEqual(ids, ['cwd', 'operator']);
 });
 
+test('the side panel names the working folder for the conversation\'s product scope (docs/terminology.md)', () => {
+  function CwdSection({ channel }: { channel: Record<string, unknown> }) {
+    const [cwd] = buildConversationSidePanelSections({
+      selectedChannel: { id: 'channel-1', title: 'Thread', topic: 'Test', ...channel } as never,
+      busy: clearBusyState(),
+      operatorView: null,
+      operatorLoading: false,
+      operatorError: '',
+      inspectedRun: null,
+      onInspectRun: () => {},
+      onApprovalDecision: () => {},
+      onOperatorAction: () => {},
+    });
+    return <>{cwd!.title}|{cwd!.children}</>;
+  }
+  const render = (channel: Record<string, unknown>, locale: 'en' | 'zh-TW' = 'en') =>
+    renderToStaticMarkup(<I18nProvider locale={locale}><CwdSection channel={channel} /></I18nProvider>);
+  assert.match(render({ productScope: 'chat' }), /^Filespace\|.*No filespace selected yet\./u);
+  assert.match(render({ productScope: 'code' }), /^Codespace\|.*No codespace selected yet\./u);
+  assert.match(render({ productScope: 'work' }), /^Workspace\|.*No workspace selected yet\./u);
+  assert.match(render({ productScope: 'work' }, 'zh-TW'), /^工作空間\|/u);
+  // The button opens the folder in the file manager; it does not choose one.
+  const withFolder = render({ productScope: 'chat', chatCwd: 'C:/owner/notes' });
+  assert.match(withFolder, /C:\/owner\/notes/u);
+  assert.match(withFolder, />Open folder</u);
+});
+
 test('a temporary participant in a conversation edits its name and role hint; a cat does not', () => {
   const profiles: Array<[string, { name?: string; roleHint?: string | null }]> = [];
   const shared = context({

@@ -4382,7 +4382,7 @@ export const enCatalog: MessageCatalog = {
   'code.workspace.summary.binding.userSelected':
     'Builder loop is bound to the owner-selected local folder.',
   'code.workspace.kind.conversationRepo': 'Current chat repo',
-  'code.workspace.kind.managedRoom': 'Managed room codespace',
+  'code.workspace.kind.managedRoom': 'Managed room folder',
   'code.workspace.kind.userSelected': 'Owner-selected folder',
   'code.workspace.ownership.conversationBound': 'Conversation-owned',
   'code.workspace.ownership.roomOwned': 'Room-owned',

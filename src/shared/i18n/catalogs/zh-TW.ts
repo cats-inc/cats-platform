@@ -4287,7 +4287,7 @@ export const zhTWCatalog: MessageCatalog = {
   'code.workspace.summary.binding.userSelected':
     '建置流程已綁定到使用者選取的本機資料夾。',
   'code.workspace.kind.conversationRepo': '目前對話儲存庫',
-  'code.workspace.kind.managedRoom': '房間管理的程式空間',
+  'code.workspace.kind.managedRoom': '房間管理的資料夾',
   'code.workspace.kind.userSelected': '使用者選取的資料夾',
   'code.workspace.ownership.conversationBound': '對話擁有',
   'code.workspace.ownership.roomOwned': '房間擁有',
