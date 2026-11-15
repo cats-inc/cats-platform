@@ -1384,7 +1384,7 @@ test('parallel shadow branch with detached cwd renders a relinkable cwd chip', (
 
   assert.match(markup, /class="composerCwdChip"/u);
   assert.match(markup, /C:\/repo\/worktrees\/review/u);
-  assert.match(markup, /aria-label="Re-link branch folder to lead"/u);
+  assert.match(markup, /aria-label="Re-link branch filespace to lead"/u);
 });
 
 test('parallel shadow branch following lead exposes the branch folder picker when wired', () => {
@@ -1411,7 +1411,7 @@ test('parallel shadow branch following lead exposes the branch folder picker whe
   );
 
   assert.match(markup, /composerFollowsLeadChipClickable/u);
-  assert.match(markup, /aria-label="Choose branch folder"/u);
+  assert.match(markup, /aria-label="Choose branch filespace"/u);
 });
 
 test('parallel shadow card id stays stable when branch cwd and policy detach', () => {

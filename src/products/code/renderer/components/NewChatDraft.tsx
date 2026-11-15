@@ -1,3 +1,4 @@
+import { workingFolderCopy } from '../../../shared/renderer/workingFolderCopy.js';
 import {
   NewConversationDraft,
   type NewConversationDraftProps,
@@ -285,6 +286,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
       draftCopy={{
         composerPlaceholder: draftCopy.composer?.placeholder,
         folderActionLabel: draftCopy.folder?.actionLabel,
+        workingFolder: workingFolderCopy('code', t),
       }}
       sidePanel={{
         title: draftCopy.sidePanel?.title,

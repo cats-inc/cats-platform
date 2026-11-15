@@ -59,6 +59,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
       draftCopy={{
         folderActionLabel: folderCopy.chooseAction,
         sidePanel: { folder: { sectionTitle: folderCopy.title, emptyState: folderCopy.emptyState } },
+        workingFolder: folderCopy,
       }}
       assistSurface="work"
     />

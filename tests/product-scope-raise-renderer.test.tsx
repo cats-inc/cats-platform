@@ -135,10 +135,10 @@ test('the confirmation names what a raise to Code adds, who gains it, what stays
   assert.deepEqual(content.adds, [
     "From their next turn, its agents get Code's tools to declare artifacts and show them in the canvas.",
     'Live previews stay off until you let Cats run preview servers in Settings › Code.',
-    "Code's conversation parts: the canvas and its preview button, the work areas panel, and the folder and permission chips.",
+    "Code's conversation parts: the canvas and its preview button, the work areas panel, and the codespace and permission chips.",
   ]);
   assert.equal(content.participants, 'Mochi, Codex, from their next turn. Anyone added later works at this level too.');
-  assert.deepEqual(content.unchanged, ['Folder: C:/repo/app', 'CLI permission: Read only']);
+  assert.deepEqual(content.unchanged, ['Codespace: C:/repo/app', 'CLI permission: Read only']);
   assert.equal(content.moves, "It moves to Code's Recents and opens with Code's view and preferences.");
   assert.match(content.permanent, /can't be undone/u);
 });
@@ -162,7 +162,7 @@ test('a raise to Work names the Work tools it adds, from Chat and from Code', ()
     "Its agents get Work's tools: they read this conversation's Work Items and propose changes you confirm.",
   ]);
   assert.equal(fromCode.participants, 'No one has joined yet. Anyone added later works at this level.');
-  assert.deepEqual(fromCode.unchanged, ['Folder: a sandbox, with no folder of yours', 'CLI permission: Workspace write (legacy)']);
+  assert.deepEqual(fromCode.unchanged, ['Workspace: a sandbox, with no folder of yours', 'CLI permission: Workspace write (legacy)']);
   assert.equal(fromCode.moves, "It moves to Work's Recents and opens with Work's view and preferences.");
 });
 
@@ -170,7 +170,7 @@ test('the confirmation and refusals exist in zh-TW, for each transition', () => 
   const toCode = buildProductScopeRaiseConfirmation(view(), 'code', zh);
   assert.equal(toCode.title, '要把這個對話移到 Code 嗎？');
   assert.equal(toCode.adds[0], '從下一輪起，它的 agent 會取得 Code 的工具，可以宣告產物並顯示在畫布中。');
-  assert.deepEqual(toCode.unchanged, ['資料夾：C:/repo/app', 'CLI 權限：唯讀']);
+  assert.deepEqual(toCode.unchanged, ['程式空間：C:/repo/app', 'CLI 權限：唯讀']);
   const content = buildProductScopeRaiseConfirmation(view(), 'work', zh);
   assert.equal(content.title, '要把這個對話移到 Work 嗎？');
   assert.equal(content.adds.at(-1), '它的 agent 會取得 Work 的工具：讀取這個對話的工作項目，並提出由你確認的變更。');
@@ -248,7 +248,7 @@ test('choosing a level reads the route, shows the confirmation and raises with i
     assert.equal(dialog.parentElement?.parentElement, doc.body, 'portaled out of the composer');
     assert.match(dialog.textContent ?? '', /Move this conversation to Code\?/u);
     assert.match(dialog.textContent ?? '', /Mochi, Codex/u);
-    assert.match(dialog.textContent ?? '', /Folder: C:\/repo\/app/u);
+    assert.match(dialog.textContent ?? '', /Codespace: C:\/repo\/app/u);
     assert.equal(doc.activeElement?.className, 'confirmCancelButton', 'Cancel is focused first');
     harness.click(doc.querySelector('.confirmPrimaryButton'));
     assert.deepEqual(chat.calls.raises, [['chat a', 'code', 'rev-9']]);
