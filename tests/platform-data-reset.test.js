@@ -303,7 +303,7 @@ test('every locale discloses every erased category and the retained ownership bo
       assert.ok(match, `reset target requires a disclosed category: ${target}`);
       assert.ok(copy.includes(match[locale === 'en' ? 1 : 2]), `${locale}: ${target}`);
     }
-    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作區']) assert.ok(copy.includes(category), `${locale}: ${category}`);
+    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作空間']) assert.ok(copy.includes(category), `${locale}: ${category}`);
   }
 });
 

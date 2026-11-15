@@ -254,3 +254,14 @@ test('work draft presets expose the screenshot attachment action when wired', ()
     );
   }
 });
+
+test('a Work draft chooses a workspace, and names it for the surface it is switched to (docs/terminology.md)', () => {
+  const workMenu = renderDraft(createProps({ plusMenuOpen: true }));
+  assert.match(workMenu, /Choose workspace/u);
+  assert.doesNotMatch(workMenu, /Choose folder|Choose filespace/u);
+  assert.match(renderDraft(createProps({ plusMenuOpen: true }), 'zh-TW'), /選擇工作空間/u);
+  assert.match(renderDraft(createProps({ plusMenuOpen: true, draftSurface: 'chat' })), /Choose filespace/u);
+  // The chosen folder's remove button is named for the surface too.
+  assert.match(renderDraft(createProps({ draftCwd: 'C:/owner/site' })), /aria-label="Remove workspace"/u);
+  assert.match(renderDraft(createProps({ draftCwd: 'C:/owner/site', draftSurface: 'chat' })), /aria-label="Remove filespace"/u);
+});

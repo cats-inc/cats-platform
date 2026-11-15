@@ -12,8 +12,8 @@ import {
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { workingFolderCopy } from '../../../shared/renderer/workingFolderCopy.js';
 
 export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
@@ -55,9 +55,8 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     : buildChatPermissionChip(props);
   const composerHeaderWhereExtras = isCodeSurface ? codeChips.whereExtras : null;
   const chooseFolderPlacement = isCodeSurface ? 'header' : 'plusMenu';
-  const folderActionLabel = isCodeSurface
-    ? t(messageKeys.chatNewChatDraftChooseCodespaceActionLabel)
-    : t(messageKeys.chatNewChatDraftFolderActionLabel);
+  // The draft's working folder is named for the surface it starts on: Filespace, Codespace or Workspace.
+  const folderCopy = workingFolderCopy(props.draftSurface, t);
 
   return (
     <NewConversationDraft
@@ -69,7 +68,9 @@ function NewChatDraftInner(props: NewChatDraftProps) {
         chooseFolderPlacement,
       }}
       draftCopy={{
-        folderActionLabel,
+        folderActionLabel: folderCopy.chooseAction,
+        sidePanel: { folder: { sectionTitle: folderCopy.title, emptyState: folderCopy.emptyState } },
+        workingFolder: folderCopy,
       }}
       assistSurface="chat"
     />

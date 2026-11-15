@@ -123,7 +123,7 @@ the authoritative snapshot before showing current activity again.
 
 ### FR-05: Code side-panel composition
 
-Add **Work areas / 工作區** only to started Code conversations. Reuse the
+Add **Work areas / 工作位置** (zh-TW 工作區 until 2026-11-16, when 工作區 was retired for the working folder terms in docs/terminology.md) only to started Code conversations. Reuse the
 existing folder/context section for the single Codespace summary and preserve
 run status, approval actions and Code preview/canvas integration.
 
@@ -145,7 +145,7 @@ are outside scope.
 ### FR-06: Avatar summary and entry
 
 Add a short Code-only summary to the existing participant popover, for example
-`cats-runtime · worktree; cats-platform +1`, with **View work areas / 查看工作區**.
+`cats-runtime · worktree; cats-platform +1`, with **View work areas / 查看工作位置**.
 The action opens the right side panel on that participant. A fresh conversation
 with no observations shows a truthful empty/not-reported summary.
 

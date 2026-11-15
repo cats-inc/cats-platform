@@ -12,6 +12,8 @@ import { RunInspector } from '../RunInspector.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+import { readProductScope } from '../../../../../shared/productScope.js';
+import { workingFolderCopy } from '../../workingFolderCopy.js';
 
 export interface BuildConversationSidePanelSectionsOptions {
   readOnly?: boolean;
@@ -48,9 +50,11 @@ export function buildConversationSidePanelSections({
   const sections: SidePanelSection[] = [];
 
   const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
+  // The working folder's name follows the conversation's surface: Filespace, Codespace or Workspace.
+  const folderCopy = workingFolderCopy(readProductScope(selectedChannel), t);
   sections.push({
     id: 'cwd',
-    title: t(messageKeys.chatNewChatDraftSidePanelFolderTitle),
+    title: folderCopy.title,
     children: cwd ? (
       <div style={{ display: 'grid', gap: 8 }}>
         <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
@@ -59,11 +63,11 @@ export function buildConversationSidePanelSections({
           className="operatorActionButton"
           onClick={() => void openFolderInExplorer(cwd)}
         >
-          {t(messageKeys.chatNewChatDraftFolderActionLabel)}
+          {t(messageKeys.ownerOpenFolder)}
         </button>
       </div>
     ) : (
-      <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftSidePanelFolderEmptyState)}</p>
+      <p className="operatorEmptyState">{folderCopy.emptyState}</p>
     ),
   });
 

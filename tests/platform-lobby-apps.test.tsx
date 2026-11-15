@@ -214,7 +214,7 @@ test('buildPlatformLobbyEntries localizes Cats-owned product descriptors', () =>
       },
       {
         productName: 'Cats Code',
-        subtitle: '程式碼庫、執行與程式工作區',
+        subtitle: '程式碼庫、執行與程式空間',
       },
       {
         productName: 'Cats Learn',

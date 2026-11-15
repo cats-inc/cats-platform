@@ -1,3 +1,4 @@
+import { workingFolderCopy } from './workingFolderCopy.js';
 import {
   compareProductScopes,
   isDirectLaneSource,
@@ -109,7 +110,8 @@ export function buildProductScopeRaiseConfirmation(
       ? t(messageKeys.sharedProductScopeRaiseParticipants, { names: names.join(', ') })
       : t(messageKeys.sharedProductScopeRaiseParticipantsNone),
     unchanged: [
-      t(messageKeys.sharedProductScopeRaiseUnchangedFolder, { folder: folderLabel(view, t) }),
+      // The same folder, named as the surface it is raised to names it (docs/terminology.md).
+      t(messageKeys.sharedProductScopeRaiseUnchangedFolder, { name: workingFolderCopy(target, t).title, folder: folderLabel(view, t) }),
       t(messageKeys.sharedProductScopeRaiseUnchangedPermission, { permission: permissionLabel(view, t) }),
     ],
     moves: t(messageKeys.sharedProductScopeRaiseMoves, { product }),

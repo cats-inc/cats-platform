@@ -47,6 +47,7 @@ import {
   type BuildNewConversationDraftSidePanelSectionsInput,
   type NewConversationDraftSidePanelCopy,
 } from './newConversationDraftSidePanel.js';
+import type { WorkingFolderCopy } from '../workingFolderCopy.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
@@ -181,6 +182,8 @@ export interface NewConversationDraftCopy {
   composerPlaceholder?: string;
   folderActionLabel?: string;
   sidePanel?: NewConversationDraftSidePanelCopy;
+  /** The surface's name for the working folder (workingFolderCopy); Chat's Filespace when absent. */
+  workingFolder?: WorkingFolderCopy;
 }
 
 export interface NewConversationDraftStarterChips {
@@ -915,7 +918,7 @@ export function NewConversationDraft({
                 event.stopPropagation();
                 onDraftCwdClear();
               }}
-              aria-label={t(messageKeys.chatNewChatDraftRemoveFolderAria)}
+              aria-label={draftCopy?.workingFolder?.removeAction ?? t(messageKeys.chatNewChatDraftRemoveFolderAria)}
             >
               &times;
             </button>
@@ -1409,7 +1412,7 @@ export function NewConversationDraft({
                     type="button"
                     disabled={isSubmittingFirstTurn}
                     onClick={() => onSetParallelBranchCwd(branchIndex, null)}
-                    aria-label={t(messageKeys.chatNewChatDraftBranchFolderRelinkAria)}
+                    aria-label={draftCopy?.workingFolder?.relinkBranchAction ?? t(messageKeys.chatNewChatDraftBranchFolderRelinkAria)}
                   >
                     &times;
                   </button>
@@ -1424,7 +1427,7 @@ export function NewConversationDraft({
                   onPickParallelBranchFolder(branchIndex);
                   openSidePanelTo('cwd', { skipSectionAction: true });
                 }}
-                aria-label={t(messageKeys.chatNewChatDraftBranchFolderChooseAria)}
+                aria-label={draftCopy?.workingFolder?.chooseBranchAction ?? t(messageKeys.chatNewChatDraftBranchFolderChooseAria)}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6 3l-3 5 3 5" />

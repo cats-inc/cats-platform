@@ -74,7 +74,7 @@ test('the confirmation names the folder its supervised runs would start in, or t
   assert.deepEqual(site.lines, [
     "Supervised runs of this conversation's task will start in C:/work/site without asking.",
     '2 other conversations and 5 work items are in this project.',
-    "The conversation's own sessions keep its folder.",
+    "The conversation's own sessions keep its own workspace.",
   ]);
   assert.match(buildWorkProjectConfirmation(VIEW, VIEW.projects[1]!, en).lines[0]!, /sandbox/u);
   const leave = buildWorkProjectConfirmation({ project: { id: 'project-site', title: 'Site', status: 'active', folder: null } }, null, zh);
@@ -104,7 +104,7 @@ test('the owner picks a Project, confirms the folder, and the change is sent wit
     assert.equal(chip.textContent, 'No project');
     page.click(chip);
     const items = [...page.document.querySelectorAll('[role="menuitem"]')];
-    assert.deepEqual(items.map((item) => item.textContent), ['SiteC:/work/site', 'BareNo folder'], 'no "No project" while it has none');
+    assert.deepEqual(items.map((item) => item.textContent), ['SiteC:/work/site', 'BareNo workspace'], 'no "No project" while it has none');
     page.click(items[0]);
     const dialog = page.document.querySelector('[role="dialog"]')!;
     assert.match(dialog.textContent ?? '', /start in C:\/work\/site without asking/u);

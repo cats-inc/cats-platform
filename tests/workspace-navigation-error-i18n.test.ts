@@ -12,7 +12,7 @@ test('workspace navigation localizes known chat and parallel chat errors', () =>
 
   assert.equal(
     localizeWorkspaceNavigationErrorMessage('Chat not found: main', t),
-    '找不到這個聊天工作區。',
+    '找不到這個聊天。',
   );
   assert.equal(
     localizeWorkspaceNavigationErrorMessage('Channel not found: channel-1', t),
