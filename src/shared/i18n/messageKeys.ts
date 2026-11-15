@@ -1031,6 +1031,9 @@ export const messageKeys = {
   settingsDesktopUpdatesErrorUnknown: 'settings.desktop.updatesErrorUnknown',
   workNewChatDraftStartProjectChipLabel: 'work.newChatDraft.startProjectChipLabel',
   workNewChatDraftStartProjectPrompt: 'work.newChatDraft.startProjectPrompt',
+  workNewChatDraftFolderTitle: 'work.newChatDraft.folder.title',
+  workNewChatDraftFolderAction: 'work.newChatDraft.folder.action',
+  workNewChatDraftFolderEmpty: 'work.newChatDraft.folder.empty',
   workNewChatDraftAddTaskChipLabel: 'work.newChatDraft.addTaskChipLabel',
   workNewChatDraftAddTaskPrompt: 'work.newChatDraft.addTaskPrompt',
   workNewChatDraftPlanSprintChipLabel: 'work.newChatDraft.planSprintChipLabel',
@@ -2242,8 +2245,6 @@ export const messageKeys = {
   chatNewChatDraftGreetingOnDuty: 'chat.newChatDraft.greeting.onDuty',
   chatNewChatDraftComposerPlaceholder: 'chat.newChatDraft.composerPlaceholder',
   chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
-  chatNewChatDraftChooseCodespaceActionLabel:
-    'chat.newChatDraft.chooseCodespaceActionLabel',
   chatNewChatDraftAssistantPresetReview: 'chat.newChatDraft.assistantPresetReview',
   chatNewChatDraftAssistantPresetAdded: 'chat.newChatDraft.assistantPresetAdded',
   chatNewChatDraftTemporaryParticipantNameLabel: 'chat.newChatDraft.temporaryParticipantNameLabel',

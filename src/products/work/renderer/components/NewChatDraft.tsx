@@ -6,6 +6,8 @@ import { ComposerSurfaceChip } from '../../../shared/renderer/components/Compose
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveNewConversationDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { workingFolderCopy } from '../../../shared/renderer/workingFolderCopy.js';
 
 export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
@@ -33,6 +35,9 @@ function buildWorkSurfaceTag(props: NewChatDraftProps) {
  * to Chat (ADR-129), so Work has no direct-lane draft.
  */
 function WorkChatDraft(props: NewChatDraftProps) {
+  const { t } = useI18n();
+  // A Work draft's working folder is its Workspace; switched to another surface, it takes that surface's name.
+  const folderCopy = workingFolderCopy(props.draftSurface, t);
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     props.payload.chat.advancedDraftControls,
     'work',
@@ -51,6 +56,10 @@ function WorkChatDraft(props: NewChatDraftProps) {
         surfaceTag: buildWorkSurfaceTag(props),
       }}
       builderControls={builderControls}
+      draftCopy={{
+        folderActionLabel: folderCopy.chooseAction,
+        sidePanel: { folder: { sectionTitle: folderCopy.title, emptyState: folderCopy.emptyState } },
+      }}
       assistSurface="work"
     />
   );

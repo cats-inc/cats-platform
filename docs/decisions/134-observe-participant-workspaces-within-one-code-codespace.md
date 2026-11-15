@@ -56,7 +56,7 @@ a checkout must not recreate a removed Codespace or a purged execution record.
 
 ### 2. Put the complete view in the Code conversation's right side panel
 
-Add a Code-owned read-only **Work areas / 工作區** section. Group rows by
+Add a Code-owned read-only **Work areas / 工作位置** (zh-TW 工作區 until 2026-11-16, when 工作區 was retired for the working folder terms in docs/terminology.md) section. Group rows by
 conversation participant, then repository and concrete checkout. Show repository
 identity first, then original-checkout/worktree kind, branch or detached HEAD,
 observed operation, freshness and worktree management responsibility.
@@ -73,7 +73,7 @@ to a side panel. Chat and Work keep their current behavior.
 ### 3. Use avatars for a summary and a contextual entry point
 
 Extend the Code participant popover with a compact work-area summary and
-**View work areas / 查看工作區**. The action opens the Code panel and selects
+**View work areas / 查看工作位置**. The action opens the Code panel and selects
 the participant's execution rows. Preserve the existing model/settings actions,
 saved-selection attention behavior and single-participant audience-chip fallback.
 Do not add a second permanent avatar roster or change the audience chip's job.

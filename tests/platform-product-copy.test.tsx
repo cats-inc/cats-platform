@@ -93,7 +93,7 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   );
   assert.equal(
     t(messageKeys.codeBuilderErrorCodespaceNoPath),
-    '找不到有效的程式空間路徑。請選擇資料夾，或確認房間工作區存在。',
+    '找不到有效的程式空間路徑。請選擇資料夾，或確認房間程式空間存在。',
   );
   assert.equal(t(messageKeys.codeBuilderErrorTaskExecution), '無法啟動程式碼任務。');
   assert.equal(t(messageKeys.codeBuilderErrorTaskResume), '無法接續這個程式碼任務。');
@@ -127,7 +127,7 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   assert.equal(t(messageKeys.conversationSidebarRenamingLabel), '重新命名中…');
   assert.equal(t(messageKeys.sharedCommonSaving), '儲存中…');
   assert.equal(
-    t(messageKeys.chatNewChatDraftChooseCodespaceActionLabel),
+    t(messageKeys.codeNewDraftFolderAction),
     '選擇程式空間',
   );
   assert.equal(t(messageKeys.codeSidebarSourceCodeTask), '程式碼任務');

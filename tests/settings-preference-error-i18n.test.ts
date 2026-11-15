@@ -34,7 +34,7 @@ test('settings preference formatter localizes shared workspace preference failur
       '更新偏好失敗。',
       t,
     ),
-    '找不到這個聊天工作區。',
+    '找不到這個聊天。',
   );
   assert.equal(
     formatSettingsPreferenceMutationError(

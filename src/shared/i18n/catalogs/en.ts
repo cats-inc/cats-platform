@@ -411,7 +411,7 @@ export const enCatalog: MessageCatalog = {
     'Google sign-in is unavailable on this origin. Use local admin credentials or open Cats from an authorized origin.',
   'auth.repair.title': 'Repair Cats authentication',
   'auth.repair.subtitle':
-    'Cats found setup-complete state but cannot read a usable auth state file. Recreate the first local Admin account to unlock this workspace.',
+    'Cats found setup-complete state but cannot read a usable auth state file. Recreate the first local Admin account to unlock Cats on this computer.',
   'auth.repair.displayNameLabel': 'Owner display name',
   'auth.repair.displayNamePlaceholder': 'Owner',
   'auth.repair.identifierLabel': 'Admin login email',
@@ -599,7 +599,7 @@ export const enCatalog: MessageCatalog = {
   'settings.shell.subsectionBossCat': 'Boss Cats',
   'settings.bossCat.joinTitle': 'Boss Cats joining other conversations',
   'settings.bossCat.joinDescription': 'One setting for every Boss Cat. It covers Chat, Code and Work conversations alike, and applies when a join runs.',
-  'settings.bossCat.joinHint': 'Joining a Code or Work conversation grants that conversation\'s workspace, at its access and permission mode, and the Code tools for previews and artifacts. Ask me every time shows you what a join grants before you allow it.',
+  'settings.bossCat.joinHint': 'Joining a Code or Work conversation grants that conversation\'s codespace or workspace, at its access and permission mode, and the Code tools for previews and artifacts. Ask me every time shows you what a join grants before you allow it.',
   'settings.bossCat.joinNever': 'Not allowed',
   'settings.bossCat.joinAsk': 'Ask me every time',
   'settings.bossCat.joinAllow': 'Allowed',
@@ -1058,6 +1058,9 @@ export const enCatalog: MessageCatalog = {
   'settings.desktop.startupOpenWindowDescription':
     'When disabled, Cats can start in the background after you sign in without opening the main window automatically. Opening Cats yourself still shows the app.',
   'work.newChatDraft.startProjectChipLabel': 'Start a project',
+  'work.newChatDraft.folder.title': 'Workspace',
+  'work.newChatDraft.folder.action': 'Choose workspace',
+  'work.newChatDraft.folder.empty': 'No workspace selected yet.',
   'work.newChatDraft.startProjectPrompt':
     'Spin up a new project workspace and outline its milestones.',
   'work.newChatDraft.addTaskChipLabel': 'Add a task',
@@ -2209,9 +2212,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.pomodoroPrompt': 'Write a small pomodoro timer app.',
   'chat.newChatDraft.startProjectChipLabel': 'Start a project',
   'chat.newChatDraft.startProjectPrompt': 'Start a small project to track milestones.',
-  'chat.newChatDraft.chooseCodespaceActionLabel': 'Choose codespace',
-  'chat.newChatDraft.folder.title': 'Folder',
-  'chat.newChatDraft.folder.emptyState': 'No folder selected yet.',
+  'chat.newChatDraft.folder.title': 'Filespace',
+  'chat.newChatDraft.folder.emptyState': 'No filespace selected yet.',
   'chat.newChatDraft.defaultGreeting': 'Meow. Ready when you are.',
   'chat.newChatDraft.greeting.nap': 'Your cat hasn\'t napped yet.',
   'chat.newChatDraft.greeting.keyboard': 'Cats on the keyboard.',
@@ -2472,20 +2474,20 @@ export const enCatalog: MessageCatalog = {
   'chat.companionMessageReferenceAvailabilityMissing': 'Missing',
   'chat.companionMessageReferenceAvailabilityDeleted': 'Deleted',
   'chat.companionMessageReferenceAvailabilityInaccessible':
-    'Inaccessible from this workspace',
+    'Inaccessible here',
   'chat.companionMessageReferenceMissingFallbackTitle':
     'Companion content unavailable',
   'chat.companionMessageReferenceDeletedFallbackTitle':
     'Companion content deleted',
   'chat.companionMessageReferenceInaccessibleFallbackTitle':
-    'Companion content from another workspace',
+    'Companion content from another Cats',
   'chat.companionMessageReferenceInaccessibleFallbackDescription':
     'This companion content comes from a different platform-host scope and cannot be opened here.',
   'chat.companionMessageReferenceUnknownCompanionLabel': 'Companion',
   'chat.companionMessageReferenceUntitledPostTitle': 'Untitled post',
   'chat.companionMessageReferenceUntitledSourceTitle': 'Untitled companion source',
   'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
-  'chat.newChatDraft.folderActionLabel': 'Choose folder',
+  'chat.newChatDraft.folderActionLabel': 'Choose filespace',
   'chat.newChatDraft.assistantPresetReview': 'Review',
   'chat.newChatDraft.assistantPresetAdded': 'Added',
   'chat.newChatDraft.temporaryParticipantNameLabel': 'Name',
@@ -3264,7 +3266,7 @@ export const enCatalog: MessageCatalog = {
   'shared.workspaceNavigation.ungroupParallelChatError': 'Failed to ungroup parallel chat.',
   'shared.workspaceNavigation.deleteParallelChatGroupError': 'Failed to delete all chats.',
   'shared.workspaceNavigation.parallelChatFallbackName': 'this parallel chat',
-  'shared.workspaceNavigation.error.chatNotFound': 'This chat workspace was not found.',
+  'shared.workspaceNavigation.error.chatNotFound': 'This chat was not found.',
   'shared.workspaceNavigation.error.channelNotFound': 'This chat channel was not found.',
   'shared.workspaceNavigation.error.parallelChatGroupNotFound':
     'This parallel chat group was not found.',
@@ -3726,7 +3728,7 @@ export const enCatalog: MessageCatalog = {
   'catProfile.openSettingsLabel': "Edit {name}'s settings",
   'catProfile.viewProfileAction': 'View profile',
   'catProfile.notFound.body':
-    'No Cat with id "{catId}" exists in this workspace. It may have been removed, or the link is stale.',
+    'No Cat with id "{catId}" exists here. It may have been removed, or the link is stale.',
   'entitiesSidebar.section.cats': 'My Cats',
   'entitiesSidebar.section.clowders': 'My Clowders',
   'entitiesSidebar.section.catteries': 'My Catteries',
@@ -3740,7 +3742,7 @@ export const enCatalog: MessageCatalog = {
   'entityIndex.columnHeader.catteries': 'Catteries',
   'entityIndex.card.total': '{count} total',
   'entityIndex.card.openCanvasAriaLabel': 'Open {label}',
-  'entitiesShell.ariaLabel': 'Cats Directory workspace',
+  'entitiesShell.ariaLabel': 'Cats Directory',
   'entitiesShell.surfaceLabel': 'Cats Directory',
   'entitiesShell.brandLabel': 'Directory',
   'entitiesShell.exitButtonAriaLabel': 'Leave Cats Directory',
@@ -3755,7 +3757,7 @@ export const enCatalog: MessageCatalog = {
     'Clowder settings (rename, archive, transfer) ship with PLAN-091 phase 6 membership management.',
   'clowderHome.notFound.title': 'Clowder not found',
   'clowderHome.notFound.body':
-    'No Clowder with id "{clowderId}" exists in this workspace. It may have been removed, or the link is stale.',
+    'No Clowder with id "{clowderId}" exists here. It may have been removed, or the link is stale.',
   'catteryHome.ariaLabel': 'Cattery home',
   'catteryHome.tab.members': 'Members',
   'catteryHome.tab.clowders': 'Clowders',
@@ -3771,7 +3773,7 @@ export const enCatalog: MessageCatalog = {
     'Cattery settings (profile, transfer ownership, archive) ship with PLAN-091 phase 6 membership management.',
   'catteryHome.notFound.title': 'Cattery not found',
   'catteryHome.notFound.body':
-    'No Cattery with id "{catteryId}" exists in this workspace. It may have been removed, or the link is stale.',
+    'No Cattery with id "{catteryId}" exists here. It may have been removed, or the link is stale.',
 
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.canvasPreview.open': 'Open preview',
@@ -3997,7 +3999,7 @@ export const enCatalog: MessageCatalog = {
   'code.builder.errorCodespacePathInvalid':
     'Selected path does not exist or is not a directory: {path}',
   'code.builder.errorCodespaceNoPath':
-    'No valid codespace path found. Choose a folder or make sure the room workspace exists.',
+    'No valid codespace path found. Choose a folder or make sure the room codespace exists.',
   'code.builder.errorTaskCreate': 'Could not create the Code task.',
   'code.builder.errorTaskCreateMissingId':
     'Task creation response did not include a task id.',
@@ -4041,12 +4043,12 @@ export const enCatalog: MessageCatalog = {
   'code.builder.title': 'Code Builder',
   'code.builder.workspaceActiveNotice':
     'This will be the active builder codespace for the next task step.',
-  'code.builder.workspaceFallbackBound': 'Bound workspace',
+  'code.builder.workspaceFallbackBound': 'Bound codespace',
   'code.builder.workspaceFallbackBoundFallback':
     'Enter a project folder or resume an existing task.',
   'code.builder.workspaceFallbackChatRepo': 'Current chat repository',
   'code.builder.workspaceFallbackRoom': 'Current room folder',
-  'code.builder.workspaceFooterLabel': 'Workspace',
+  'code.builder.workspaceFooterLabel': 'Codespace',
   'code.builder.workspacePathPlaceholder': '/path/to/project',
   'code.builder.workspaceResumeHelp':
     'Resume is for a draft, blocked, or failed Code task you want to continue.',
@@ -4081,7 +4083,7 @@ export const enCatalog: MessageCatalog = {
   'code.livePreview.stopRequested': 'Stop requested.',
   'code.livePreview.stopping': 'Stopping...',
   'code.livePreview.title': 'Live Preview',
-  'code.livePreview.workspace': 'Workspace: {workspace}',
+  'code.livePreview.workspace': 'Codespace: {workspace}',
   'code.execution.header': 'Execution',
   'code.execution.meta.noTask': 'No task bound',
   'code.execution.meta.runtimeSession': 'Runtime session: {sessionId}',
@@ -4167,7 +4169,7 @@ export const enCatalog: MessageCatalog = {
   'code.delivery.noCodespace': 'No codespace bound. Resolve a codespace to see repo actions.',
   'code.delivery.noRepoStatus': 'No repo status loaded.',
   'code.delivery.noInlinePreview': 'No inline preview is available.',
-  'code.delivery.noWorkspace': 'No workspace selected.',
+  'code.delivery.noWorkspace': 'No codespace selected.',
   'code.delivery.panelSubtitle': 'Commit, push, or export outputs from the active codespace.',
   'code.delivery.panelTitle': 'Repo Actions',
   'code.delivery.previewHintUnsafe':
@@ -4380,7 +4382,7 @@ export const enCatalog: MessageCatalog = {
   'code.workspace.summary.binding.userSelected':
     'Builder loop is bound to the owner-selected local folder.',
   'code.workspace.kind.conversationRepo': 'Current chat repo',
-  'code.workspace.kind.managedRoom': 'Managed room workspace',
+  'code.workspace.kind.managedRoom': 'Managed room codespace',
   'code.workspace.kind.userSelected': 'Owner-selected folder',
   'code.workspace.ownership.conversationBound': 'Conversation-owned',
   'code.workspace.ownership.roomOwned': 'Room-owned',
