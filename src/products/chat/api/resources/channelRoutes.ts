@@ -579,12 +579,9 @@ async function handleRestSendMessage(
     await assertChannelWritable(context, channelId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
     // SPEC-133 DC-05: only the server marks a send from the local owner, which desktop
-    // control treats as owner-present; a client-supplied value never survives.
+    // control treats as owner-present. The stamp travels as a dispatch option; message
+    // building drops any value in the payload, on this and every other route.
     const localOwner = isLocalOwnerRequest(context) && resolveRestMessageTransport(context.request) !== 'mobile';
-    if (body.messageMetadata || localOwner) {
-      const { desktopControlEntry: _clientEntry, ...clientMetadata } = body.messageMetadata ?? {};
-      body.messageMetadata = { ...clientMetadata, ...(localOwner ? { desktopControlEntry: 'local' as const } : {}) };
-    }
     // Length-only sanitation gate. Malformed UUIDs intentionally fall back to
     // server ids in the dispatch layer per SPEC-106 FR-4.
     assertClientMessageIdLengthCap(body.clientMessageId);
@@ -616,6 +613,7 @@ async function handleRestSendMessage(
           transport: resolveRestMessageTransport(context.request),
           // SPEC-139: from the authenticated principal only, never from headers or the body.
           ownerStarted: resolveOwnerStartedSurface(context.auth),
+          desktopControlEntry: localOwner ? 'local' : null,
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
           chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, stateBefore, () => nowFrom(context.dependencies), context.dependencies.runtimeClient),
