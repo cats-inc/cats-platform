@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed — 2026-11-16, at the owner's request. Documentation only: no code,
+Accepted — 2026-11-17. The owner authorized PLAN-138 Phases 0–5 on 2026-11-16,
+then the first `linux-stt` release (cats-plugins `linux-stt-v0.1.0`) and
+Desktop 0.18.0, which pins it. D4 is amended by the owner's model choice; see
+D4. Live acceptance (SPEC-145 AC-07) remains open.
+
+Earlier: Proposed — 2026-11-16, at the owner's request. Documentation only: no code,
 package, artifact, release or version change is authorized by this record.
 Linux dictation is the proposed pilot. The owner delegated D1–D6 the same day;
 see [Resolved decisions](#resolved-decisions). §4's Desktop consent flow was
@@ -333,6 +338,12 @@ The owner delegated D1–D6 on 2026-11-16.
   - Linux's ready timeout and stop window are set to at least twice the worst
     of those runs. They never fall below today's 3-second ready timeout or
     SPEC-087's 60-second stop window.
+  - Amended 2026-11-17 by the owner: all three candidates passed on a
+    Raspberry Pi 5 with the English fixture (the Mandarin fixture is not yet
+    recorded), so this rule would choose `ggml-base`. The owner chose the
+    quantized `ggml-base-q5_1` for `linux-stt` 0.1.0 instead, for its smaller
+    pack (63 MB instead of 152 MB). The runs and the resulting 3-second and
+    60-second timeouts are in PLAN-138's measurement record.
 - **D5 — Data reset: keep packs.**
   - Platform data reset (ADR-135) keeps downloaded packs, as it keeps installed
     tools.
@@ -362,4 +373,5 @@ The owner delegated D1–D6 on 2026-11-16.
 ---
 
 *Proposed: 2026-11-16*
-*Decision makers: Owner (pending)*
+*Accepted: 2026-11-17*
+*Decision makers: Owner*

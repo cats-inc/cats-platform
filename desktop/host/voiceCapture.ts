@@ -33,8 +33,9 @@ export {
 const DEFAULT_READY_TIMEOUT_MS = 3_000;
 const DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS = 1_000;
 const DEFAULT_STOP_CLEANUP_TIMEOUT_MS = 5_000;
-// SPEC-145 FR-D4: provisional until PLAN-138 Phase 6 records the measurement.
-const LINUX_READY_TIMEOUT_MS = 10_000;
+// SPEC-145 FR-D4: twice the worst run recorded in PLAN-138 (108 ms ready,
+// 4.6 s transcription on the arm64 reference board), raised to the floors.
+const LINUX_READY_TIMEOUT_MS = 3_000;
 const LINUX_STOP_CLEANUP_TIMEOUT_MS = 60_000;
 // SPEC-145 FR-D3: timed from `ready`.
 const LINUX_RECORDING_WARNING_MS = 25_000;

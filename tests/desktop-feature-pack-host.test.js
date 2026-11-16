@@ -21,6 +21,10 @@ import {
   registerFeaturePackIpc,
 } from '../build/desktop/featurePackHost.js';
 import {
+  featurePackArchiveName,
+  parseFeaturePackLock,
+} from '../build/desktop/featurePacks/featurePackContract.js';
+import {
   FEATURE_PACK_STATUSES as HOST_STATUSES,
 } from '../build/desktop/featurePacks/featurePackManager.js';
 import { isMainWindowMainFrameIpcSender } from '../build/desktop/ipcSecurity.js';
@@ -105,29 +109,55 @@ function packHelper(packs) {
 
 const ended = (events) => () => events.some((event) => event.type === 'end');
 
-test('the shipped lock is schema 1 and empty, so Linux offers no voice yet', async (t) => {
-  const lock = JSON.parse(await readFile(
+test('the shipped lock pins the released linux-stt 0.1.0 for Linux x64 and arm64 only', async (t) => {
+  const lock = parseFeaturePackLock(JSON.parse(await readFile(
     new URL('../config/desktop-feature-packs.lock.json', import.meta.url),
     'utf8',
-  ));
-  assert.deepEqual(lock, { schemaVersion: 1, packs: [] });
+  )));
+  assert.deepEqual(
+    lock.packs.map((entry) => [entry.id, entry.version, entry.os, entry.arch, entry.sha256]),
+    [
+      [ID, '0.1.0', 'linux', 'x64', 'e1b41aec59f36305bab3b65518f863f27b426781c360b07b670954ea29614d23'],
+      [ID, '0.1.0', 'linux', 'arm64', '91b2d15a0350b300fb505bb8257b2d3ad79cb1b77bf4dd92edc85a067278e236'],
+    ],
+  );
+  for (const entry of lock.packs) {
+    assert.equal(
+      entry.url,
+      `https://github.com/cats-inc/cats-plugins/releases/download/linux-stt-v0.1.0/${featurePackArchiveName(entry)}`,
+    );
+  }
 
-  const platformDir = await mkdtemp(join(tmpdir(), 'cats-feature-pack-empty-'));
-  t.after(() => rm(platformDir, { recursive: true, force: true }));
-  const packs = await loadDesktopFeaturePacks({
-    packageRoot: fileURLToPath(new URL('..', import.meta.url)),
-    platformDir,
-    platform: 'linux',
-    arch: process.arch,
-    transport: createFixtureTransport(new Map()),
-    system: SUPPORTED,
-    log: () => {},
-  });
-  await packs.ready;
-  assert.deepEqual(packs.entries, []);
-  assert.deepEqual(featurePackPreloadArguments(packs), []);
-  assert.equal(hasLinuxVoicePack(packs, 'linux'), false);
-  assert.deepEqual(await readdir(platformDir), [], 'nothing is created without a pack');
+  const load = async (platform, arch) => {
+    const platformDir = await mkdtemp(join(tmpdir(), 'cats-feature-pack-shipped-'));
+    t.after(() => rm(platformDir, { recursive: true, force: true }));
+    const packs = await loadDesktopFeaturePacks({
+      packageRoot: fileURLToPath(new URL('..', import.meta.url)),
+      platformDir,
+      platform,
+      arch,
+      transport: createFixtureTransport(new Map()),
+      system: SUPPORTED,
+      log: () => {},
+    });
+    await packs.ready;
+    return { packs, platformDir };
+  };
+  for (const arch of ['x64', 'arm64']) {
+    const { packs } = await load('linux', arch);
+    assert.deepEqual(packs.entries.map((entry) => entry.arch), [arch]);
+    assert.deepEqual(featurePackPreloadArguments(packs), ['--cats-feature-packs=linux-stt']);
+    assert.equal(hasLinuxVoicePack(packs, 'linux'), true);
+    const [snapshot] = await packs.manager.list();
+    assert.equal(snapshot.status, 'not_installed', 'nothing downloads until the owner asks');
+  }
+  for (const [platform, arch] of [['darwin', 'arm64'], ['darwin', 'x64'], ['win32', 'x64'], ['win32', 'arm64']]) {
+    const { packs, platformDir } = await load(platform, arch);
+    assert.deepEqual(packs.entries, []);
+    assert.deepEqual(featurePackPreloadArguments(packs), []);
+    assert.equal(hasLinuxVoicePack(packs, platform), false);
+    assert.deepEqual(await readdir(platformDir), [], 'nothing is created without a pack');
+  }
 });
 
 test('a lock entry exposes the pack bridge, and Linux voice only for linux-stt', async (t) => {

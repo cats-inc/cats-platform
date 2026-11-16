@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; Phases 0–5 authorized by the owner, 2026-11-16. Phases 0–4 done; Phase 5 implemented, its native helpers not yet compiled and its owner acceptance open |
+| Status | In progress. Phases 0–4 done; Phase 5 implemented, its owner acceptance open. Phase 6: the arm64 measurement, the model and the final timeouts recorded, 2026-11-17; live dictation and M2 open. Phase 7: Desktop 0.18.0's release preparation pins the released `linux-stt` 0.1.0 |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -205,7 +205,8 @@ directory. Its tests are `tests/desktop-feature-pack-host.test.js`.
 - [x] **Recording cap (FR-D3).** It is timed from `ready`, with a warning at 25
   seconds and a stop at 30 seconds. Every stop emits `processing` first.
 - [x] **Linux timeouts (FR-D4).** Provisionally 10 seconds for ready and 60 for
-  stop. A helper that exits before `ready` reports `helper_crashed`.
+  stop; Phase 6 set them to 3 and 60 seconds. A helper that exits before
+  `ready` reports `helper_crashed`.
   - Only Linux sessions report `engine_unavailable` when the stop window
     passes. macOS and Windows keep ending quietly.
   - A newer start supersedes one still waiting for the pack check, so only one
@@ -286,7 +287,8 @@ The tests are `tests/desktop-dictation-language.test.js` (host) and
   with Swift tests in `LanguageListTests.swift`.
   - It branches before option parsing and any permission preflight.
   - **Not compiled yet.** This machine is Linux, and CI builds no native
-    helpers. The first macOS build compiles and tests it.
+    helpers. Desktop 0.18.0's packaging compiles it for the first time; its
+    Swift tests have not run.
   - Apple's reference pages render client-side, so `supportedLocales()`,
     `isAvailable` and `supportsOnDeviceRecognition` were not checked against
     them.
@@ -294,7 +296,8 @@ The tests are `tests/desktop-dictation-language.test.js` (host) and
 - [ ] **Windows helper `--list-languages` (FR-3).** Implemented in
   `Program.cs`, listing `SpeechRecognizer.SupportedTopicLanguages` with
   `SystemSpeechLanguage` as `system`. Both were checked against Microsoft's
-  reference. **Not compiled yet**, for the same reason as macOS.
+  reference. **Not compiled yet**, for the same reason as macOS; Desktop
+  0.18.0's packaging compiles it for the first time.
 - [x] **Listing in the host (FR-3, FR-4).** `desktop/host/dictationLanguage.ts`.
   - A 5-second kill; a timeout, a non-zero exit or malformed output means
     Automatic only. Today's helpers exit 2 on the flag, so until the native
@@ -327,45 +330,72 @@ The tests are `tests/desktop-dictation-language.test.js` (host) and
 
 This phase depends on cats-plugins PLAN-002 Phase 6.
 
-- [ ] **Run Desktop's verifier on candidate archives.** Feed the real x64 and
-  arm64 candidates, taken from cats-plugins workflow artifacts, through
-  Desktop's verifier and pack manager.
-  - Use a development-only lock and a local HTTPS test server. Production locks
-    stay empty.
-  - Any FR-A2 or FR-A3 mismatch is fixed in the owning repository before
-    continuing.
-- [ ] **Owner or assigned operator: measure on the arm64 reference board.**
-  - Follow cats-plugins SPEC-002 FR-E2, with the fixture runs and the live
-    `ready` time from host log timestamps.
-  - Fill in the measurement record below.
-- [ ] **Choose the model and the final timeouts.**
-  - The model is the first candidate that passes ADR-154 D4.
+- [x] **Run Desktop's verifier on real archives.** Desktop's
+  `verifyFeaturePackArchive` accepted the arm64 candidate (cats-plugins
+  PLAN-002, 2026-11-17), then both released `linux-stt` 0.1.0 archives against
+  the release's own lock entries. No FR-A2 or FR-A3 mismatch was found.
+- [ ] **Run Desktop's pack manager on real archives.** Download, verify and
+  activate the x64 and arm64 archives through the manager, from a
+  development-only lock and a local HTTPS test server.
+  - Partly done during Desktop 0.18.0's release preparation: the manager
+    loaded the shipped lock and installed both released archives after a
+    download cut at 20 MiB and resumed with `Range`, through the in-process
+    fixture transport. Desktop's network transport was not run.
+- [x] **Measure on the arm64 reference board: fixture runs.** Five runs per
+  candidate on a Raspberry Pi 5 with 4 threads and the 30-second English
+  fixture, recorded below. The Mandarin fixture waits for the owner's
+  recording.
+- [ ] **Measure the live `ready` time** from host log timestamps in an
+  installed Desktop on the reference board. Not measured.
+- [x] **Choose the model and the final timeouts.**
+  - All three candidates pass ADR-154 D4 on the English fixture, so D4's
+    order selects `base`. The
+    owner chose `q5_1` (`ggml-base-q5_1`) for the first release, 2026-11-17,
+    because its pack is 63 MB instead of 152 MB. ADR-154 records the
+    amendment.
   - Each timeout is at least twice the worst run, and not below 3 and 60
-    seconds (SPEC-145 FR-D4, Q4).
-  - Update the host constants.
-- [ ] **Live microphone dictation.**
+    seconds (SPEC-145 FR-D4, Q4). Twice the worst runs, 216 ms and 9.2 s, fall
+    below both floors, so ready is 3 seconds and stop stays 60 seconds.
+  - `desktop/host/voiceCapture.ts` uses them.
+- [ ] **Live microphone dictation.** Not run on x64 or on the reference board.
   - It works on x64 and on the reference board.
   - Record the script finding for 中文 (SPEC-145 FR-D7) and how well
-    Automatic detects languages (AC-07).
-- [ ] Record M2 here. Bot vendoring may start.
+    Automatic detects languages (AC-07). Neither is recorded.
+- [ ] Record M2 here. Bot vendoring may start. M2 is not reached.
 
 ## Phase 7 — Release-bound (gate M3; owner-authorized only)
 
-- [ ] **Owner:** authorize the first `linux-stt` release in cats-plugins.
-- [ ] **Desktop lock.** Copy the released lock fragments into
-  `config/desktop-feature-packs.lock.json` in a Desktop PR. Verify against the
-  real release asset, including a resumed download (AC-07).
-- [ ] **Owner:** authorize the Desktop release. Its release notes state the new
+- [x] **Owner:** authorize the first `linux-stt` release in cats-plugins. It is
+  the release `linux-stt-v0.1.0` at cats-plugins
+  `ea83fb323684ff884c42db0b37261676f351643b`.
+- [x] **Desktop lock.** The release's `lock-entry-x64.json` and
+  `lock-entry-arm64.json` are copied unchanged into
+  `config/desktop-feature-packs.lock.json` in Desktop 0.18.0's bump, and
+  Desktop's verifier accepted both release archives against them.
+- [ ] **Resumed download from the real release asset (AC-07).** Only through
+  the in-process transport above; the asset host answered a range request with
+  206. A resumed download in an installed Desktop was not run.
+- [x] **Owner:** authorize the Desktop release. The owner authorized Desktop
+  0.18.0 as a standard preview on 2026-11-17; its release notes state the new
   feature and the upgrade boundary.
-- [ ] **Status updates.** Update the statuses of SPEC-145, SPEC-146 and ADR-154 in
-  the release-preparation change, per the release guide.
+- [x] **Status updates.** SPEC-145, SPEC-146 and ADR-154 are updated in that
+  release-preparation change. Their open acceptance criteria stay open.
 
 ## Measurement record
 
-Empty until Phase 6. One row per run set.
+One row per run set. Each set is five runs with cats-plugins SPEC-002 FR-E2's
+harness; the runs come from cats-plugins PLAN-002's log of 2026-11-17.
 
 | Date | Candidate | Arch / device | Fixture | Ready median / worst (fixture) | Live ready | Transcription median / worst | Threads | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 | `base` (`ggml-base`) | arm64 / Raspberry Pi 5 | 30 s English | 122 / 141 ms | Not measured | 4085 / 4687 ms | 4 | Passes D4 on English; first in D3's order |
+| 2026-11-17 | `q5_1` (`ggml-base-q5_1`) | arm64 / Raspberry Pi 5 | 30 s English | 93 / 108 ms | Not measured | 4376 / 4584 ms | 4 | Passes D4 on English; the owner's choice for `linux-stt` 0.1.0 |
+| 2026-11-17 | `tiny` | arm64 / Raspberry Pi 5 | 30 s English | 97 / 127 ms | Not measured | 2079 / 2885 ms | 4 | Passes D4 on English |
+
+- **Timeouts (FR-D4).** Ready is max(3 s, 2 × 108 ms) = 3 s. Stop is
+  max(60 s, 2 × 4584 ms) = 60 s.
+- **Not recorded.** x64, the Mandarin fixture, the live `ready` time and the
+  AC-07 script and detection findings.
 
 ## Files to create or modify
 
@@ -381,7 +411,7 @@ Empty until Phase 6. One row per run set.
 | `src/shared/platformPreferences.ts` | Modify | `dictationLanguage` kept by server writes and reset |
 | `src/shared/platformDataReset.ts` | Modify | Disclosure of retained packs |
 | `desktop/native/macos-stt/Sources/CatsSttMacos/main.swift`, `desktop/native/windows-stt/Program.cs` | Modify | `--list-languages` |
-| `config/desktop-feature-packs.lock.json` | Create | Empty lock |
+| `config/desktop-feature-packs.lock.json` | Create | Empty lock; the released `linux-stt` 0.1.0 entries in Phase 7 |
 | `src/shared/i18n/catalogs/en.ts`, `zh-TW.ts`, `messageKeys.ts` | Modify | Strings |
 | `tests/*` | Create / modify | Contract, manager, host, renderer, reset, packaging and preload tests |
 
@@ -416,6 +446,7 @@ Empty until Phase 6. One row per run set.
 | 2026-11-16 | The owner authorized Phase 3, and it was implemented. With the shipped empty lock, Linux still exposes no voice bridge. SPEC-145 FR-C4, FR-D1 and FR-D2 now match the wiring. |
 | 2026-11-16 | The owner authorized Phase 4 ("cnr後繼續" after Phase 3), and it was implemented. The Voice input link and the final section order wait for Phase 5. |
 | 2026-11-16 | The owner authorized Phase 5 ("cnr後繼續" after Phase 4), and it was implemented. The server drops unknown preference fields, so `dictationLanguage` joined the shared Platform preferences; SPEC-145 FR-C5 and SPEC-146 FR-1 now say so. The macOS and Windows listing code is not compiled yet, and the owner's acceptance items stay open. |
+| 2026-11-17 | The owner authorized Desktop 0.18.0 as a standard preview with the released `linux-stt` 0.1.0. Its bump records the reference-board measurement, the owner's choice of `q5_1`, the timeouts of 3 and 60 seconds and the lock; the pack manager installed both released archives after a resumed download through the in-process transport. Not done: the network transport in Desktop, x64 measurement, the live `ready` time, live dictation and the Mandarin and Automatic findings. M2 is not recorded. |
 
 ### Voice path inventory (Phase 0, 2026-11-16)
 

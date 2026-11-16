@@ -1,8 +1,10 @@
 # Implementation Plans
 
 - [PLAN-138: Feature packs, Linux dictation and dictation language](PLAN-138-feature-packs-linux-dictation-and-dictation-language.md)
-  — in progress, 2026-11-16; Phases 0–4 (contract, manager, host, renderer) done; Phase 5
-  (dictation language) implemented, with its native helpers not yet compiled. Delivers
+  — in progress, 2026-11-17; Phases 0–4 (contract, manager, host, renderer) done; Phase 5
+  (dictation language) implemented, its owner acceptance open. Phase 6 recorded the arm64
+  measurement, the owner's `q5_1` model and the 3 s / 60 s timeouts, with live dictation and M2
+  open; Desktop 0.18.0 pins the released `linux-stt` 0.1.0 (Phase 7). Delivers
   SPEC-145 and SPEC-146: contract and verifier, the resumable pack manager, host wiring, renderer,
   and the dictation language (mergeable on its own) on fixture packs (M1); first contact with real
   `linux-stt` candidates, measurement and the Bot vendoring gate (M2); release-bound lock and notes

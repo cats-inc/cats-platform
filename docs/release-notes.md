@@ -2,6 +2,252 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-17 — Platform npm and Desktop 0.18.0 standard preview: Clowders and Catteries, Linux dictation and dictation language
+
+Selected distribution: Desktop **0.18.0 standard-profile preview** and Platform
+npm **0.18.0** with explicit `latest`, from one frozen bump commit. App SDK
+**1.9.0**, bundled **Usage 0.5.4**, preview-only **Agency 0.1.0** installer, and
+the downloadable Linux feature pack **linux-stt 0.1.0**. This is a feature minor:
+it adds stored data that 0.17.x does not read and moves the bundled Runtime to
+0.7.0; see Compatibility and upgrade boundary.
+
+- **Clowders and Catteries (SPEC-103, ADR-100).**
+  - Platform keeps Clowders, Catteries and their memberships in a new
+    directory file, `chat-state.local.directory.json` beside the chat state
+    (schema 1). A group never owns a Cat. Deleting a Clowder ends its
+    memberships, deleting a Cattery keeps its Clowders without a Cattery, and
+    deleting a Cat removes it from every group. Cattery memberships are never
+    temporary. (cats-platform#482)
+  - `/api/platform/directory`, `/api/platform/clowders` and
+    `/api/platform/catteries` create, rename and delete groups, change members
+    and move a Cat between Clowders; every successful change answers with the
+    whole directory view. The app shell's lobby lists Clowders and Catteries.
+    (cats-platform#486)
+  - Cats Directory gains a Clowder canvas (members, lead, status and end date,
+    move or also add, delete) and a Cattery canvas with direct members and a
+    draggable org chart. Ctrl (Option on macOS) adds instead of moving, and each
+    card's menu offers the same move for keyboards. Both appear in the Directory
+    sidebar and on their home pages, and a Cat's profile lists its groups.
+    (cats-platform#488–#490, cats-platform#497)
+  - A temporary member's end date is saved on blur, Enter or when its menu
+    closes, and membership lasts through the whole end day.
+    (cats-platform#489, cats-platform#494)
+  - Platform data reset removes the directory file and says so.
+    (cats-platform#482)
+- **Cats Mobile source.** The mobile client lists, opens, creates, edits and
+  deletes Clowders and Catteries, and creates, edits, archives, recovers and
+  deletes Cats, with Direct message from a Cat's screen.
+  (cats-platform#491, cats-platform#499–#501) Neither the Desktop installers
+  (`CATS_SKIP_MOBILE`) nor the npm package carry the mobile bundle; the server
+  APIs it uses are included.
+- **Linux dictation through a feature pack (SPEC-145, ADR-154).**
+  - Desktop's lock pins `linux-stt` 0.1.0 from the cats-plugins release
+    `linux-stt-v0.1.0`: a whisper.cpp helper with the multilingual
+    `ggml-base-q5_1` model, for Linux x64 and arm64, needing glibc 2.35 and
+    `libpulse.so.0`. Nothing downloads until the owner asks.
+    (cats-platform#485, cats-platform#487, cats-platform#493, cats-platform#495)
+  - On Linux the composer's microphone dictates through that pack. The first
+    click without it explains and opens Settings › Desktop › Optional
+    downloads, keeping the draft. That section shows the size, source, licenses
+    and the on-device promise, and downloads, pauses, resumes, verifies,
+    checks, updates and removes the pack. A download resumes with HTTP `Range`,
+    and the archive's SHA-256 and manifest decide before anything is activated.
+  - Recording stops after 30 seconds with a warning at 25. The microphone shows
+    "Transcribing…" until the text arrives, and Escape cancels.
+  - Linux waits 3 seconds for the helper to be ready and 60 seconds for the
+    transcript (SPEC-145 FR-D4), from the reference-board measurement in
+    PLAN-138.
+  - The Desktop renderer no longer falls back to Web Speech, which never
+    transcribed in Electron; without a native voice bridge there is no
+    microphone button. The browser deployment is unchanged.
+  - Platform data reset keeps downloaded packs.
+- **Dictation language (SPEC-146).** Settings › Desktop › Voice input has one
+  Dictation language select on every platform. Automatic uses the system
+  language on macOS and Windows and detects the language on Linux. macOS and
+  Windows list their languages through the helpers' new `--list-languages`;
+  Linux lists the pack's languages once it is usable. The display language no
+  longer chooses the dictation language. (cats-platform#498)
+- **Catalog bases (Runtime SPEC-045).** Desktop reads, caches and saves a model
+  selection's catalog basis, and the picker shows a "List basis" select before
+  Model when a target has two or more bases. Every target in Runtime 0.7.0
+  still has a single basis (0.7.0 adds Kimi's global region), so pickers and
+  saved selections look the same today. (cats-platform#496)
+- **Repository CI.** Root agent instruction files count as documentation, a
+  green run of the same code is reused, and `npm-publish.yml` skips its test
+  gate only after a passing main CI run that tested that code. Nothing in the
+  package changes. (cats-platform#492)
+- **Source selection:** cats-runtime@a1f898a2acf04d925171ae12d88b18cbe20538d7; main@a1f898a2acf04d925171ae12d88b18cbe20538d7.
+- **Exact source and modules.**
+  - Platform main at selection is `1e439233b4a23c06d29b1577e4f40a790afe37d8`.
+    Freeze the completed bump commit in `release/v0.18.0`; the workflow records
+    that exact Desktop source without a self-reference in this file.
+  - Runtime **0.7.0** moves from 0.17.2's `7c7e9e10` to `a1f898a2`, Runtime
+    main at selection and the source of npm `@cats-inc/cats-runtime@0.7.0`,
+    with nothing left out. It adds:
+    - catalog bases per channel, region or plan, the Kimi region basis and the
+      Playground basis select (cats-runtime#234, cats-runtime#235,
+      cats-runtime#243);
+    - Windows process-tree ends for every CLI, including shell proxies and the
+      per-turn Kimi Code and Junie processes (cats-runtime#239–#241);
+    - close, reset and delete that wait up to 6 seconds for the provider process
+      to stop, with `closing` and a 409 for a concurrent delete, and Windows
+      sandbox removal retries (cats-runtime#237, cats-runtime#242);
+    - a basis-aware catalog-maintenance probe and CI changes, which do not
+      reach the package (cats-runtime#236, cats-runtime#238);
+    - the 0.7.0 version and notes (cats-runtime#244).
+  - Everything else in Runtime 0.7.0's notes (cats-runtime#204–#233),
+    including the lost-session (410), Kimi, standing-grant and hosted-tool
+    changes, already shipped in 0.17.2's `7c7e9e10`.
+  - Shared conversation UI **0.1.0** keeps content digest
+    `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680` and
+    tarball SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`,
+    unchanged since 0.17.2.
+  - The nine shared-tool pins retain cats-one
+    `f8b0d8a6e566b44d788ffc77912665ef46b738d3`. cats-one main at selection is
+    `e5b685cd8e46e89ca3c15f14ccef0288fd096b21`; its two later commits change
+    none of the pinned files.
+  - Catlas/orchestrator knowledge moves to revision `2026-11-17.1` for
+    `0.18.x`, with its entries unchanged.
+- **Bundled and downloadable inputs.**
+  - Usage **0.5.4** remains pinned to
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Its Platform floor
+    `^0.6.0` and SDK range `^1.2.0` admit this host. Apps main at selection is
+    `06270bd9cefc64f02c19fa56811c593cda2d1300`; its only change since 0.17.2 is
+    CI (cats-apps#55).
+  - Agency **0.1.0** keeps SHA-256
+    `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`.
+  - `config/desktop-feature-packs.lock.json` holds the release's
+    `lock-entry-x64.json` and `lock-entry-arm64.json` unchanged, from
+    cats-plugins tag `linux-stt-v0.1.0` at
+    `ea83fb323684ff884c42db0b37261676f351643b`:
+    - x64: `linux-stt-0.1.0-linux-x64.catspack`, 63,797,586 bytes, SHA-256
+      `e1b41aec59f36305bab3b65518f863f27b426781c360b07b670954ea29614d23`;
+    - arm64: `linux-stt-0.1.0-linux-arm64.catspack`, 63,375,316 bytes, SHA-256
+      `91b2d15a0350b300fb505bb8257b2d3ad79cb1b77bf4dd92edc85a067278e236`.
+  - The installers do not contain the pack; Desktop downloads it from that
+    release when the owner asks. Plugins main at selection is
+    `75ea323acf580c4bc6f5ef3d13e370964849a7f5`; its only change after the pack
+    release commit is the release workflow (cats-plugins#17).
+- **Compatibility and upgrade boundary.**
+  - **From 0.17.x.** No migration. Each addition is new data that a missing
+    file or field leaves empty:
+    - the directory file `chat-state.local.directory.json` in the Platform
+      state directory, written on the first Clowder or Cattery change;
+    - on Linux, `feature-packs/` under the Platform root
+      (`~/.cats/platform/feature-packs` by default). Each start creates an
+      empty `.staging/` there; the pack, about 64 MB, arrives only when the
+      owner downloads it;
+    - the optional `dictationLanguage` field in `platform-preferences.json`,
+      where a missing value means Automatic.
+  - Chat state, the conversation database, companion data, App SDK 1.9.0,
+    Runtime's catalogs, overrides and stored sessions keep their formats. A
+    saved model selection gains an optional `basisId` only for a basis other
+    than a target's first, which no shipped catalog has.
+  - A directory file this release cannot read (a newer schema, malformed JSON,
+    or a reference to a missing Clowder or Cattery) is refused and left
+    unchanged, and the directory API answers `directory_newer` or
+    `directory_unreadable`.
+  - **Returning to 0.17.2.** Stop Desktop; nothing needs converting.
+    - 0.17.x does not read the directory file, so Clowders and Catteries are
+      hidden there and return with 0.18.0. Memberships of Cats deleted in
+      between stay in the file and are hidden.
+    - `feature-packs/` stays on disk unused. To reclaim the space, remove the
+      pack in Settings first, or delete the folder with Desktop stopped.
+    - 0.17.x drops `dictationLanguage` on its next preferences save, after
+      which Voice input reads Automatic again.
+    - 0.17.x's Platform data reset leaves the directory file and
+      `feature-packs/` in place.
+    - Its Runtime `7c7e9e10` refuses a catalog override that uses
+      `basis.id`, `basis.region` or `plan.id` (only a hand-written or
+      soft-patched override has them), and then has no model catalog for any
+      provider. Remove those fields, with Desktop stopped, before returning.
+  - **Platform npm.** npm moves from 0.12.4 to 0.18.0, so an npm installation
+    crosses every boundary since 0.12.
+    - npm 0.18.0 is tested on Node.js 24 only. Its conversation database
+      needs `node:sqlite`; the driver refuses a Node.js without it and names
+      Node.js 24 as the requirement. The manifest's `engines` field and the
+      setup guide still say Node.js 22 or later, which is untested with the
+      database.
+    - A 0.12.4 profile is expected to be imported into the conversation
+      database on its first start, after a pre-database backup; that was
+      checked on a synthetic version 6 profile, not a real 0.12.4 one. The way
+      back to 0.12.4 is 0.17.0's offline `state restore --manifest` with that
+      backup; see the 0.17.0 section.
+    - cats-one 0.6.0's `^0.12.3` range excludes 0.18.0, so the launcher keeps
+      resolving 0.12.4 until a cats-one release raises it. No cats-one release
+      is selected here.
+  - **Before installation.** Stop processes using the data roots and back up
+    `~/.cats`, configured overrides and workspace attachment directories.
+  - **If startup or installation fails.** Preserve those roots, then reinstall
+    0.18.0, or return to 0.17.2 as above with processes stopped.
+- **Signing and publication.**
+  - Run exact-source ci.yaml on `release/v0.18.0`. Then dispatch
+    desktop-release.yml from that same SHA with `tag=v0.18.0`, the Runtime SHA
+    above and `unsigned=false`, the standard profile.
+  - Windows x64/arm64 ship NSIS installers, macOS ships a universal x64/arm64
+    DMG and updater ZIP, and Linux ships amd64/arm64 DEBs.
+  - Standard expected trust is macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Per-platform receipts and
+    native signing/notarization checks establish actual trust.
+  - Same-team signed macOS, Windows NSIS and Linux DEB installations of 0.17.2
+    keep their update paths into 0.18.0.
+  - Dispatch npm-publish.yml from `release/v0.18.0` with `dist_tag=latest`.
+    That source is not a main commit, so the workflow runs its full test gate,
+    then builds fresh artifacts in `prepack` and publishes through the trusted
+    publisher.
+- **Known limits.**
+  - The 3-second ready timeout comes from five consecutive fixture runs on the
+    reference board, without a microphone; the ready time with a live
+    microphone in an installed Desktop was not measured. The first dictation
+    after a reboot also reads the 60 MB model from storage. Slow storage or a
+    board slower than a 4-core Cortex-A76 may time out and report
+    `engine_unavailable`.
+  - With 中文 selected, output may be Simplified or mixed script; there is no
+    conversion (SPEC-145 FR-D7). How the real pack writes Mandarin, and how
+    well Automatic detects short phrases, is not recorded yet.
+  - An older glibc marks the pack unsupported. A missing `libpulse.so.0` is
+    reported when the loader cache shows it missing; otherwise the helper
+    fails to start.
+  - The macOS and Windows `--list-languages` code is compiled for the first
+    time by this release's packaging and has not run on a real Mac or Windows
+    machine. A failed listing offers Automatic only. Whether listing asks for
+    permission on macOS is not known.
+  - Windows dictation still has SPEC-084's open defect, in which text never
+    reaches the composer.
+  - Runtime waits up to 6 seconds for a provider process to stop on close and
+    reset (0.7.0 adds per-turn Kimi Code and Junie processes), longer than
+    Platform's 5-second request timeout. A provider that ignores a graceful
+    stop can make a close report a failure, and a delete right after it can
+    meet Runtime's 409 while the session reads `closing`.
+- **Validation boundary.**
+  - Each change passed its PR's full CI. Release gates enforce full CI for the
+    exact frozen bump source, packaged identity/startup, source receipts,
+    updater metadata, checksums and signing.
+  - Desktop's own `verifyFeaturePackArchive` accepted both released archives
+    against these lock entries. On a Raspberry Pi 5 (4 threads, five runs, a
+    30-second English fixture), `ggml-base-q5_1` was ready in 93 ms median and
+    108 ms worst, and transcribed in 4376 ms median and 4584 ms worst. PLAN-138
+    records the other candidates.
+  - During release preparation, Desktop's pack manager loaded the shipped lock
+    and installed both released archives after a download cut at 20 MiB and
+    resumed with `Range`, through an in-process transport rather than the
+    network; each helper came out executable with 99 languages. The release
+    asset host answered a range request with 206 and the lock's size.
+  - Not run: the pack manager over the network in Desktop, live microphone
+    dictation in an installed Desktop on x64 or the reference board, and the
+    Mandarin fixtures. SPEC-145 AC-07 and SPEC-146 AC-04 and AC-05 remain
+    open. An npm 0.12.4 profile upgrade was not exercised.
+  - The Directory, Settings and composer changes were checked by component,
+    host and API tests, not in an installed Desktop. Installed upgrade/rollback
+    on every OS and credentialed provider execution are not claimed.
+  - Runtime npm, Apps, Plugins and cats-one remain separate publication targets.
+
+Publication results: the `v0.18.0` GitHub Standard Preview, its source/build
+receipts, checksums, provenance and Actions run, and the npm registry entry and
+its `npm-publish.yml` run.
+
 ## 2026-11-16 — Desktop 0.17.2 standard preview: Kimi Code, allow once and Stop
 
 Selected distribution: Desktop **0.17.2 standard-profile preview**, App SDK
