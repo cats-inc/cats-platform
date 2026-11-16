@@ -108,3 +108,19 @@ test('ADR-155: Kimi offers its asking target as an option, saved beside print mo
     assert.deepEqual(again.saves.at(-1).targets, []);
   } finally { again.dom.window.close(); }
 });
+
+test('ADR-155: a selection with only the asking Kimi target keeps it through other saves', async () => {
+  const p = await page({ targets: [kimiAsking] });
+  try {
+    p.document.getElementById('pick-more')?.click();
+    await p.settle();
+    assert.equal(p.document.getElementById('pick-kimi').checked, false);
+    const footnote = [...p.document.querySelectorAll('.footnote')].map((node) => node.textContent).join(' | ');
+    assert.match(footnote, /1 other configured target/u, footnote);
+    p.document.getElementById('pick-openclaw').click();
+    await p.settle();
+    p.document.getElementById('go-check').click();
+    await p.settle();
+    assert.deepEqual(p.saves.at(-1).targets, [openclaw, kimiAsking]);
+  } finally { p.dom.window.close(); }
+});

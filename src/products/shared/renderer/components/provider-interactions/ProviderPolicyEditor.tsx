@@ -27,6 +27,8 @@ export function ProviderPolicyEditor({ value, onChange, disabled = false }: {
       <option value="legacy">{t(messageKeys.providerControlsLegacyMode)}</option><option value="provider">{t(messageKeys.providerControlsProviderMode)}</option><option value="explicit">{t(messageKeys.providerControlsExplicitMode)}</option>
     </select></label>
     {limited && <p>{t(messageKeys.providerControlsAllowlist)}</p>}
+    {/* ADR-155: shown in every mode, since legacy and explicit full access both refuse Kimi's asking target. */}
+    <p>{t(messageKeys.providerControlsKimiAskingPolicy)}</p>
     {mode === 'legacy' ? <p>{t(messageKeys.providerControlsLegacyHelp)}</p> : <>
       <label>{t(mode === 'provider' ? messageKeys.providerControlsMaximumAccess : messageKeys.providerControlsLocalAccess)}<select disabled={disabled} value={access} onChange={e => update({ access: e.target.value as ExecutionAccess })}>
         <option value="read-only">{t(messageKeys.providerControlsReadOnly)}</option>

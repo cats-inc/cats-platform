@@ -97,7 +97,7 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
      30-minute card deadline. They never use grants. This matches Cats Bot.
    - Surfaces that create their own sessions without that policy fail before the turn and never
      fall back to print mode. Only the conversation's own sessions resolve its execution policy
-     (`runtime-session/policy.ts`, used by session launch and Boss Cat join requests). Work runs,
+     (`runtime-session/policy.ts`, used only on the conversation's own session paths). Work runs,
      schedules, Catlas, relay and agent decisions create sessions without one, so the hosted
      target refuses them when the session spawns.
 3. **Desktop control is unchanged.** It never runs in an asking-Kimi conversation, because the

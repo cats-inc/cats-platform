@@ -4511,6 +4511,7 @@ export const messageKeys = {
   providerControlsSetup: "providerControls.Setup",
   providerControlsClaudeChromeSetup: "providerControls.ClaudeChromeSetup",
   providerControlsClaudeCeiling: "providerControls.ClaudeCeiling",
+  providerControlsKimiAskingPolicy: "providerControls.KimiAskingPolicy",
   desktopControlSettingsTitle: "desktopControl.SettingsTitle",
   desktopControlSettingsDescription: "desktopControl.SettingsDescription",
   desktopControlSettingsToggle: "desktopControl.SettingsToggle",

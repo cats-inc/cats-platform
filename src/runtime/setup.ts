@@ -147,7 +147,8 @@ export function summarizeRuntimeSetupReadModel(
     scannedAt: readModel.repair.preferredScan.scannedAt,
     lastManualScanAt: readModel.state.lastManualScanAt,
     appliedAt: readModel.state.appliedAt,
-    providerCount: readModel.selection.targets.length,
+    // Providers, not targets: Kimi's asking target is not a second provider (ADR-155).
+    providerCount: new Set(readModel.selection.targets.map((target) => target.provider)).size,
     availableCount: readModel.observations?.filter((entry) => entry.configurationStatus === 'unchanged'
       && entry.available && readModel.selection.targets.some((target) => target.provider === entry.provider
         && target.backend === entry.backend && target.instance === entry.instance)).length ?? providersReady.length,

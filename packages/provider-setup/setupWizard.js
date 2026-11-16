@@ -59,6 +59,8 @@ export function mountSetupWizard(root, bridge, options) {
   let TOOLS = {};
   let ORDER = [];
   let CUSTOM = [];
+  // ADR-155: whether the saved selection has print-mode Kimi, which makes the asking target Kimi's option.
+  let KIMI_SAVED = false;
   const platform = () => (S.snap ? S.snap.platform : (S.facts && S.facts.platform) || 'windows');
   const targetKey = (target) => JSON.stringify([target.provider, target.backend, target.instance]);
   // ADR-155: Kimi's asking target. Runtime owns its template; this page offers it as an option of the
@@ -90,8 +92,8 @@ export function mountSetupWizard(root, bridge, options) {
     ORDER = [...known.filter((id) => tools[id]), ...Object.keys(tools).filter((id) => !known.includes(id))]
       .filter((id) => tools[id].kind === 'npm' || tools[id].kind === 'native');
     const keys = new Set(Object.values(tools).map((tool) => targetKey(tool.target)));
-    keys.add(targetKey(KIMI_ASKING_TARGET));
     CUSTOM = (S.snap.runtime.selection.targets || []).filter((target) => !keys.has(targetKey(target)));
+    KIMI_SAVED = Boolean(tools.kimi) && (S.snap.runtime.selection.targets || []).some((target) => targetKey(target) === targetKey(tools.kimi.target));
   }
 
   const picked = (kind) => ORDER.filter((id) => S.picks.has(id) && TOOLS[id].kind === kind);
@@ -610,6 +612,13 @@ export function mountSetupWizard(root, bridge, options) {
     return null;
   }
 
+  /**
+   * Targets this page does not manage. Kimi's asking target belongs to the Kimi option when Kimi is
+   * chosen or was saved; a selection that has only the asking target keeps it, untouched, like any other.
+   */
+  const unmanaged = () => CUSTOM.filter((target) => !(TOOLS.kimi && (S.picks.has('kimi') || KIMI_SAVED)
+    && targetKey(target) === targetKey(KIMI_ASKING_TARGET)));
+
   function selectionTargets(endpoints = {}, tokens = {}) {
     const chosen = [...S.picks].filter((id) => TOOLS[id]).map((id) => ({
       ...TOOLS[id].target,
@@ -617,7 +626,7 @@ export function mountSetupWizard(root, bridge, options) {
       ...(Object.hasOwn(tokens, id) ? { authToken: tokens[id] } : {}),
     }));
     const asking = S.kimiAsking && S.picks.has('kimi') && TOOLS.kimi ? [{ ...KIMI_ASKING_TARGET }] : [];
-    return [...chosen, ...asking, ...CUSTOM.map((target) => ({ provider: target.provider, backend: target.backend, instance: target.instance }))];
+    return [...chosen, ...asking, ...unmanaged().map((target) => ({ provider: target.provider, backend: target.backend, instance: target.instance }))];
   }
 
   async function testConnection(id) {
@@ -1100,8 +1109,9 @@ export function mountSetupWizard(root, bridge, options) {
     const toggle = !S.expanded && hiddenCount
       ? `<button type="button" class="pick-more" id="pick-more" data-act="pick-more">${E(T(`Show ${hiddenCount} more`, `顯示其他 ${hiddenCount} 項`))}</button>`
       : '';
-    const custom = CUSTOM.length
-      ? `<p class="footnote">${E(T(`${CUSTOM.length} other configured target(s) stay as they are. Change them in Settings.`, `另外 ${CUSTOM.length} 個已設定的目標會維持原樣，可以到設定修改。`))}</p>`
+    const others = unmanaged().length;
+    const custom = others
+      ? `<p class="footnote">${E(T(`${others} other configured target(s) stay as they are. Change them in Settings.`, `另外 ${others} 個已設定的目標會維持原樣，可以到設定修改。`))}</p>`
       : '';
     return `${head}${banner}
       <div class="block"><div class="label-line"><p class="group-label">${E(T('AI agents (CLI)', 'AI 代理工具（CLI）'))}</p>${S.expanded ? `<button type="button" class="more" id="pick-more" data-act="pick-more">${E(T('Show fewer', '顯示較少'))}</button>` : ''}</div>
@@ -1445,8 +1455,9 @@ export function mountSetupWizard(root, bridge, options) {
     const signInBlock = signInHtml
       ? `<div class="block"><p class="group-label">${E(ollamaUsable() ? T('Sign in and models', '登入與模型') : T('Sign in', '登入'))}</p><ul class="rows">${signInHtml}</ul></div>`
       : '';
-    const custom = CUSTOM.length
-      ? `<p class="footnote">${E(T(`${CUSTOM.length} other configured target(s) are not managed here and stay as they are.`, `另外 ${CUSTOM.length} 個已設定的目標不在這裡管理，會維持原樣。`))}</p>`
+    const others = unmanaged().length;
+    const custom = others
+      ? `<p class="footnote">${E(T(`${others} other configured target(s) are not managed here and stay as they are.`, `另外 ${others} 個已設定的目標不在這裡管理，會維持原樣。`))}</p>`
       : '';
     return `${head}<p class="lead"><strong>${E(title)}</strong><br>${E(lead)}${E(when)}</p>${banner}
       ${shortcuts.length ? `<p class="shortcuts">${shortcuts.join('')}</p>` : ''}${groups}${signInBlock}${custom}`;
@@ -1929,6 +1940,8 @@ export function mountSetupWizard(root, bridge, options) {
     if (!kind) return;
     if (kind === 'pick') {
       if (target.checked) S.picks.add(target.dataset.arg); else S.picks.delete(target.dataset.arg);
+      // Unchoosing Kimi drops its asking target too; choosing it again starts unticked.
+      if (target.dataset.arg === 'kimi' && !target.checked) S.kimiAsking = false;
       S.notice = null;
       render();
     } else if (kind === 'kimi-asking') {

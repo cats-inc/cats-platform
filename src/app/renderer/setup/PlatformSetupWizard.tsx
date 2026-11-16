@@ -206,7 +206,8 @@ export function PlatformSetupWizard({
     }).catch(() => undefined);
     void Promise.resolve(host?.getProviderSetup?.('settings')).then((snapshot) => {
       if (cancelled || !snapshot) return;
-      setSelectedIds(snapshot.runtime.selection.targets.map((target) => target.provider));
+      // One tool per provider: Kimi's asking target is not a second tool (ADR-155).
+      setSelectedIds([...new Set(snapshot.runtime.selection.targets.map((target) => target.provider))]);
       setToolLabels(Object.fromEntries((snapshot.runtime.universe ?? []).map((entry) => [entry.provider, entry.familyLabel])));
     }).catch(() => undefined);
     return () => { cancelled = true; };
