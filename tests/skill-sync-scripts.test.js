@@ -60,7 +60,7 @@ async function skillFixture(t, runner) {
     assert.ok(root.includes('cats-platform-skill-sync space-'));
     await rm(root, { recursive: true, force: true });
   });
-  await seed(root, 'AGENTS.md', '# Isolated test project');
+  await seed(root, 'AGENTS.md', '# Isolated test project'); // docs-boundary-ignore: temp fixture
   const relativeScript = join('scripts', runner.platform, runner.filename);
   await mkdir(dirname(join(root, relativeScript)), { recursive: true });
   await cp(join(process.cwd(), relativeScript), join(root, relativeScript));
