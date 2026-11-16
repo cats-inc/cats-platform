@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
 
-import type {
-  ProductProviderDescriptor,
-  ProviderAdvancedCatalogControl,
-  ProviderAdvancedControlValue,
+import {
+  canonicalCatalogBasisId,
+  type ProductProviderDescriptor,
+  type ProviderAdvancedCatalogControl,
+  type ProviderAdvancedControlValue,
 } from '../../shared/providerCatalog.js';
 import {
   resolveSelectedProviderInstance,
@@ -75,6 +76,9 @@ export function useProviderModelFieldActions(input: {
     const nextPresetId = next.presetId ?? null;
     const nextModelSelection = buildSelectionForEntry(nextModel, nextPresetId, nextControls);
     if (nextModelSelection && effectiveCatalog.catalogRevision) nextModelSelection.catalogRevision = effectiveCatalog.catalogRevision;
+    // A choice on a named basis stays on it (Runtime SPEC-045); the first basis is named by omission.
+    const basisId = canonicalCatalogBasisId(effectiveAdvancedCatalog.basisId, effectiveAdvancedCatalog);
+    if (nextModelSelection && basisId) nextModelSelection.basisId = basisId;
     markManualSelection();
     onTargetChange(attachExecutionLabelToProviderTarget({
       target: {

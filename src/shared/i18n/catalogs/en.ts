@@ -3486,6 +3486,12 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.basisLabel': 'Model list basis: {basis}. {hint}',
   'shared.providerModel.field.basisChannelHint': 'Models listed for the {channel} channel. Enter a custom model to use another channel.',
   'shared.providerModel.field.basisPlanHint': 'Models listed for a {plan} account. Other plans can offer different models.',
+  'shared.providerModel.field.basisRegionHint': 'Models listed for a CLI signed in to the {region} region. Other regions can offer different models.',
+  'shared.providerModel.field.basisCaptureHint': 'Captured from CLI {version} on {date}.',
+  'shared.providerModel.field.basisCaptureVersionHint': 'Captured from CLI {version}.',
+  'shared.providerModel.field.basisCaptureDateHint': 'Captured on {date}.',
+  'shared.providerModel.field.listBasisLabel': 'List basis',
+  'shared.providerModel.field.basisMismatchHint': 'This list is for another plan or region than the CLI sign-in on the Runtime host, so some models may fail.',
   'shared.providerModel.field.selectProviderFirst': 'Select an available provider first',
   'shared.providerModel.field.waitingProviders': 'Waiting for available providers...',
   'shared.providerModel.field.loadingModels': 'Loading available models...',
@@ -3506,6 +3512,8 @@ export const enCatalog: MessageCatalog = {
     '{model} no longer offers {control} {value}. Choose it again.',
   'shared.providerModel.attention.presetRemoved':
     'Mode {preset} is no longer offered. Choose it again.',
+  'shared.providerModel.attention.basisRemoved':
+    'List basis {basis} is no longer offered. Choose it again.',
   'shared.providerModel.attention.noLongerOffered': '{value} (no longer offered)',
   'shared.providerModel.attention.chooseHere': 'Click to choose again.',
   'shared.providerModel.attention.chooseInSettings': 'Click to choose again in Settings.',

@@ -3535,6 +3535,12 @@ export const messageKeys = {
   sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
   sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',
   sharedProviderModelFieldBasisPlanHint: 'shared.providerModel.field.basisPlanHint',
+  sharedProviderModelFieldBasisRegionHint: 'shared.providerModel.field.basisRegionHint',
+  sharedProviderModelFieldBasisCaptureHint: 'shared.providerModel.field.basisCaptureHint',
+  sharedProviderModelFieldBasisCaptureVersionHint: 'shared.providerModel.field.basisCaptureVersionHint',
+  sharedProviderModelFieldBasisCaptureDateHint: 'shared.providerModel.field.basisCaptureDateHint',
+  sharedProviderModelFieldListBasisLabel: 'shared.providerModel.field.listBasisLabel',
+  sharedProviderModelFieldBasisMismatchHint: 'shared.providerModel.field.basisMismatchHint',
   sharedProviderModelFieldSelectProviderFirst:
     'shared.providerModel.field.selectProviderFirst',
   sharedProviderModelFieldWaitingProviders:
@@ -3561,6 +3567,7 @@ export const messageKeys = {
   sharedProviderModelAttentionEntryRemoved: 'shared.providerModel.attention.entryRemoved',
   sharedProviderModelAttentionControlRemoved: 'shared.providerModel.attention.controlRemoved',
   sharedProviderModelAttentionPresetRemoved: 'shared.providerModel.attention.presetRemoved',
+  sharedProviderModelAttentionBasisRemoved: 'shared.providerModel.attention.basisRemoved',
   sharedProviderModelAttentionNoLongerOffered: 'shared.providerModel.attention.noLongerOffered',
   sharedProviderModelAttentionChooseHere: 'shared.providerModel.attention.chooseHere',
   sharedProviderModelAttentionChooseInSettings: 'shared.providerModel.attention.chooseInSettings',

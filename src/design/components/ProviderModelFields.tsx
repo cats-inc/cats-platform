@@ -1,24 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   providerInstanceTarget,
+  selectionTargetsCatalogBasis,
   type ProductProviderRegistryReadModel,
   type ProviderAdvancedModelCatalog,
   type ProviderCatalogBasis,
+  type ProviderCatalogBasisOption,
+  type ProviderCatalogCapture,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
+  resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
   type ProviderModelSelection,
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import {
+  attachExecutionLabelToProviderTarget,
   catalogMatchesTarget,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   kimiInstanceLabel,
   resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
+  sanitizePersistentTargetSelection,
 } from './providerModelFieldsSupport.js';
 import { ProviderModelFieldControls } from './ProviderModelFieldControls.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
@@ -76,6 +82,7 @@ export interface ProviderModelFieldsReads {
   fetchAdvancedProviderModels?: (
     provider: string,
     instance?: string | null,
+    basisId?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
 }
 
@@ -119,20 +126,47 @@ export function ProviderModelFields({
   const resolvedInstance = selectedProvider
     ? resolveSelectedProviderInstance(selectedProvider, instance)
     : '';
+  // Runtime SPEC-045 FR-7: the basis to show is the one a basis change or a new selection's
+  // detected basis asked for, otherwise the saved selection's (absent = the first basis).
+  const basisTargetKey = `${provider}::${resolvedInstance}`;
+  const [basisRequest, setBasisRequest] = useState<BasisRequest | null>(null);
+  const activeBasisRequest = basisRequest?.key === basisTargetKey ? basisRequest : null;
+  const requestedBasisId = activeBasisRequest ? activeBasisRequest.basisId : (modelSelection?.basisId ?? null);
   const {
     catalogLoading,
     catalogResolved,
     catalogConfigurationRequired,
     effectiveCatalog,
     effectiveAdvancedCatalog,
+    catalogBasisUnknown,
   } = useProviderCatalogState({
     provider,
     resolvedInstance,
     hasSelectedProvider: Boolean(selectedProvider),
     selectionRevision: providerRegistry.revision,
+    basisId: requestedBasisId,
     fetchProviderModels,
     fetchAdvancedProviderModels,
   });
+  // Every basis's catalog carries the same bases list. Keep the last one seen for this target so
+  // the select stays in place while another basis loads (SPEC-013 picker continuity).
+  const [knownBases, setKnownBases] = useState<{ key: string; bases: ProviderCatalogBasisOption[] } | null>(null);
+  const bases = effectiveAdvancedCatalog.bases
+    ?? ((catalogLoading || !catalogResolved) && knownBases?.key === basisTargetKey ? knownBases.bases : null);
+  useEffect(() => {
+    if (effectiveAdvancedCatalog.bases) setKnownBases({ key: basisTargetKey, bases: effectiveAdvancedCatalog.bases });
+  }, [basisTargetKey, effectiveAdvancedCatalog.bases]);
+  // The first basis is named by omission, also when it has an id.
+  const canonicalBasis = (basisId: string | null | undefined): string | null =>
+    !basisId || bases?.[0]?.id === basisId ? null : basisId;
+  const detectedBasis = bases?.find((basis) => basis.detected) ?? null;
+  const detectedBasisId = detectedBasis ? canonicalBasis(detectedBasis.id) : null;
+  const shownBasisId = canonicalBasis(requestedBasisId);
+  // A new selection starts on the detected basis: hold reconciliation until that list loads.
+  const newSelection = !modelSelection && !model.trim();
+  const awaitingDetectedBasis = newSelection && Boolean(detectedBasis) && !catalogLoading
+    && detectedBasisId !== shownBasisId && !activeBasisRequest;
+  const basisSwitching = Boolean(activeBasisRequest?.switching);
   const {
     persistedLegacyModelTarget,
     isLegacyModelTarget,
@@ -152,7 +186,59 @@ export function ProviderModelFields({
     effectiveCatalog,
     effectiveAdvancedCatalog,
     onTargetChange,
+    deferReconciliation: awaitingDetectedBasis || basisSwitching,
   });
+
+  useEffect(() => {
+    if (awaitingDetectedBasis) setBasisRequest({ key: basisTargetKey, basisId: detectedBasisId, switching: false });
+  }, [awaitingDetectedBasis, basisTargetKey, detectedBasisId]);
+
+  // A basis change lands once that basis's list is loaded: the current entry and its controls
+  // stay when the list has the entry, otherwise the list's own default is chosen.
+  useEffect(() => {
+    if (!activeBasisRequest?.switching) return;
+    if (catalogBasisUnknown) { setBasisRequest(null); return; }
+    if (catalogLoading || !catalogResolved
+      || !selectionTargetsCatalogBasis(activeBasisRequest.basisId, effectiveAdvancedCatalog)) return;
+    // A custom model string does not depend on the list, so it stays as typed.
+    if (!modelSelection && model.trim()) {
+      setBasisRequest({ ...activeBasisRequest, switching: false });
+      return;
+    }
+    const basisId = activeBasisRequest.basisId ?? undefined;
+    const keep = Boolean(modelSelection?.entryId
+      && effectiveCatalog.models.some((entry) => entry.id === modelSelection.entryId));
+    const { basisId: _previous, ...carried } = modelSelection ?? { entryMode: 'explicit' as const };
+    const next = resolveCatalogTargetSelection({
+      target: {
+        provider,
+        instance: resolvedInstance,
+        model: keep ? modelSelection!.entryId! : '',
+        modelSelection: keep ? { ...carried, ...(basisId ? { basisId } : {}) } : null,
+      },
+      catalog: effectiveCatalog,
+      advancedCatalog: effectiveAdvancedCatalog,
+      preserveCurrentModel: keep,
+      preserveCurrentSelection: keep,
+    });
+    const sanitized = sanitizePersistentTargetSelection({
+      target: next,
+      controls: effectiveAdvancedCatalog.entries.find((entry) => entry.id === next.model)?.controls
+        ?? effectiveAdvancedCatalog.controls,
+    });
+    markManualSelection();
+    setBasisRequest({ ...activeBasisRequest, switching: false });
+    onTargetChange(attachExecutionLabelToProviderTarget({ target: sanitized, effectiveCatalog, effectiveAdvancedCatalog }));
+  }, [activeBasisRequest, catalogBasisUnknown, catalogLoading, catalogResolved, effectiveAdvancedCatalog,
+    effectiveCatalog, markManualSelection, model, modelSelection, onTargetChange, provider, resolvedInstance]);
+
+  // Once the saved selection names the requested basis, it is the source again.
+  useEffect(() => {
+    if (activeBasisRequest && !activeBasisRequest.switching && modelSelection
+      && canonicalBasis(modelSelection.basisId) === canonicalBasis(activeBasisRequest.basisId)) {
+      setBasisRequest(null);
+    }
+  }, [activeBasisRequest, bases, modelSelection]);
 
   const {
     entryOptions,
@@ -215,16 +301,21 @@ export function ProviderModelFields({
   });
 
   // Show a saved choice the catalog no longer offers as itself, never as the
-  // first row, until the user picks a replacement.
-  const staleEntryId = unmappableSelection?.kind === 'entry' ? unmappableSelection.entryId : null;
-  const stalePresetId = unmappableSelection?.kind === 'preset' ? unmappableSelection.presetId : null;
-  const selectionNotice = unmappableSelection
+  // first row, until the user picks a replacement. A basis change in flight is not stale.
+  const savedMismatch = basisSwitching ? null : unmappableSelection;
+  const staleBasisId = savedMismatch?.kind === 'basis' ? savedMismatch.basisId : null;
+  const staleEntryId = savedMismatch?.kind === 'entry' ? savedMismatch.entryId
+    : savedMismatch?.kind === 'basis' ? modelSelection?.entryId ?? null : null;
+  const stalePresetId = savedMismatch?.kind === 'preset' ? savedMismatch.presetId : null;
+  const selectionNotice = savedMismatch
     ? describeUnmappableSavedSelection({
-        mismatch: unmappableSelection,
+        mismatch: savedMismatch,
         catalog: effectiveCatalog,
         advancedCatalog: effectiveAdvancedCatalog,
       }, t)
     : unsupportedSelectionWarning;
+  const basisMismatchHint = bases && detectedBasis && !staleBasisId && detectedBasisId !== shownBasisId
+    ? t(messageKeys.sharedProviderModelFieldBasisMismatchHint) : null;
 
   return (
     <>
@@ -275,10 +366,36 @@ export function ProviderModelFields({
           </select>
         </label>
       ) : null}
+      {bases ? (
+        <label className="fieldLabel">
+          <span>{t(messageKeys.sharedProviderModelFieldListBasisLabel)}</span>
+          <select
+            className="textInput"
+            value={staleBasisId ? UNMAPPABLE_SELECTION_VALUE : shownBasisId ?? ''}
+            onChange={(event) => setBasisRequest({
+              key: basisTargetKey, basisId: event.target.value || null, switching: true,
+            })}
+          >
+            {staleBasisId ? (
+              <option value={UNMAPPABLE_SELECTION_VALUE} disabled>
+                {t(messageKeys.sharedProviderModelAttentionNoLongerOffered, { value: staleBasisId })}
+              </option>
+            ) : null}
+            {bases.map((basis, index) => (
+              <option key={basis.id ?? FIRST_BASIS_KEY} value={index === 0 ? '' : basis.id}>
+                {basis.label}
+              </option>
+            ))}
+          </select>
+          {basisMismatchHint ? <span className="fieldHint">{basisMismatchHint}</span> : null}
+        </label>
+      ) : null}
       <label className="fieldLabel">
         <div className="fieldLabelInline">
           <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
-          {effectiveAdvancedCatalog?.basis ? <CatalogBasisInfo basis={effectiveAdvancedCatalog.basis} /> : null}
+          {effectiveAdvancedCatalog?.basis ? (
+            <CatalogBasisInfo basis={effectiveAdvancedCatalog.basis} capture={effectiveAdvancedCatalog.capture} />
+          ) : null}
           {catalogLoading ? (
             <ProviderPickerLoading label={t(messageKeys.sharedProviderModelFieldLoadingModels)} />
           ) : null}
@@ -379,8 +496,8 @@ export function ProviderModelFields({
       )}
       {selectionNotice ? (
         <span
-          className={`fieldHint providerCatalogHint${unmappableSelection ? ' providerSelectionAttention' : ''}`}
-          role={unmappableSelection ? 'status' : undefined}
+          className={`fieldHint providerCatalogHint${savedMismatch ? ' providerSelectionAttention' : ''}`}
+          role={savedMismatch ? 'status' : undefined}
         >
           {selectionNotice}
         </span>
@@ -391,17 +508,31 @@ export function ProviderModelFields({
 
 // Holds a removed saved entry or preset in its select without matching any listed choice.
 const UNMAPPABLE_SELECTION_VALUE = '__cats_unmappable_selection__';
+const FIRST_BASIS_KEY = '__cats_first_basis__';
+
+/** A basis the picker asked for: a user's change (`switching`) or a new selection's detected basis. */
+interface BasisRequest {
+  key: string;
+  basisId: string | null;
+  switching: boolean;
+}
 
 // Read-only note on what the model list was captured against. It is a focusable span, not a
 // button: a button inside this <label> would become the label's control instead of the select.
 // Clicking it must not activate the label, so the tooltip portal can show the text on tap.
-function CatalogBasisInfo({ basis }: { basis: ProviderCatalogBasis }) {
+function CatalogBasisInfo({ basis, capture }: { basis: ProviderCatalogBasis; capture?: ProviderCatalogCapture }) {
   const { t } = useI18n();
+  const version = capture?.cliVersion;
+  const date = capture?.lastUpdated;
   const hint = [
     ...(basis.channel ? [t(messageKeys.sharedProviderModelFieldBasisChannelHint, { channel: basis.channel.label })] : []),
+    ...(basis.region ? [t(messageKeys.sharedProviderModelFieldBasisRegionHint, { region: basis.region.label })] : []),
     ...(basis.plan ? [t(messageKeys.sharedProviderModelFieldBasisPlanHint, { plan: basis.plan.label })] : []),
+    ...(version && date ? [t(messageKeys.sharedProviderModelFieldBasisCaptureHint, { version, date })]
+      : version ? [t(messageKeys.sharedProviderModelFieldBasisCaptureVersionHint, { version })]
+        : date ? [t(messageKeys.sharedProviderModelFieldBasisCaptureDateHint, { date })] : []),
   ].join(' ');
-  const summary = [basis.channel?.label, basis.plan?.label].filter(Boolean).join(' · ');
+  const summary = [basis.channel?.label, basis.region?.label, basis.plan?.label].filter(Boolean).join(' · ');
   return (
     <span
       className="catalogBasisInfo"

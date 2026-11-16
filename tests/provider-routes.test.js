@@ -872,3 +872,64 @@ test('GET /api/providers re-probes cold failures instead of caching first-time f
     });
   });
 });
+
+test('the advanced route forwards a catalog basis, caches it apart and names an unknown one (Runtime SPEC-045)', async () => {
+  const runtime = createRuntimeStub();
+  const readAdvanced = runtime.getAdvancedProviderModels;
+  const reads = [];
+  runtime.getAdvancedProviderModels = async (provider, instance, options = {}) => {
+    reads.push(options.basisId ?? null);
+    if (options.basisId === 'retired') {
+      throw Object.assign(createRuntimeRequestError("Catalog basis 'retired' does not exist for claude/cli; choose a listed basis.", 400),
+        { code: 'catalog_basis_unknown' });
+    }
+    const catalog = await readAdvanced(provider, instance);
+    return options.basisId ? { ...catalog, basisId: options.basisId,
+      bases: [{ label: 'Pro', detected: false }, { id: options.basisId, label: 'Pro+', detected: true }] } : catalog;
+  };
+  await withServer(runtime, async (baseUrl) => {
+    const advanced = (query = '') => fetch(`${baseUrl}/api/providers/claude/models/advanced${query}`);
+    const first = await (await advanced()).json();
+    assert.equal(first.catalog.basisId, undefined);
+    const named = await (await advanced('?basis=pro-plus')).json();
+    assert.equal(named.catalog.basisId, 'pro-plus');
+    assert.deepEqual(named.catalog.bases.map((basis) => basis.id ?? null), [null, 'pro-plus']);
+    // Each basis has its own cache entry: neither read answers for the other.
+    await (await advanced()).json();
+    await (await advanced('?basis=pro-plus')).json();
+    assert.deepEqual(reads, [null, 'pro-plus']);
+    const unknown = await advanced('?basis=retired');
+    assert.equal(unknown.status, 400);
+    const body = await unknown.json();
+    assert.equal(body.error.code, 'catalog_basis_unknown');
+    assert.equal(body.error.details.basisId, 'retired');
+  });
+});
+
+test('a cached catalog basis that Runtime retires stops being served (Runtime SPEC-045)', async (t) => {
+  const runtime = createRuntimeStub();
+  const readAdvanced = runtime.getAdvancedProviderModels;
+  let retired = false;
+  runtime.getAdvancedProviderModels = async (provider, instance, options = {}) => {
+    if (options.basisId && retired) {
+      throw Object.assign(createRuntimeRequestError(`Catalog basis '${options.basisId}' does not exist for claude/cli; choose a listed basis.`, 400),
+        { code: 'catalog_basis_unknown' });
+    }
+    const catalog = await readAdvanced(provider, instance);
+    return options.basisId ? { ...catalog, basisId: options.basisId } : catalog;
+  };
+  await withMockedDateNow(t, Date.parse('2026-11-16T10:00:00Z'), async (clock) => withServer(runtime, async (baseUrl) => {
+    const named = () => fetch(`${baseUrl}/api/providers/claude/models/advanced?basis=pro-plus`);
+    assert.equal((await (await named()).json()).catalog.basisId, 'pro-plus');
+    retired = true;
+    clock.advance(361_000);
+    // The stale copy may answer once while it revalidates; after that the retired basis is gone.
+    const retained = await named();
+    await retained.json();
+    const rejected = await named();
+    assert.equal(rejected.status, 400);
+    assert.equal((await rejected.json()).error.code, 'catalog_basis_unknown');
+    // The first basis is untouched.
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models/advanced`)).status, 200);
+  }));
+});
