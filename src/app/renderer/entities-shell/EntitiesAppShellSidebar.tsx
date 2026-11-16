@@ -7,6 +7,12 @@ import type {
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import { CATS_DIRECTORY_NEW_CAT_PATH } from '../../../shared/catsDirectoryPaths.js';
+import {
+  CATTERIES_DIRECTORY_NEW_PATH,
+  CLOWDERS_DIRECTORY_NEW_PATH,
+  buildCatteryHomePath,
+  buildClowderHomePath,
+} from '../../../shared/directoryPaths.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
@@ -33,6 +39,7 @@ import type {
   ConversationSidebarPayload,
 } from '../productShell/ConversationSidebar.js';
 import { getEntitiesExitDelta } from './entitiesExitMemory.js';
+import { DirectorySidebarGroups } from './DirectorySidebarGroups.js';
 
 /**
  * Sidebar for the Entities workspace shell (entity routes
@@ -143,6 +150,8 @@ export function EntitiesAppShellSidebar({
 
   const activeCatMatch = useMatch('/entities/cats/:catId/*');
   const activeCatId = activeCatMatch?.params.catId ?? null;
+  const activeClowderId = useMatch('/entities/clowders/:clowderId/*')?.params.clowderId ?? null;
+  const activeCatteryId = useMatch('/entities/catteries/:catteryId/*')?.params.catteryId ?? null;
   // Cats / Clowders / Catteries nav items light up while the user is
   // anywhere under that entity's path tree — same pattern Cats Work
   // uses for its `/work/projects` nav item (`isWorkProjectsPath` =
@@ -276,17 +285,14 @@ export function EntitiesAppShellSidebar({
     onClick: () => navigate(CATS_DIRECTORY_NEW_CAT_PATH),
     iconKind: 'singlePerson',
   };
-  /* Clowders / Catteries don't have an add route yet (PLAN-091 phase
-   * 6 only landed read-only entity homes). Pass `undefined` so the
-   * placeholder renders as a static, non-interactive row instead of
-   * a noop button — clearer UX than a click affordance that does
-   * nothing. Add routes will land in a later phase. */
   const clowdersPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.entitiesSidebarNewClowder),
+    onClick: () => navigate(CLOWDERS_DIRECTORY_NEW_PATH),
     iconKind: 'groupPeople',
   };
   const catteriesPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.entitiesSidebarNewCattery),
+    onClick: () => navigate(CATTERIES_DIRECTORY_NEW_PATH),
     iconKind: 'orgChart',
   };
 
@@ -404,18 +410,12 @@ export function EntitiesAppShellSidebar({
                 {t(messageKeys.entitiesSidebarSectionClowders)}
               </span>
             </button>
-            <ConversationSidebarMyCatsSection
-              hideLabel
-              cats={[]}
-              payloadChannels={[]}
-              activeMyCatId={null}
-              telegramBoundCatIds={new Set()}
-              helpers={ENTITIES_HELPERS}
-              overflowMenuOpenId={null}
-              onOverflowMenuToggle={() => undefined}
-              onDirectChatCat={() => undefined}
-              onArchiveCat={() => undefined}
-              emptyStatePlaceholder={clowdersPlaceholder}
+            <DirectorySidebarGroups
+              kind="clowder"
+              groups={envelope.lobby.clowders ?? []}
+              activeId={activeClowderId}
+              pathFor={buildClowderHomePath}
+              placeholder={clowdersPlaceholder}
             />
           </nav>
 
@@ -430,18 +430,12 @@ export function EntitiesAppShellSidebar({
                 {t(messageKeys.entitiesSidebarSectionCatteries)}
               </span>
             </button>
-            <ConversationSidebarMyCatsSection
-              hideLabel
-              cats={[]}
-              payloadChannels={[]}
-              activeMyCatId={null}
-              telegramBoundCatIds={new Set()}
-              helpers={ENTITIES_HELPERS}
-              overflowMenuOpenId={null}
-              onOverflowMenuToggle={() => undefined}
-              onDirectChatCat={() => undefined}
-              onArchiveCat={() => undefined}
-              emptyStatePlaceholder={catteriesPlaceholder}
+            <DirectorySidebarGroups
+              kind="cattery"
+              groups={envelope.lobby.catteries ?? []}
+              activeId={activeCatteryId}
+              pathFor={buildCatteryHomePath}
+              placeholder={catteriesPlaceholder}
             />
           </nav>
         </div>

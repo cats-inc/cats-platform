@@ -197,9 +197,10 @@
   is `CatProfilePage`; no dormant alternate cat route/component tree is kept.
 - **`/entities/clowders` and `/entities/catteries` mount canvas entry pages**
   inside `EntitiesShell`, matching `/entities/cats` as platform-level management
-  entrypoints. The current canvases use a registry + detail-panel
-  shape over the phase-6 summary payload; full mutation flows still
-  wait for the Clowder / Cattery storage records.
+  entrypoints (2026-11-16, SPEC-103). Like the cats canvas they take
+  `/new` and `/:id/settings`, the URL is the only source of the selected
+  group, and a group's Settings tab is its canvas. The Directory sidebar
+  lists Clowders and Catteries under their nav items.
 
 ### Path migrations + contracts
 
@@ -508,12 +509,16 @@ close. The follow-up:
 /entities/cats                           ← Cats canvas
 /entities/cats/:catId                    ← CatProfilePage — canonical
 /entities/cats/:catId/:lens              ← lens deep-link (overview|chat|work|code)
-/entities/clowders                       ← Clowders canvas
+/entities/clowders                       ← Clowders canvas (opens the first Clowder)
+/entities/clowders/new                   ← Clowders canvas, create form
 /entities/clowders/:clowderId            ← StandaloneEntityPage (ClowderHome) — canonical
-/entities/clowders/:clowderId/:tab       ← tab deep-link (cats|settings)
-/entities/catteries                      ← Catteries canvas
+/entities/clowders/:clowderId/settings   ← Clowders canvas with that Clowder (its Settings tab)
+/entities/clowders/:clowderId/:tab       ← tab deep-link (cats)
+/entities/catteries                      ← Catteries canvas (opens the first Cattery)
+/entities/catteries/new                  ← Catteries canvas, create form
 /entities/catteries/:catteryId           ← StandaloneEntityPage (CatteryHome) — canonical
-/entities/catteries/:catteryId/:tab      ← tab deep-link (members|clowders|cats|settings)
+/entities/catteries/:catteryId/settings  ← Catteries canvas with that Cattery (its Settings tab)
+/entities/catteries/:catteryId/:tab      ← tab deep-link (members|clowders|cats)
 
 /chat/dm/:catId                 ← Chat DM lane (replaces /chat/my-cats/:catId)
                                   /chat/my-cats/:catId is REMOVED — no alias

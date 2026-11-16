@@ -762,3 +762,26 @@
 .directoryBoardAdd:hover {
   background: color-mix(in srgb, var(--panel) 88%, var(--accent) 12%);
 }
+
+/* ── Clowder and Cattery home pages ── */
+
+.directoryHomeBoot {
+  min-height: 120px;
+}
+
+.directoryHomeList {
+  max-width: 720px;
+}
+
+.directoryHomeEmpty {
+  padding: 8px 0;
+}
+
+.directoryHomeLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.directoryHomeLink:hover .directoryMemberName {
+  text-decoration: underline;
+}

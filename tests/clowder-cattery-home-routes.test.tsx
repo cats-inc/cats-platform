@@ -146,7 +146,8 @@ test('ClowderHome renders Cats tab by default and shows the parent-Cattery chip'
   assert.match(markup, />Dev Team</u);
   assert.match(markup, />Part of Acme Co\./u);
   assert.match(markup, /aria-current="page"[^>]*>Cats</u);
-  assert.match(markup, /Manage this Clowder’s cats in Settings\./u);
+  // The list itself loads from the directory (directory-homes.test.tsx).
+  assert.match(markup, /class="directoryHomeBoot"/u);
   // The Settings tab is the Clowder canvas, which App routes ahead of this page.
   assert.match(markup, /href="\/entities\/clowders\/clw-dev\/settings"[^>]*>Settings</u);
 });
@@ -199,7 +200,7 @@ test('CatteryHome renders Members tab by default and exposes all four tab links'
   assert.match(markup, /href="\/entities\/catteries\/acme\/clowders"/u);
   assert.match(markup, /href="\/entities\/catteries\/acme\/cats"/u);
   assert.match(markup, /href="\/entities\/catteries\/acme\/settings"/u);
-  assert.match(markup, /Manage this Cattery’s direct members in Settings\./u);
+  assert.match(markup, /class="directoryHomeBoot"/u);
 });
 
 test('CatteryHome /entities/catteries/:id/clowders renders the Clowders tab empty state', () => {
@@ -216,7 +217,7 @@ test('CatteryHome /entities/catteries/:id/clowders renders the Clowders tab empt
   );
 
   assert.match(markup, /aria-current="page"[^>]*>Clowders</u);
-  assert.match(markup, /See this Cattery’s Clowders in the org chart in Settings\./u);
+  assert.match(markup, /class="directoryHomeBoot"/u);
 });
 
 test('CatteryHome /entities/catteries/:id/cats renders the aggregate-Cats tab empty state', () => {
@@ -233,7 +234,7 @@ test('CatteryHome /entities/catteries/:id/cats renders the aggregate-Cats tab em
   );
 
   assert.match(markup, /aria-current="page"[^>]*>Cats</u);
-  assert.match(markup, /See every cat in this Cattery in the org chart in Settings\./u);
+  assert.match(markup, /class="directoryHomeBoot"/u);
 });
 
 test('CatteryHome shows the not-found pane when the id is not in the registry', () => {
