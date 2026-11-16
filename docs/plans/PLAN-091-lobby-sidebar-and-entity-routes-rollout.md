@@ -240,8 +240,8 @@ Out of scope (covered elsewhere or deferred):
     because indirect rows can carry any Clowder status; default `formal`
   - Membership status transitions enforce entity-specific rules
     (SPEC-103 FR-21): `temp` involvement rejected at Cattery level
-- [ ] Add `Memberships` section to `CatHome.tsx` Overview lens listing
-      Clowders + Catteries this Cat is in
+- [x] The Cat profile (`CatProfilePage.tsx`) lists the Clowders and
+      Catteries this Cat is in under its header (`CatMemberships.tsx`)
 - [x] Membership management UI initial pass: add member, change status,
       remove. Invites / role permissions deferred to a follow-up plan
 - [ ] Audit trail: deferred until multi-user Catteries (SPEC-103

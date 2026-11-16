@@ -4497,6 +4497,10 @@ export const messageKeys = {
   catProfileNotFoundTitle: 'catProfile.notFound.title',
   catProfileOpenSettingsLabel: 'catProfile.openSettingsLabel',
   catProfileViewProfileAction: 'catProfile.viewProfileAction',
+  catProfileMembershipsAriaLabel: 'catProfile.memberships.ariaLabel',
+  catProfileMembershipsCatteryLabel: 'catProfile.memberships.catteryLabel',
+  catProfileMembershipsClowderLabel: 'catProfile.memberships.clowderLabel',
+  catProfileMembershipsClowderInCatteryLabel: 'catProfile.memberships.clowderInCatteryLabel',
   catProfileNotFoundBody: 'catProfile.notFound.body',
   // Entities sidebar reuses the ConversationSidebarMyCatsSection
   // primitive. The section needs only a header label and a "+ New X"

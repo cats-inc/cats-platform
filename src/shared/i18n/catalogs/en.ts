@@ -3785,6 +3785,10 @@ export const enCatalog: MessageCatalog = {
   'catProfile.notFound.title': 'Cat not found',
   'catProfile.openSettingsLabel': "Edit {name}'s settings",
   'catProfile.viewProfileAction': 'View profile',
+  'catProfile.memberships.ariaLabel': 'Clowders and Catteries',
+  'catProfile.memberships.catteryLabel': 'Cattery {name}: {role}, {status}',
+  'catProfile.memberships.clowderLabel': 'Clowder {name}: {role}, {status}',
+  'catProfile.memberships.clowderInCatteryLabel': 'Clowder {name} in {catteryName}: {role}, {status}',
   'catProfile.notFound.body':
     'No Cat with id "{catId}" exists here. It may have been removed, or the link is stale.',
   'entitiesSidebar.section.cats': 'My Cats',

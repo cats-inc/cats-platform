@@ -785,3 +785,113 @@
 .directoryHomeLink:hover .directoryMemberName {
   text-decoration: underline;
 }
+
+/* ── A Cat's Clowders and Catteries, under its profile header ── */
+
+/* The profile header's width and centring, so the tags line up with it. */
+.catMemberships,
+.catMembershipsError {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 720px);
+  margin: 0 auto 20px;
+}
+
+.catMemberships {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.catMemberships > li {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A rounded square, like the group avatars: groups are squares, Cats circles. */
+.catMembershipTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.catMembershipTag:hover {
+  background: var(--panel-hover);
+}
+
+.catMembershipTag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.directoryGroupAvatar--tiny {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+}
+
+.catMembershipName {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catMembershipRole {
+  flex-shrink: 0;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.catMembershipTag .directoryStatusChip {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+}
+
+.catMembershipsError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.catMembershipsRetry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.catMembershipsRetry:hover {
+  text-decoration: underline;
+}
+
+/* The profile header centres below 600px of canvas. */
+@container canvas (max-width: 600px) {
+  .catMemberships,
+  .catMembershipsError {
+    justify-content: center;
+  }
+}
