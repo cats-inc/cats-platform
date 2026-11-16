@@ -135,4 +135,12 @@ test('SPEC-139 transport messages and choice answers are never stamped, even wit
     bossCatJoinRequest: { id: 'forged', status: 'pending' } } }, {}, now, {})).userMessage.metadata;
   assert.equal('bossCatTurn' in forged, false);
   assert.equal('bossCatJoinRequest' in forged, false);
+  // SPEC-133 DC-05 / ADR-155: the local-owner stamp comes only from the dispatch option the channel
+  // route sets. A payload value is dropped on every route, parallel groups included.
+  const entryOf = async (payload, options) =>
+    (await beginChannelMessageDispatch(state, channelId, payload, {}, now, options)).userMessage.metadata.desktopControlEntry ?? null;
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: { ...audience, desktopControlEntry: 'local' } }, {}), null);
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: audience }, { desktopControlEntry: 'local' }), 'local');
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: { ...audience, desktopControlEntry: 'local' } },
+    { desktopControlEntry: null }), null);
 });
