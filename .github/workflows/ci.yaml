@@ -153,7 +153,8 @@ jobs:
 
     steps:
       # npm-publish.yml and scripts/shared/source-selection.mjs read the names of
-      # the Documentation-only change and Test steps from the jobs API.
+      # the Documentation-only change, Already tested and Test steps from the
+      # jobs API.
       - name: Documentation-only change
         if: env.CHANGES_SKIP == 'docs'
         run: echo "Only docs/ or the root agent instructions (AGENTS.md, CLAUDE.md, CODEX.md, GEMINI.md) changed; install, typecheck and tests are skipped."

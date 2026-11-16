@@ -305,8 +305,8 @@ procedure.
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
 test gate and fresh prepack build before trusted publication. It skips the test gate
-only when a passing CI run on that commit on main executed its tests, so dispatch after
-main's CI finishes; a documentation-only or already-tested main run does not count.
+only when a passing CI run on that commit on main tested that code, so dispatch after
+main's CI finishes; a documentation-only main run does not count.
 Update the root manifest and lockfile version together and integrate remote main
 first:
 

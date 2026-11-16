@@ -218,7 +218,7 @@ test('a main push reuses its merged pull request\'s green run only for that exac
     'a head without the previous main was tested on other code');
 });
 
-test('npm publication skips its test gate only after CI ran the tests on the commit on main', (t) => {
+test('npm publication skips its test gate only after CI tested the commit on main', (t) => {
   const publish = load(readFileSync('.github/workflows/npm-publish.yml', 'utf8'));
   assert.equal(publish.permissions.actions, 'read');
   const steps = publish.jobs.publish.steps;
@@ -233,20 +233,34 @@ test('npm publication skips its test gate only after CI ran the tests on the com
   const bin = join(root, 'bin');
   mkdirSync(bin);
   // gh applies --jq itself, so the stub prints what each filter would: the
-  // passing runs' ids, then per run the number of Test steps that succeeded.
+  // passing runs' ids, then per run (STUB_TESTED as id=count pairs) the number
+  // of successful Test or Already tested steps in a nodejs job that did not
+  // take the documentation-only path. A run without a pair fails its lookup.
   writeFileSync(join(bin, 'gh'), [
     '#!/usr/bin/env bash',
     'printf \'%s\\n\' "$2" >> "$STUB_LOG"',
     'case "$2" in',
     '  */actions/workflows/*) [ -n "${STUB_RUNS+set}" ] || exit 1; printf \'%s\\n\' "$STUB_RUNS" ;;',
-    '  */actions/runs/*/jobs*) [ -n "${STUB_TESTED:-}" ] || exit 1; printf \'%s\\n\' "$STUB_TESTED" ;;',
+    '  */actions/runs/*/jobs*)',
+    '    id=${2#*/actions/runs/}; id=${id%%/*}',
+    '    for pair in ${STUB_TESTED:-}; do',
+    '      if [ "${pair%%=*}" = "$id" ]; then printf \'%s\\n\' "${pair#*=}"; exit 0; fi',
+    '    done',
+    '    exit 1 ;;',
     '  *) exit 1 ;;',
     'esac',
   ].join('\n') + '\n', { mode: 0o755 });
-  assert.match(check.run, /select\(\.name \| startswith\("nodejs"\)\)/);
-  assert.match(check.run, /select\(\.name == "Test" and \.conclusion == "success"\)/);
+  assert.ok(check.run.includes('select(.name | startswith("nodejs"))'));
+  assert.ok(check.run.includes(
+    'select(any(.steps[]?; .name == "Documentation-only change" and .conclusion == "success") | not)'),
+  'a documentation-only run never counts');
+  assert.ok(check.run.includes(
+    'select((.name == "Test" or .name == "Already tested") and .conclusion == "success")'));
   const ciSteps = workflow.jobs.nodejs.steps;
   assert.equal(ciSteps.find((item) => item.name === 'Test')?.run, 'npm test', 'the step the lookup names runs the suite');
+  for (const name of ['Already tested', 'Documentation-only change']) {
+    assert.ok(ciSteps.some((item) => item.name === name), `ci.yaml still names its ${name} step`);
+  }
   const sha = 'a'.repeat(40);
   const log = join(root, 'gh.log');
   const lookup = (runs, tested) => {
@@ -259,14 +273,15 @@ test('npm publication skips its test gate only after CI ran the tests on the com
     if (tested !== undefined) env.STUB_TESTED = tested;
     return runStep(check.run, { cwd: root, env });
   };
-  assert.equal(lookup('42', '1'), 'tested=true');
+  assert.equal(lookup('42', '42=1'), 'tested=true', 'a run that tested this code, or already had, skips the gate');
   assert.match(readFileSync(log, 'utf8'),
     new RegExp(`actions/workflows/ci\\.yaml/runs\\?head_sha=${sha}&event=push&branch=main&status=success`));
   assert.match(readFileSync(log, 'utf8'), /actions\/runs\/42\/jobs/);
-  assert.equal(lookup('42', '0'), 'tested=false', 'a passing run that skipped its Test step runs the gate');
-  assert.equal(lookup('', '1'), 'tested=false', 'without a passing main run the gate runs as before');
-  assert.equal(lookup(undefined, '1'), 'tested=false', 'a failed run lookup runs the gate');
-  assert.equal(lookup('42'), 'tested=false', 'a failed jobs lookup runs the gate');
-  assert.equal(lookup('not-a-run', '1'), 'tested=false');
+  assert.equal(lookup('42', '42=0'), 'tested=false', 'a documentation-only run runs the gate');
+  assert.equal(lookup('41\n42', '41=0 42=1'), 'tested=true', 'any qualifying run on the commit counts');
+  assert.equal(lookup('', '42=1'), 'tested=false', 'without a passing main run the gate runs as before');
+  assert.equal(lookup(undefined, '42=1'), 'tested=false', 'a failed run lookup runs the gate');
+  assert.equal(lookup('42', '41=1'), 'tested=false', 'a failed jobs lookup runs the gate');
+  assert.equal(lookup('not-a-run', '42=1'), 'tested=false');
   assert.doesNotMatch(readFileSync(log, 'utf8'), /actions\/runs\/not-a-run/);
 });

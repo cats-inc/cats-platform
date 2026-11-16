@@ -367,14 +367,15 @@ much as branch protection already does. `tests/ci-workflow.test.js` runs both st
 against a local origin with a stubbed `gh`, and runs the detection and fingerprint steps
 against local git fixtures.
 
-A passing run that skipped its tests is not test evidence for publication.
-`npm-publish.yml` skips its test gate only when a passing CI run on the dispatched commit
-on main executed its `Test` step; a documentation-only or already-tested main push, or a
-failed lookup, runs the gate. The Desktop release guard
-(`requireTestedReleaseSource` in `scripts/shared/source-selection.mjs`) rejects a main
-push run whose `Documentation-only change` step succeeded, while still accepting a
-skip of code that already passed and any manual `ci.yaml` run on the release branch.
-Both read these step names from the jobs API, so renaming them breaks the checks.
+A documentation-only pass is not test evidence for publication. `npm-publish.yml` skips
+its test gate only when a passing CI run on the dispatched commit on main ran its `Test`
+step or its `Already tested` step (this exact code passed elsewhere) and did not take the
+`Documentation-only change` path; anything else, or a failed lookup, runs the gate. The
+Desktop release guard (`requireTestedReleaseSource` in
+`scripts/shared/source-selection.mjs`) likewise rejects a main push run whose
+`Documentation-only change` step succeeded, while accepting a skip of code that already
+passed and any manual `ci.yaml` run on the release branch. Both read these step names
+from the jobs API, so renaming them breaks the checks.
 
 A pull request can also reuse a green run from main when its code outside `docs/` equals
 main's, which means that exact code already passed there. The skip trusts everyone who can
