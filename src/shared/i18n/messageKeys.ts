@@ -3481,6 +3481,8 @@ export const messageKeys = {
     'shared.providerModel.field.registryEmptyHint',
   sharedProviderModelFieldProviderInstanceLabel:
     'shared.providerModel.field.providerInstanceLabel',
+  sharedProviderModelFieldKimiNeverAsks: 'shared.providerModel.field.kimiNeverAsks',
+  sharedProviderModelFieldKimiAsksFirst: 'shared.providerModel.field.kimiAsksFirst',
   sharedProviderModelFieldModelLabel: 'shared.providerModel.field.modelLabel',
   sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
   sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',
@@ -4509,6 +4511,7 @@ export const messageKeys = {
   providerControlsSetup: "providerControls.Setup",
   providerControlsClaudeChromeSetup: "providerControls.ClaudeChromeSetup",
   providerControlsClaudeCeiling: "providerControls.ClaudeCeiling",
+  providerControlsKimiAskingPolicy: "providerControls.KimiAskingPolicy",
   desktopControlSettingsTitle: "desktopControl.SettingsTitle",
   desktopControlSettingsDescription: "desktopControl.SettingsDescription",
   desktopControlSettingsToggle: "desktopControl.SettingsToggle",

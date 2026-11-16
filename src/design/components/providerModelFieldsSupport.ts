@@ -946,3 +946,11 @@ export function resolveProviderModelFieldsViewState(input: {
     allowLegacyManualModelEntry,
   };
 }
+
+/** ADR-155: Kimi's two targets say how they behave, not their instance ids. */
+export function kimiInstanceLabel(provider: string | undefined, instanceId: string, t: (key: MessageKey) => string): string | null {
+  if (provider !== 'kimi') return null;
+  if (instanceId === 'native') return t(messageKeys.sharedProviderModelFieldKimiNeverAsks);
+  if (instanceId === 'hosted') return t(messageKeys.sharedProviderModelFieldKimiAsksFirst);
+  return null;
+}

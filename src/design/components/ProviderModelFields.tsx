@@ -16,6 +16,7 @@ import {
   catalogMatchesTarget,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
+  kimiInstanceLabel,
   resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
 } from './providerModelFieldsSupport.js';
@@ -61,6 +62,7 @@ export {
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
   shouldDeferCatalogTargetReconciliation,
+  kimiInstanceLabel,
   shouldShowInstanceField,
   shouldTreatPersistedTargetAsLegacyModel,
   translateProviderRegistryWarning,
@@ -267,7 +269,7 @@ export function ProviderModelFields({
           >
             {instanceOptions.map((option) => (
               <option key={providerInstanceTarget(option)} value={providerInstanceTarget(option)}>
-                {option.label}
+                {kimiInstanceLabel(selectedProvider?.id, option.id, t) ?? option.label}
               </option>
             ))}
           </select>
