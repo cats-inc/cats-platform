@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; Q1–Q5 resolved under the owner's delegation, 2026-11-16 |
+| **Status** | Draft; Q1–Q5 resolved, 2026-11-16 (Q2–Q5 under the owner's delegation; Q1 by the owner's dictation-language decision) |
 | **Owner** | Desktop host maintainers |
 | **Reviewer** | Product owner |
 | **Decision** | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -30,7 +30,8 @@ It also specifies Desktop's side:
 - a resumable download that the owner manages in Settings, with verification,
   activation and removal;
 - the composer prompt that leads to Settings;
-- voice input on Linux, with the host-owned recording cap.
+- voice input on Linux, with the host-owned recording cap and a dictation
+  language setting.
 
 ## Goals
 
@@ -54,7 +55,12 @@ It also specifies Desktop's side:
   has a native bridge.
 - **More pack features.** Other packs such as FFmpeg, a pack catalog,
   third-party packs, and pack updates outside Desktop releases.
-- **More recognition features.** Streaming transcripts and a locale picker.
+- **More recognition features.**
+  - Streaming transcripts.
+  - Choosing the language anywhere other than Settings (FR-C5), such as in the
+    composer.
+  - Converting Chinese output between Traditional and Simplified script
+    (FR-D7).
 - **Sandboxed formats.** Snap, Flatpak and other sandboxed Linux formats.
 - **Helper internals and build.** PulseAudio threading, CMake, model fetching
   and CI belong to the cats-plugins producer SPEC.
@@ -129,28 +135,34 @@ Each requirement names who implements it:
   - `upstream`: `[{ name, repository, commit }]`;
   - `model`: `{ name, path, sha256 }`;
   - `prerequisites` and `minGlibc`;
-  - `licenses`: `[{ name, component, path }]`.
+  - `licenses`: `[{ name, component, path }]`;
+  - `languages`: the BCP 47 primary language subtags the model can be told to
+    recognize, such as `["en", "zh", "ja"]` (FR-C5).
 - The host accepts the manifest only if all of the following hold:
   - `id`, `version`, `os`, `arch`, `helperProtocol`, `minGlibc` and
     `prerequisites` equal the lock entry;
   - every archive entry except the manifest appears in `files` exactly once,
     and nothing else does;
-  - `entry` is listed and marked executable.
-- This is the manifest that ADR-002 §1 describes, and it defines the helper
-  protocol version that ADR-002 left open.
+  - `entry` is listed and marked executable;
+  - `languages` is a non-empty list of distinct, well-formed primary subtags.
+- This is the manifest that ADR-002 §1 describes, plus `languages`. It also
+  defines the helper protocol version that ADR-002 left open.
 
 **FR-A4 — Helper protocol 1 (helper, host).**
 
 - **Arguments.**
   - `--session-id <id>`.
-  - An optional `--locale <bcp47>`.
+  - An optional `--locale <tag>`, where `<tag>` is one of the manifest's
+    `languages`. It sets the language to recognize. Without it, the helper
+    detects the language from the audio (FR-D7).
   - The test-only `--input <wav>`, honored only when
     `CATS_STT_ENABLE_FIXTURE_INPUT=1`.
 - **Model.** The helper finds it relative to its own location; the host passes
   no model path.
 - **Input.** stdin carries JSON lines `{ "type": "stop" | "cancel", "sessionId" }`.
 - **Output.** stdout carries one JSON event per line, as in SPEC-084:
-  - `ready` with `locale` and `mode: "on-device"`;
+  - `ready` with `mode: "on-device"` and `locale`: the `--locale` value, or
+    the string `"auto"` when detecting;
   - `final` with `text`;
   - `error` with `reason`;
   - `end`.
@@ -345,6 +357,10 @@ download.
   | `update_required`, `damaged` | — | **Download**, **Remove** |
   | `unsupported` | The reason | none |
 
+- **Dictation language.** While the status allows dictation (`installed` or
+  `update_available`), the row also shows the dictation language setting
+  (FR-C5).
+
 - **Feedback.**
   - Errors go through the page's toast, including network failures, a hash
     mismatch, insufficient space and failed checks.
@@ -358,12 +374,48 @@ entries.
 
 - Preload exposes a pack bridge with these operations:
   - `list()` and `get(id)` return status, version, sizes and lock licenses;
+    when installed, also the active manifest's `languages` and the saved
+    dictation language;
   - `download(id)`, `pause(id)`, `resume(id)`, `cancel(id)`, `check(id)` and
     `remove(id)`;
+  - `setLanguage(id, value)`, where `value` is `"auto"` or one of the active
+    manifest's `languages` (FR-C5);
   - `onChange(listener)` reports status and progress.
 - Pack channels accept only the Platform window's main frame, like the
   existing voice channels.
-- They validate `id` against the lock and accept no other input.
+- They validate `id` against the lock, and a language against the active
+  manifest. They accept no other input.
+
+**FR-C5 — Dictation language (renderer, host).** The owner added this on
+2026-11-16.
+
+- **The control.** The row shows a select labelled "Dictation language":
+  - **Automatic** comes first and is the default;
+  - then each of the active manifest's `languages`, by its native name, such
+    as English, 中文 and 日本語.
+- **Help text.**
+  - Automatic detects the spoken language from each recording, and short
+    phrases may be detected wrongly.
+  - Chinese text may come out in Simplified characters (FR-D7).
+- **Storage.**
+  - The host saves the choice as `dictationLanguage` (`"auto"` or a subtag) in
+    the Desktop preferences file that Startup behavior already writes. Unknown
+    fields there are preserved, as today.
+  - A missing or invalid value means `"auto"`, so the field needs no
+    migration.
+  - Platform data reset keeps it, as it keeps the other Desktop preferences.
+  - Remove keeps it, so a reinstall restores the choice.
+- **Use.**
+  - The host reads the setting when a session starts. A change applies to the
+    next recording, not one in progress.
+  - With a subtag, the host passes `--locale <subtag>`. With `"auto"` it passes
+    no `--locale`.
+  - A saved subtag that the active version's `languages` no longer lists is
+    treated as `"auto"`. The saved value is unchanged until the owner chooses
+    again.
+  - For `linux-stt` sessions, the host ignores any locale the renderer sends.
+- **Feedback.** Saving follows AGENTS.md's Settings UI rules: silent on
+  success, and a toast on failure that restores the previous value.
 
 ### D. Linux dictation
 
@@ -431,25 +483,19 @@ verify each point.
   `error: aborted` and `end`.
 - **Network.** The helper opens no network connection.
 
-**FR-D7 — Locale and script (helper).**
+**FR-D7 — Language and script (helper).**
 
-- **Locale.** The helper uses `--locale` when given. Otherwise it uses the
-  first of `LC_ALL`, `LC_MESSAGES` and `LANG`, mapped to BCP 47. `ready.locale`
-  reports the result.
-- **Language.** The spoken language is detected from the audio. The locale
-  chooses only the script.
-- **Script.** When the detected language is Chinese, the helper converts the
-  final text deterministically with OpenCC (Q1). The conversion data is pinned
-  in the producer's source lock, and its license ships in the pack.
-
-  | Locale | OpenCC configuration |
-  |--------|----------------------|
-  | `zh-TW` | `s2twp`: Taiwan characters and phrasing |
-  | `zh-HK` | `s2hk` |
-  | Any other `zh-Hant` | `s2t` |
-  | `zh-CN`, `zh-SG`, any `zh-Hans` | `t2s` |
-  | Any other locale | No conversion |
-
+- **Language.**
+  - With `--locale <subtag>`, the helper recognizes that language.
+  - Without it, the helper detects the language from the audio and sends
+    `ready.locale` as `"auto"`.
+  - The helper never derives a language from the system locale (`LC_ALL`,
+    `LANG`), so Automatic means detection from the audio.
+  - A subtag the model does not support emits `language_not_supported`.
+- **Script: a known limitation.** The helper does not convert between
+  Traditional and Simplified Chinese (Q1). Whisper has one Chinese language
+  (`zh`), so choosing 中文 fixes the language but not the script. Output may be
+  Simplified or mixed. AC-07 records what the real pack produces.
 - **Other platforms.** The macOS and Windows helpers are unchanged.
 
 **FR-D8 — Microphone permission (host).** This is carried over from SPEC-087
@@ -467,12 +513,17 @@ Req 13.
   `CATS_BUNDLE_WHISPER_PLATFORMS` build flag and no submodule.
 - **Missing helper.** A missing or damaged helper reports `pack_required`
   (FR-C1) instead of `engine_unavailable` (SPEC-087 Req 11).
-- **Locale.** `--locale` chooses the output script, and the spoken language is
-  detected (FR-D7). In SPEC-087 Req 8 the locale biased the language. The
-  reasons: Desktop's composer passes no locale, and the system locale is often
-  not the spoken language.
-- **Addition for review: the script rule.** FR-D7's Traditional/Simplified
-  conversion is new scope beyond ADR-154.
+- **Where the language comes from.**
+  - SPEC-087 Req 8's `--locale` meaning is kept: it sets the language, and
+    without it the language is detected.
+  - The value now comes from the Settings dictation language (FR-C5), not the
+    renderer. The helper no longer falls back to the system locale.
+- **Addition: the dictation language setting.** FR-C5 is new scope beyond
+  ADR-154, added by the owner on 2026-11-16. It replaces ADR-154 §4's "no locale
+  picker".
+- **Addition: the manifest's `languages`** (FR-A3).
+- **Known limitation: the script.** There is no Traditional/Simplified
+  conversion (FR-D7).
 - **Timeouts.** They come from ADR-154 D4's measurement (FR-D4) instead of a
   fixed 60-second stop window and the shared 3-second ready timeout.
 - **Web Speech.** The Desktop renderer never uses it (FR-D1). SPEC-087 left the
@@ -480,7 +531,7 @@ Req 13.
 - **Compatibility.** glibc 2.35 or later on Linux x64 and arm64 `.deb`
   installs, instead of a list of distributions.
 - **Kept.**
-  - Helper behavior: Req 3–7 and 14–16, now FR-D6, FR-D3 and FR-D4.
+  - Helper behavior: Req 3–8 and 14–16, now FR-D6, FR-D7, FR-D3 and FR-D4.
   - The `limit_warning` and `processing` events.
   - The permission rule, now FR-D8.
   - `mode: "on-device"`.
@@ -524,7 +575,7 @@ mic click (Linux Desktop)
        usable     -> spawn <active>/cats-stt-linux --session-id …
                      -> ready (on-device) -> owner speaks
                      -> 25 s: limit_warning | stop or 30 s: processing -> stop
-                     -> final (script per locale) -> end
+                     -> final (language per FR-C5 setting) -> end
 ```
 
 ## Acceptance Criteria
@@ -556,25 +607,34 @@ mic click (Linux Desktop)
   - no automatic start after installation;
   - `update_available` still dictating with the older version;
   - `limit_warning` and `processing` at 25 and 30 seconds on a fake clock;
-  - owner stop, cancel and both timeouts.
+  - owner stop, cancel and both timeouts;
+  - the dictation language: a subtag passes `--locale <subtag>`; `"auto"`
+    passes none and gets `ready.locale` `"auto"`; a saved subtag missing from
+    the manifest runs as `"auto"`; a renderer-sent locale is ignored.
 - **AC-05 — Web Speech.** The Desktop renderer never constructs Web Speech. The
   Web deployment is unchanged.
 - **AC-06 — Settings.**
   - Every FR-C2 status shows its actions.
+  - The dictation language select appears only while dictation is allowed.
+    It lists Automatic and then the manifest's languages, and it persists in
+    the Desktop preferences file across a restart and a data reset.
   - Feedback is toast-only.
   - `en` and `zh-TW` strings exist for every new key.
 - **AC-07 — Real pack (manual, recorded in the PLAN).** On x64 and on the arm64
   reference board:
   - the D4 gate passes with English and Mandarin fixtures;
-  - Mandarin under `zh-TW` yields Traditional characters with Taiwan phrasing,
-    and under `zh-CN` yields Simplified;
+  - with 中文 selected, the script of the Mandarin output is recorded, as
+    Traditional, Simplified or mixed. It is a finding, not a gate (FR-D7);
+  - with Automatic, short English and Mandarin phrases are recorded as
+    detected correctly or not;
   - a download interrupted mid-way resumes from the cats-plugins release asset;
   - live microphone dictation works in an installed Desktop.
 
 ## Dependencies
 
 - **The producer SPEC.** The cats-plugins producer SPEC, not yet written,
-  builds `linux-stt` to FR-A2–FR-A4, FR-D6 and FR-D7, including the OpenCC data.
+  builds `linux-stt` to FR-A2–FR-A4, FR-D6 and FR-D7, including the manifest's
+  `languages`.
 - **The first release.** The first authorized cats-plugins `linux-stt`
   release. Until it exists, Desktop ships an empty lock, so Linux shows no voice
   button (FR-D1). AC-01 to AC-06 use fixture packs.
@@ -587,12 +647,15 @@ mic click (Linux Desktop)
 
 ## Resolved Questions
 
-The owner delegated Q1–Q5 on 2026-11-16.
+The owner delegated Q1–Q5 on 2026-11-16, then decided Q1 directly the same
+day.
 
-- **Q1 — Traditional script: deterministic conversion.** Prompting the decoder
-  with Traditional text does not guarantee the script. FR-D7 converts Chinese
-  output with pinned OpenCC configurations, which also gives `zh-TW` its Taiwan
-  phrasing.
+- **Q1 — Chinese script: no conversion (owner's decision).**
+  - The owner chose a dictation language setting (FR-C5) instead of OpenCC
+    conversion.
+  - Choosing 中文 prevents a wrong language detection. It does not control the
+    script, so Chinese output may be Simplified or mixed (FR-D7).
+  - AC-07 records the real pack's behavior so the owner can revisit this.
 - **Q2 — Advertise the download before the first click: no.** The voice button
   looks the same until it is clicked. The first click explains and leads to
   Settings (FR-C1), and Settings lists the pack at all times.
@@ -613,7 +676,6 @@ The owner delegated Q1–Q5 on 2026-11-16.
 - [SPEC-084](SPEC-084-composer-voice-input-via-platform-native-stt.md), [SPEC-087](SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md), [SPEC-111](SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md), [SPEC-134](SPEC-134-reusable-platform-packages-and-consumer-boundaries.md)
 - [cats-plugins ADR-002](https://github.com/cats-inc/cats-plugins/blob/main/docs/decisions/002-produce-native-feature-packs-beside-plugin-content.md)
 - [Bot ADR-018](https://github.com/cats-inc/cats-bot/blob/main/docs/decisions/018-dictate-through-native-speech-helpers.md)
-- [OpenCC](https://github.com/BYVoid/OpenCC)
 
 ---
 

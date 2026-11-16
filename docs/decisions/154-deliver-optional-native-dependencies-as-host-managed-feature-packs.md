@@ -184,8 +184,12 @@ A feature pack's bytes are private to one product and pinned by that product.
 - **Bot.** Bot adopts the same pack, lock entry and protocol through its own ADR,
   which amends Bot ADR-018 point 3. Shipping Bot's Linux dictation must not wait
   for `@cats-inc/platform-host`.
-- **Not in the pilot.** Streaming recognition, a locale picker, and whisper on
-  macOS or Windows are out of scope.
+- **Not in the pilot.** Streaming recognition and whisper on macOS or Windows
+  are out of scope.
+  - Amended 2026-11-16 at the owner's direction: a dictation language setting
+    in Settings is in scope, and there is no Traditional/Simplified conversion
+    ([SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md) FR-C5,
+    FR-D7).
 
 ### 5. Explicitly not feature packs now
 
