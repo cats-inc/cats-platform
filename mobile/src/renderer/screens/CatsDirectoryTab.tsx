@@ -148,7 +148,14 @@ function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyPr
             ? data.cats.map((cat) => (
                 <CatRow key={cat.id} cat={cat} onPress={() => onSelectCat(cat.id)} />
               ))
-            : null}
+            : (section.key === 'clowders' ? data.clowders : data.catteries).map((group) => (
+                <GroupRow
+                  key={group.id}
+                  name={group.name}
+                  detail={copy.groupCatCount.replace('{count}', String(group.catCount))}
+                  tone={section.key === 'clowders' ? 'clowder' : 'cattery'}
+                />
+              ))}
         </DirectorySection>
       ))}
     </ScrollView>
@@ -224,6 +231,26 @@ function CatRow({ cat, onPress }: CatRowProps) {
       </Text>
       <Text style={styles.catChevron}>›</Text>
     </Pressable>
+  );
+}
+
+/**
+ * A Clowder or Cattery: a rounded-square initial (green for Clowders, blue for
+ * Catteries, as on Desktop) and its Cat count. Groups are managed on Desktop.
+ */
+function GroupRow({ name, detail, tone }: { name: string; detail: string; tone: 'clowder' | 'cattery' }) {
+  return (
+    <View style={styles.catRow} accessible accessibilityLabel={`${name}, ${detail}`}>
+      <View style={[styles.groupAvatar, tone === 'clowder' ? styles.groupAvatarClowder : styles.groupAvatarCattery]}>
+        <Text style={[styles.groupInitial, tone === 'clowder' ? styles.groupInitialClowder : styles.groupInitialCattery]} numberOfLines={1}>
+          {name.trim().slice(0, 1)}
+        </Text>
+      </View>
+      <Text style={styles.catName} numberOfLines={1}>
+        {name}
+      </Text>
+      <Text style={styles.groupDetail}>{detail}</Text>
+    </View>
   );
 }
 
@@ -341,6 +368,32 @@ const styles = StyleSheet.create({
     color: colors.fg.muted,
     fontSize: 22,
     lineHeight: 22,
+  },
+  groupAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupAvatarClowder: {
+    backgroundColor: '#D7E7D9',
+  },
+  groupAvatarCattery: {
+    backgroundColor: '#DCE3F5',
+  },
+  groupInitial: {
+    ...typography.label,
+  },
+  groupInitialClowder: {
+    color: '#24583A',
+  },
+  groupInitialCattery: {
+    color: '#2F4A8C',
+  },
+  groupDetail: {
+    color: colors.fg.muted,
+    ...typography.label,
   },
   newRow: {
     paddingVertical: spacing.sm,
