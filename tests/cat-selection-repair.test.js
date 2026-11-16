@@ -122,3 +122,28 @@ test('copies take the cat default only while the cat’s own choice still maps',
   assert.equal(await catSelectionStillMaps(runtime, { ...cat(), defaultModelSelection: null }), false);
 });
 
+test('a copy saved on a catalog basis Runtime no longer has is listed, never judged against another basis (Runtime SPEC-045)', async () => {
+  const { RuntimeRequestError } = await import('../build/server/runtime/client.js');
+  const runtime = runtimeCatalogs();
+  const readAdvanced = runtime.getAdvancedProviderModels;
+  const basisReads = [];
+  runtime.getAdvancedProviderModels = async (provider, instance, options = {}) => {
+    basisReads.push(options.basisId ?? null);
+    if (options.basisId === 'retired') {
+      throw new RuntimeRequestError("Catalog basis 'retired' does not exist", 400, 'catalog_basis_unknown');
+    }
+    return readAdvanced(provider, instance);
+  };
+  let { state, catId, channelIds } = await twoChatsWithOneCat();
+  const participant = state.channels.find((channel) => channel.id === channelIds[1])
+    .catAssignments.find((assignment) => assignment.catId === catId).participantId;
+  state = setChannelParticipantExecutionTarget(state, channelIds[1], participant, {
+    provider: 'claude', instance: 'cli/native', model: 'opus',
+    modelSelection: { basisId: 'retired', catalogRevision: 'R2', entryId: 'opus', entryMode: 'explicit' },
+  }, now);
+  const copies = await findUnmappableCatSelectionCopies(runtime, state, catId);
+  assert.ok(copies.some((copy) => copy.channelId === channelIds[1]), JSON.stringify(copies));
+  assert.ok(basisReads.includes('retired'));
+  // The retired basis is read back only as the first basis, to classify the copy as unmappable.
+  assert.ok(basisReads.indexOf(null, basisReads.indexOf('retired')) > basisReads.indexOf('retired'));
+});

@@ -33,6 +33,8 @@ export function useProviderTargetReconciliation(input: {
   effectiveCatalog: ProviderModelCatalog;
   effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
   onTargetChange: (target: ProviderTargetSelection) => void;
+  /** A basis change or the detected basis of a new selection is still loading (Runtime SPEC-045). */
+  deferReconciliation?: boolean;
 }) {
   const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
   const manualSelectionTargetKey = useRef<string | null>(null);
@@ -115,7 +117,7 @@ export function useProviderTargetReconciliation(input: {
 
   useEffect(() => {
     if (input.catalogLoading || input.effectiveCatalog.models.length === 0 || hasBlankLegacyDraft
-      || unmappableSelection) {
+      || unmappableSelection || input.deferReconciliation) {
       return;
     }
 
@@ -185,6 +187,7 @@ export function useProviderTargetReconciliation(input: {
     targetKey,
     hasBlankLegacyDraft,
     unmappableSelection,
+    input.deferReconciliation,
   ]);
 
   function clearManualSelection(): void {
