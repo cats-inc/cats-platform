@@ -518,6 +518,56 @@ and tap; other tooltips keep their hover-only behavior. The frozen
 `tests/fixtures/catalogs-v2.json` gains only this field for six providers
 ([PLAN-045](../../../cats-runtime/docs/plans/PLAN-045-catalog-basis-channel-and-plan.md)).
 
+### Catalog bases (2026-11-16)
+
+Runtime's
+[SPEC-045](../../../cats-runtime/docs/specs/SPEC-045-catalog-bases-per-channel-region-and-plan.md)
+lets one target carry several captured lists ("bases"), one per channel, region or plan.
+Desktop implements its FR-7 in Phase 3 of
+[PLAN-054](../../../cats-runtime/docs/plans/PLAN-054-catalog-bases.md):
+
+- `ProviderModelSelection` and `ProviderModelResolution` carry an optional `basisId`; absent
+  means the first basis, and Platform always names the first basis by omission, even when it has
+  an id. Clone, parse, compare and the reconcile signature keep it, so a change of basis is a
+  retarget. A preserved selection keeps its own value; only a new selection or an explicit change
+  takes a catalog's basis.
+- Reads pass `basis` through the Runtime client, the Platform route and the renderer cache, each
+  keyed by basis. The first basis keeps the existing cache key and the one snapshot slot; a forced
+  refresh drops the named-basis entries. `catalog_basis_unknown` reaches the renderer as its own
+  error, which ends that read and shows the saved basis as unavailable.
+- `/models` lists the first basis only, so a named basis takes its base model list from its own
+  advanced catalog (`catalogForBasis`) wherever a selection is classified or resolved: the picker,
+  saved-choice attention, the session-create re-stamp, cat-copy repair and workspace targets. A
+  selection is judged only against its own basis; another basis is never a substitute, and a cold
+  read of a named basis never shows the first basis's models.
+- The picker shows a "List basis" select before Model when a target has two or more bases. A new
+  selection waits for and starts on the detected basis, otherwise the first. A change loads that
+  basis before publishing: the current entry and its controls stay when it is listed, otherwise
+  that list's default is taken. The select stays mounted while another basis loads. A saved basis
+  Runtime no longer has stays selected as a disabled "no longer offered" option with a notice. A
+  hint shows when the chosen basis is not the detected one. The information icon adds the region
+  and the capture's CLI version and date.
+- `createSession` reads `GET /providers/catalogs` (cached for a minute) and never sends a
+  `basisId` to a Runtime that does not advertise `catalogBases`; such a selection becomes the
+  saved-choice attention instead of silently running the first basis. Runtime answers a session
+  for an unknown basis with a plain 400, so the client reads that basis back and turns
+  `catalog_basis_unknown` into the same attention.
+- The label registry keeps a named basis's labels beside the first basis's, and the local
+  informational projection keeps each scope's basis id, so two bases do not overwrite each other.
+  Drafts still initialize from the first basis.
+
+Owner decisions of 2026-11-16, made during Phase 3 implementation and recorded in Runtime SPEC-045
+FR-4 and FR-5:
+
+- Only the picker starts a new selection on the detected basis. Workspace execution targets and
+  drafts, which Desktop creates without the picker, start on the first basis.
+- Platform names the first basis by omission, even when it has an id.
+- A selection with a `basisId` for a Runtime without `catalogBases` becomes the saved-choice
+  attention; the `basisId` is never stripped. A failed capability read sends the selection as it
+  is.
+- Runtime adds `code: catalog_basis_unknown` to the session-create 400 in PLAN-054 Phase 5; the
+  client's read-back stays for older Runtimes.
+
 ## Follow-up: catalog configuration failure after upgrade (2026-09-23)
 
 Desktop 0.3.8's cold picker repeatedly retried model reads when an existing

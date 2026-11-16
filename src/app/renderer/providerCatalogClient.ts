@@ -1,4 +1,5 @@
 import {
+  isFirstCatalogBasis,
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
   type ProductProviderRegistryReadModel,
@@ -6,7 +7,7 @@ import {
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import { clearLiveProviderModelLabels, recordLiveProviderModelLabels, replaceInformationalProviderLabels, setProviderModelLabelContext } from '../../shared/providerModelLabelRegistry.js';
-import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
+import { CATALOG_BASIS_UNKNOWN_CODE, resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
 import { getProviderClientGeneration, invalidateProviderClientSession, onProviderClientInvalidation, ProviderClientAuthError } from './providerClientInvalidation.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
@@ -25,6 +26,14 @@ export class ProviderCatalogConfigurationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ProviderCatalogConfigurationError';
+  }
+}
+
+/** Runtime has no catalog basis with this id (Runtime SPEC-045); a read loop stops on it. */
+export class ProviderCatalogBasisUnknownError extends Error {
+  constructor(message: string, readonly basisId: string | null) {
+    super(message);
+    this.name = 'ProviderCatalogBasisUnknownError';
   }
 }
 
@@ -75,19 +84,25 @@ function normalizeCatalogInstance(instance: string | null | undefined): string |
 function buildProviderCatalogCacheKey(
   provider: string,
   instance: string | null | undefined,
+  basisId?: string | null,
 ): string {
-  return `${getProviderClientGeneration()}\u0000${provider.trim()}\u0000${normalizeCatalogInstance(instance) ?? ''}`;
+  const basis = basisId?.trim() ? `\u0000${basisId.trim()}` : '';
+  return `${getProviderClientGeneration()}\u0000${provider.trim()}\u0000${normalizeCatalogInstance(instance) ?? ''}${basis}`;
 }
 
 function buildProviderCatalogRequestPath(input: {
   provider: string;
   instance?: string | null;
   advanced?: boolean;
+  basisId?: string | null;
 }): string {
   const query = new URLSearchParams();
   const normalizedInstance = normalizeCatalogInstance(input.instance);
   if (normalizedInstance) {
     query.set('instance', normalizedInstance);
+  }
+  if (input.advanced && input.basisId?.trim()) {
+    query.set('basis', input.basisId.trim());
   }
   const path = `/api/providers/${encodeURIComponent(input.provider)}/models${
     input.advanced ? '/advanced' : ''
@@ -99,12 +114,19 @@ function buildProviderCatalogRequestPath(input: {
 async function readProviderCatalogError(
   response: Response,
   fallback: string,
+  basisId: string | null = null,
 ): Promise<Error> {
   try {
     const payload = await response.json() as { error?: { message?: unknown; code?: unknown } };
     if (payload.error?.code === 'catalog_unavailable') {
       return new ProviderCatalogConfigurationError(
         typeof payload.error.message === 'string' ? payload.error.message : fallback,
+      );
+    }
+    if (payload.error?.code === CATALOG_BASIS_UNKNOWN_CODE) {
+      return new ProviderCatalogBasisUnknownError(
+        typeof payload.error.message === 'string' ? payload.error.message : fallback,
+        basisId,
       );
     }
     if (typeof payload.error?.message === 'string') {
@@ -203,12 +225,14 @@ function peekProviderCatalogClientCache<TCatalog>(
   cache: ProviderCatalogClientCacheState<TCatalog>,
   provider: string,
   instance: string | null | undefined,
+  basisId?: string | null,
 ): TCatalog | null {
   const normalizedProvider = provider.trim();
   if (!normalizedProvider) return null;
   const cacheKey = buildProviderCatalogCacheKey(
     normalizedProvider,
     normalizeCatalogInstance(instance),
+    basisId,
   );
   const cached = cache.entries.get(cacheKey);
   // TTL schedules refresh. Only selection/connection invalidation removes
@@ -230,11 +254,13 @@ export function peekProviderModelCatalogFromClientCache(options: {
 export function peekProviderAdvancedCatalogFromClientCache(options: {
   provider: string;
   instance?: string | null;
+  basisId?: string | null;
 }): ProviderAdvancedModelCatalog | null {
   return peekProviderCatalogClientCache(
     providerAdvancedCatalogClientCache,
     options.provider,
     options.instance,
+    options.basisId,
   );
 }
 
@@ -286,20 +312,32 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
 export async function fetchProviderAdvancedCatalogFromClientCache(options: {
   provider: string;
   instance?: string | null;
+  /** A named catalog basis (Runtime SPEC-045); absent reads the first basis. */
+  basisId?: string | null;
   force?: boolean;
   fetchImpl?: ProviderCatalogFetch;
 }): Promise<ProviderAdvancedModelCatalog> {
   const provider = options.provider.trim();
   const instance = normalizeCatalogInstance(options.instance);
-  const cacheKey = buildProviderCatalogCacheKey(provider, instance);
+  const basisId = options.basisId?.trim() || null;
+  const cacheKey = buildProviderCatalogCacheKey(provider, instance, basisId);
 
   return fetchProviderCatalogFromClientCache({
     cache: providerAdvancedCatalogClientCache,
     cacheKey,
     force: options.force,
+    // `/models` records the first basis's labels; a named basis records its own beside them.
+    accepted: (catalog) => {
+      if (!catalog.basisId || isFirstCatalogBasis(catalog)) return;
+      recordLiveProviderModelLabels(provider, catalog.entries, {
+        target: catalog.instance?.includes('/') ? catalog.instance : catalog.backend && catalog.instance ? `${catalog.backend}/${catalog.instance}` : instance ?? '',
+        catalogRevision: catalog.catalogRevision,
+        basisId: catalog.basisId,
+      });
+    },
     load: async () => {
       const response = await (options.fetchImpl ?? fetch)(
-        buildProviderCatalogRequestPath({ provider, instance, advanced: true }),
+        buildProviderCatalogRequestPath({ provider, instance, advanced: true, basisId }),
         { signal: AbortSignal.timeout(30_000) },
       );
       if (!response.ok) {
@@ -309,6 +347,7 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
         throw await readProviderCatalogError(
           response,
           PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
+          basisId,
         );
       }
 

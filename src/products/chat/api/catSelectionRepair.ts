@@ -1,9 +1,10 @@
-import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import { RuntimeRequestError, type RuntimeClient } from '../../../platform/runtime/client.js';
 import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../../shared/providerCatalog.js';
 import {
+  CATALOG_BASIS_UNKNOWN_CODE,
   canClassifyCatalogSelection,
   classifyCatalogSelection,
 } from '../../../shared/providerSelection.js';
@@ -31,13 +32,15 @@ export async function findUnmappableCatSelectionCopies(
     catalog: ProviderModelCatalog;
     advancedCatalog: ProviderAdvancedModelCatalog;
   } | null>>();
-  const readCatalogs = (provider: string, instance: string | null) => {
-    const key = JSON.stringify([provider, instance]);
+  // Each saved selection is judged against its own basis (Runtime SPEC-045). A basis Runtime no
+  // longer has is read back as the first basis, which classifies the copy as unmappable.
+  const readCatalogs = (provider: string, instance: string | null, basisId: string | null) => {
+    const key = JSON.stringify([provider, instance, basisId]);
     let pair = catalogs.get(key);
     if (!pair) {
       pair = Promise.all([
         runtimeClient.getProviderModels(provider, instance),
-        runtimeClient.getAdvancedProviderModels(provider, instance),
+        readAdvancedForBasis(runtimeClient, provider, instance, basisId),
       ]).then(([catalog, advancedCatalog]) =>
         canClassifyCatalogSelection(catalog, advancedCatalog) ? { catalog, advancedCatalog } : null,
       () => null);
@@ -54,7 +57,7 @@ export async function findUnmappableCatSelectionCopies(
       if (assignment.catId !== catId || assignment.status !== 'active' || !selection || !provider) {
         continue;
       }
-      const pair = await readCatalogs(provider, assignment.execution.target.instance ?? null);
+      const pair = await readCatalogs(provider, assignment.execution.target.instance ?? null, selection.basisId ?? null);
       if (pair && classifyCatalogSelection({ selection, ...pair }).status === 'unmappable') {
         copies.push({ channelId: channel.id, participantId: assignment.participantId });
       }
@@ -74,12 +77,26 @@ export async function catSelectionStillMaps(runtimeClient: CatalogReader, cat: C
     const instance = cat.defaultExecutionTarget.instance ?? null;
     const [catalog, advancedCatalog] = await Promise.all([
       runtimeClient.getProviderModels(provider, instance),
-      runtimeClient.getAdvancedProviderModels(provider, instance),
+      readAdvancedForBasis(runtimeClient, provider, instance, selection.basisId ?? null),
     ]);
     return canClassifyCatalogSelection(catalog, advancedCatalog)
       && classifyCatalogSelection({ selection, catalog, advancedCatalog }).status !== 'unmappable';
   } catch {
     return false;
+  }
+}
+
+async function readAdvancedForBasis(
+  runtimeClient: CatalogReader,
+  provider: string,
+  instance: string | null,
+  basisId: string | null,
+): Promise<ProviderAdvancedModelCatalog> {
+  try {
+    return await runtimeClient.getAdvancedProviderModels(provider, instance, basisId ? { basisId } : {});
+  } catch (error) {
+    if (!basisId || !(error instanceof RuntimeRequestError) || error.code !== CATALOG_BASIS_UNKNOWN_CODE) throw error;
+    return runtimeClient.getAdvancedProviderModels(provider, instance);
   }
 }
 

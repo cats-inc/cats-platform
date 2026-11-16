@@ -28,6 +28,7 @@ export async function fetchProviderModels(
 export async function fetchAdvancedProviderModels(
   provider: string,
   instance?: string | null,
+  basisId?: string | null,
 ): Promise<ProviderAdvancedModelCatalog> {
-  return fetchProviderAdvancedCatalogFromClientCache({ provider, instance });
+  return fetchProviderAdvancedCatalogFromClientCache({ provider, instance, basisId });
 }

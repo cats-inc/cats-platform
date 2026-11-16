@@ -3433,6 +3433,12 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.basisLabel': '模型清單依據：{basis}。{hint}',
   'shared.providerModel.field.basisChannelHint': '此清單依據 {channel} 渠道擷取。其他渠道請用自訂模型輸入。',
   'shared.providerModel.field.basisPlanHint': '此清單依據 {plan} 帳號擷取。其他方案可用的模型可能不同。',
+  'shared.providerModel.field.basisRegionHint': '此清單依據登入 {region} 地區的 CLI 擷取。其他地區可用的模型可能不同。',
+  'shared.providerModel.field.basisCaptureHint': '擷取自 CLI {version}（{date}）。',
+  'shared.providerModel.field.basisCaptureVersionHint': '擷取自 CLI {version}。',
+  'shared.providerModel.field.basisCaptureDateHint': '擷取於 {date}。',
+  'shared.providerModel.field.listBasisLabel': '清單依據',
+  'shared.providerModel.field.basisMismatchHint': '此清單的方案或地區與 Runtime 主機上的 CLI 登入不同，部分模型可能無法使用。',
   'shared.providerModel.field.selectProviderFirst': '請先選擇可用的供應器',
   'shared.providerModel.field.waitingProviders': '正在等待可用的供應器…',
   'shared.providerModel.field.loadingModels': '正在載入可用模型…',
@@ -3453,6 +3459,8 @@ export const zhTWCatalog: MessageCatalog = {
     '{model} 已不再提供{control}「{value}」，請重新選擇。',
   'shared.providerModel.attention.presetRemoved':
     '已不再提供模式「{preset}」，請重新選擇。',
+  'shared.providerModel.attention.basisRemoved':
+    '已不再提供清單依據「{basis}」，請重新選擇。',
   'shared.providerModel.attention.noLongerOffered': '{value}（已不再提供）',
   'shared.providerModel.attention.chooseHere': '點此重新選擇。',
   'shared.providerModel.attention.chooseInSettings': '點此到設定重新選擇。',

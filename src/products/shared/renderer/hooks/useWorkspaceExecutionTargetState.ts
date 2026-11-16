@@ -1,5 +1,5 @@
 import { getProviderClientGeneration } from '../../../../app/renderer/providerClientInvalidation.js';
-import { getProviderCatalogRefreshVersion } from '../../../../app/renderer/providerCatalogClient.js';
+import { getProviderCatalogRefreshVersion, ProviderCatalogBasisUnknownError } from '../../../../app/renderer/providerCatalogClient.js';
 import { DEFAULT_PRODUCT_PROVIDER } from '../../../../shared/providerCatalogData.js';
 import {
   startTransition,
@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import {
+  catalogForBasis,
   getDefaultModel,
   getDefaultProviderInstance,
   isProductProviderDefaultModelPlaceholder,
@@ -127,6 +128,7 @@ function serializeExecutionTargetModelSelection(
     : undefined;
 
   return JSON.stringify({
+    ...(clonedSelection.basisId ? { basisId: clonedSelection.basisId } : {}),
     ...(clonedSelection.entryId ? { entryId: clonedSelection.entryId } : {}),
     entryMode: clonedSelection.entryMode,
     catalogRevision: clonedSelection.catalogRevision,
@@ -149,6 +151,8 @@ function buildExecutionTargetReconcileSignature(
 async function readProviderCatalogBundle(input: {
   provider: string;
   instance: string | null;
+  /** The saved selection's basis (Runtime SPEC-045); null reads the first basis. */
+  basisId: string | null;
   fetchProviderModelsFn: typeof fetchProviderModels;
   fetchAdvancedProviderModelsFn: typeof fetchAdvancedProviderModels;
 }): Promise<{
@@ -158,14 +162,24 @@ async function readProviderCatalogBundle(input: {
 }> {
   const [modelsResult, advancedResult] = await Promise.allSettled([
     input.fetchProviderModelsFn(input.provider, input.instance),
-    input.fetchAdvancedProviderModelsFn(input.provider, input.instance),
+    // A basis Runtime no longer has is read back as the first basis, which classifies the
+    // saved selection as an unmappable basis rather than substituting it.
+    input.fetchAdvancedProviderModelsFn(input.provider, input.instance, input.basisId).catch((error: unknown) => {
+      if (!input.basisId || !(error instanceof ProviderCatalogBasisUnknownError)) throw error;
+      return input.fetchAdvancedProviderModelsFn(input.provider, input.instance, null);
+    }),
   ]);
   if (modelsResult.status !== 'fulfilled') {
     throw modelsResult.reason;
   }
+  // The first basis's `/models` list never stands in for a named basis's missing controls.
+  if (input.basisId && advancedResult.status !== 'fulfilled') {
+    throw advancedResult.reason;
+  }
 
   return {
-    effectiveCatalog: modelsResult.value,
+    effectiveCatalog: advancedResult.status === 'fulfilled'
+      ? catalogForBasis(modelsResult.value, advancedResult.value) : modelsResult.value,
     effectiveAdvancedCatalog: resolveAdvancedCatalogFallback({
       provider: input.provider,
       instance: input.instance,
@@ -302,6 +316,7 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   try {
     const bundle = await readProviderCatalogBundle({
       provider, instance: resolvedInstance || null, fetchProviderModelsFn, fetchAdvancedProviderModelsFn,
+      basisId: input.target.modelSelection?.basisId ?? null,
     });
     if (!isCurrent()) return input.target;
     effectiveCatalog = bundle.effectiveCatalog;
@@ -359,7 +374,7 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     }
     // A draft drops a removed control value or preset below, and sanitizing then
     // fills the picker's default for it; only a removed entry needs a new model.
-    const entryRemoved = fit?.status === 'unmappable' && fit.mismatch.kind === 'entry';
+    const entryRemoved = fit?.status === 'unmappable' && (fit.mismatch.kind === 'entry' || fit.mismatch.kind === 'basis');
     const preserveExistingSelection = !entryRemoved && (
       Boolean(nextTarget.modelSelection)
       || shouldTreatPersistedTargetAsLegacyModel({

@@ -7,7 +7,7 @@ export interface LocalCatalogInformation {
   source: 'local_candidate' | 'last_accepted' | 'unavailable' | 'remote';
   catalogRevision?: string;
   diagnostics: string[];
-  scopes: Array<{ provider: string; backend: string; transport?: string; models: Array<{ id: string; label: string }> }>;
+  scopes: Array<{ provider: string; backend: string; transport?: string; basisId?: string; models: Array<{ id: string; label: string }> }>;
 }
 
 /** Informational labels only. Never participates in target/picker availability. */
@@ -29,8 +29,11 @@ export async function readLocalCatalogInformation(config: Pick<AppConfig,
       ...(config.runtimeCatalogConfigPath ? { configPath: config.runtimeCatalogConfigPath } : {}) });
     return { source: projection.source, diagnostics: projection.diagnostics,
       ...(projection.snapshot ? { catalogRevision: projection.snapshot.catalogRevision } : {}),
-      scopes: (projection.snapshot?.document.catalogs ?? []).map((scope: LocalCatalogInformation['scopes'][number]) => ({
+      scopes: (projection.snapshot?.document.catalogs ?? []).map((scope: LocalCatalogInformation['scopes'][number] & {
+        basis?: { id?: string } }) => ({
         provider: scope.provider, backend: scope.backend, ...(scope.transport ? { transport: scope.transport } : {}),
+        // Runtime SPEC-045: bases of one target are told apart by basis.id.
+        ...(scope.basis?.id ? { basisId: scope.basis.id } : {}),
         models: scope.models.map(model => ({ id: model.id, label: model.label })),
       })),
     };

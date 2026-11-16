@@ -11,7 +11,7 @@ import {
   type ProductProviderDescriptor,
   type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
-import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
+import { CATALOG_BASIS_UNKNOWN_CODE, resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
 import type {
   RuntimeProviderDiagnosticsEntry,
   RuntimeProviderDiagnosticsPayload,
@@ -179,6 +179,8 @@ function buildProviderSnapshotForRuntime(
       });
     }
     for (const [cacheKey, entry] of catalogCacheState.advanced.entries) {
+      // Only the first basis is persisted; a named basis is read again on demand.
+      if (cacheKey.split('\u0000').length > 2) continue;
       const existing = catalogEntries.get(cacheKey);
       catalogEntries.set(cacheKey, {
         provider: entry.value.provider,
@@ -1040,14 +1042,32 @@ function getProviderCatalogCacheState(
   return state;
 }
 
+function isCatalogBasisUnknownError(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === CATALOG_BASIS_UNKNOWN_CODE);
+}
+
 function buildProviderCatalogCacheKey(input: {
   provider: string;
   instance?: string | null;
+  basisId?: string | null;
 }): string {
+  // A named basis gets its own entry (Runtime SPEC-045); the first basis keeps the shared key,
+  // which is also the one snapshot slot per provider and instance.
   return [
     input.provider.trim(),
     input.instance?.trim() || '',
+    ...(input.basisId?.trim() ? [input.basisId.trim()] : []),
   ].join('\u0000');
+}
+
+/** Drops the named-basis entries of a provider and instance, which no forced refresh renews. */
+function dropNamedBasisCatalogEntries(
+  cacheState: ProviderCatalogTypedCacheState<ProviderAdvancedModelCatalog>,
+  firstBasisKey: string,
+): void {
+  for (const key of [...cacheState.entries.keys()]) {
+    if (key.startsWith(`${firstBasisKey}\u0000`)) cacheState.entries.delete(key);
+  }
 }
 
 function readProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }>(
@@ -1117,7 +1137,8 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
       if (cacheState.inflight.get(cacheKey) !== refreshPromise) throw error;
       // Do not repeatedly hide a rejected configuration behind stale success.
       // Mounted pickers retain their observed choices when this error surfaces.
-      if (isCatalogConfigurationError(error)) cacheState.entries.delete(cacheKey);
+      // A basis Runtime no longer has (Runtime SPEC-045) is not served from cache either.
+      if (isCatalogConfigurationError(error) || isCatalogBasisUnknownError(error)) cacheState.entries.delete(cacheKey);
       const cached = readProviderCatalogCacheEntry(cacheState, cacheKey);
       if (
         shouldServeStaleProviderCatalogForError(error)
@@ -1139,6 +1160,7 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
   cacheState: ProviderCatalogTypedCacheState<TCatalog>;
   provider: string;
   instance?: string | null;
+  basisId?: string | null;
   load: () => Promise<TCatalog>;
   runtimeClient?: RuntimeClient;
 }): Promise<TCatalog> {
@@ -1328,6 +1350,7 @@ export async function handleAdvancedProviderModels(
   dependencies: ProviderRouteDependencies,
   provider: string,
   instance?: string | null,
+  basisId?: string | null,
 ): Promise<void> {
   if (!isKnownProvider(provider)) {
     sendRestError(response, 404, 'provider_not_found', `Provider not found: ${provider}`);
@@ -1372,11 +1395,14 @@ export async function handleAdvancedProviderModels(
 
   try {
     const providerCatalogCacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
+    const requestedBasis = basisId?.trim() || null;
     const catalog = await readProviderCatalogCached({
       cacheState: providerCatalogCacheState.advanced,
       provider,
       instance: normalizedInstance,
-      load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance),
+      basisId: requestedBasis,
+      load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance,
+        requestedBasis ? { basisId: requestedBasis } : {}),
       runtimeClient: dependencies.runtimeClient,
     });
     const latest = await currentSelection(dependencies);
@@ -1390,6 +1416,12 @@ export async function handleAdvancedProviderModels(
     if (isCatalogConfigurationError(error)) {
       sendRestError(response, 503, 'catalog_unavailable', runtimeError.message,
         { provider, instance: normalizedInstance });
+      return;
+    }
+    // The renderer turns a saved basis Runtime no longer has into the saved-choice attention.
+    if ('code' in runtimeError && runtimeError.code === CATALOG_BASIS_UNKNOWN_CODE) {
+      sendRestError(response, 400, CATALOG_BASIS_UNKNOWN_CODE, runtimeError.message,
+        { provider, instance: normalizedInstance, basisId: basisId ?? null });
       return;
     }
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
@@ -1444,6 +1476,7 @@ async function refreshProviderCatalogsInternal(
             refreshProviderCatalogCacheEntry(cacheState.advanced, cacheKey,
               () => dependencies.runtimeClient.getAdvancedProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }), dependencies.runtimeClient, true),
           ]);
+          dropNamedBasisCatalogEntries(cacheState.advanced, cacheKey);
           const latest = await currentSelection(dependencies);
           if (latest.revision !== registry.revision) throw new Error('Provider selection changed during catalog refresh.');
           if (models.catalogRevision !== advanced.catalogRevision
