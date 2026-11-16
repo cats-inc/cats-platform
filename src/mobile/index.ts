@@ -37,3 +37,4 @@ export * from './i18n.js';
 export * from './catsDirectory.js';
 export * from './audience.js';
 export * from './directory.js';
+export * from './directoryEditing.js';

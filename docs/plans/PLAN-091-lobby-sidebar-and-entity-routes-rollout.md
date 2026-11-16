@@ -246,7 +246,7 @@ Out of scope (covered elsewhere or deferred):
       remove. Invites / role permissions deferred to a follow-up plan
 - [x] Mobile: Clowder and Cattery homes on the Cats tab's stack,
       read only (SPEC-103 §Mobile)
-- [ ] Mobile: create, edit and delete Clowders and Catteries, and
+- [x] Mobile: create, edit and delete Clowders and Catteries, and
       manage their members
 - [ ] Mobile: create and edit Cats (core fields), with their Clowders
       and Catteries on the Cat screen (amends SPEC-095 FR-17)

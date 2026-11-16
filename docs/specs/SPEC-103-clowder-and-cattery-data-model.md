@@ -398,6 +398,21 @@ Two illustrative cases:
   read.
 - Mobile reads `/api/platform/directory` with its bearer session and
   reads it again when the screen regains focus.
+- Changing groups on the phone sends the requests Desktop sends, and
+  each change saves as it is made:
+  - `+ New Clowder` / `+ New Cattery` on the Cats tab, and a Cattery's
+    "New Clowder in …" row, open a create screen. A Clowder's Cattery
+    is chosen there and fixed afterwards; no Cat has to be added.
+  - Edit, in the group's header, changes its name, description and
+    (for a Cattery) domain, and deletes it behind a confirmation that
+    says its Cats stay (FR-24).
+  - Add cats adds active Cats as formal members.
+  - Each member's ⋯ sets the role and status, takes a temporary
+    member's end date as typed `YYYY-MM-DD` (empty for none; the phone
+    has no date picker without a native module), moves the Cat to
+    another Clowder or also adds it there (FR-25), and removes it.
+  - A group removed elsewhere answers 404; the phone says so and goes
+    back.
 
 ## Boundaries
 
