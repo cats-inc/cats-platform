@@ -6,9 +6,10 @@
   pins them by SHA-256 and either downloads them on first use with consent or bundles them. The
   mechanism targets `@cats-inc/platform-host`, a producer repository builds them, and each
   product selects them. Linux dictation is the pilot, reusing SPEC-087's helper without
-  ADR-085's submodule; on-demand delivery would reverse ADR-085's ready-to-use preference. ngrok
-  stays in the host ingress. The name, producer, hosting, model, reset and pilot delivery are
-  D1–D6.
+  ADR-085's submodule. ngrok stays in the host ingress. D1–D6, delegated by the owner, are
+  resolved: the name stays "feature pack"; cats-plugins builds and its GitHub Releases host
+  packs; the model is measured on a Cortex-A76-class arm64 reference; data reset keeps packs; the
+  pilot is delivered on demand, reversing ADR-085's ready-to-use preference.
 - [ADR-153: Port Kimi Code into packaged setup and the provider catalog](153-port-kimi-code-into-packaged-setup-and-the-provider-catalog.md)
   — accepted, 2026-11-16. Native Kimi Code helpers on Windows, macOS and Linux that count
   only `~/.kimi-code/bin`, never wait on the installer's prompt, upgrade only when behind,

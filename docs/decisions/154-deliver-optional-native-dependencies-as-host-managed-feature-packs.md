@@ -4,8 +4,8 @@
 
 Proposed — 2026-11-16, at the owner's request. Documentation only: no code,
 package, artifact, release or version change is authorized by this record.
-"Feature pack" is a working name; see [Decisions to confirm](#decisions-to-confirm).
-Linux dictation is the proposed pilot.
+Linux dictation is the proposed pilot. The owner delegated D1–D6 the same day;
+see [Resolved decisions](#resolved-decisions).
 
 ## Context
 
@@ -168,10 +168,9 @@ A feature pack's bytes are private to one product and pinned by that product.
   real-time, ~9 to ~45 seconds for a capped utterance, without naming the
   slowest supported device. Measure ready time and capped transcription time on
   the slowest supported Linux arm64 device, then pick the model and
-  per-platform timeouts.
-- **Delivery.** The proposal is on demand. This reverses ADR-085's
-  ready-to-use preference so that Linux users who never dictate do not carry
-  the model. The owner confirms or keeps bundling (D6).
+  per-platform timeouts. D4 sets the device, thresholds and timeouts.
+- **Delivery.** On demand (D6). This reverses ADR-085's ready-to-use
+  preference, so Linux users who never dictate do not carry the model.
 - **Desktop.** The Linux composer exposes the native voice bridge instead of
   the Web Speech fallback. Delivered on demand, clicking the button without the
   pack opens the consent prompt, and dictation starts after installation.
@@ -253,8 +252,8 @@ A feature pack's bytes are private to one product and pinned by that product.
   states. ADR-085's team preferred this.
 - **Cons**: Adds the model to every Linux installer, including for users who
   never dictate.
-- **Why not proposed for the pilot**: The owner decides (D6). §3 allows either
-  delivery under the same lock, so choosing bundling keeps the rest of this
+- **Why rejected for the pilot**: See D6. §3 still allows bundling under the
+  same lock, so a later product decision to bundle keeps the rest of this
   record.
 
 ### Alternative 3: Use system-installed engines
@@ -277,20 +276,28 @@ A feature pack's bytes are private to one product and pinned by that product.
   verification logic.
 - **Why rejected**: Rejected as the target. Accepted only as the interim in §2.
 
-## Decisions to confirm
+## Resolved decisions
 
-- **D1 — Name.** "Feature pack" is a working name. "Component" is already used by
-  SPEC-122 App components and by UI components. Alternatives are "native
-  add-on", "on-demand resource" or another term.
-- **D2 — Producer.** Recommended: `cats-plugins`, extended by its own ADR-002
-  (proposed) with a separate pack recipe kind and native build pipeline.
+The owner delegated D1–D6 on 2026-11-16.
+
+- **D1 — Name: "feature pack".**
+  - Documents, contracts and code use "feature pack" (`featurePack`,
+    `feature-packs`).
+  - The alternatives were rejected:
+    - "Component" already means SPEC-122 App components and UI components.
+    - "Native add-on" collides with Node's native addons.
+    - "On-demand resource" does not fit a bundled pack.
+  - User-facing text says what a pack enables, for example offline speech
+    recognition for voice input, rather than using the term.
+- **D2 — Producer: `cats-plugins`.** Its ADR-002 adds a separate pack recipe
+  kind and native build pipeline.
   - Desktop and Bot both consume the packs, so the producer cannot be either
     product repository.
   - A new repository would duplicate the source-lock, license and artifact
     governance for one pilot.
   - Revisit a separate producer when the first macOS or Windows pack needs
     signing secrets, or when a GPL pack such as FFmpeg adds source-offer duties.
-- **D3 — Hosting.** Recommended: GitHub Releases on `cats-plugins`, which is
+- **D3 — Hosting: GitHub Releases on `cats-plugins`.** The repository is
   public, so hosts download without credentials.
   - One release per pack version, with a per-pack tag such as
     `linux-stt-v0.1.0`. Its assets are the per-architecture archives, SHA-256
@@ -301,14 +308,33 @@ A feature pack's bytes are private to one product and pinned by that product.
     fit: GitHub rejects files over 100 MB in Git, and ADR-085 sized the model at
     ~140 MB.
   - This is the first publication from `cats-plugins`, which has no release
-    workflow or publishing secrets. It needs the owner's authorization under
-    that repository's release policy.
-- **D4 — Model.** Chosen after the §4 arm64 measurement; ADR-085's `ggml-base`
-  is the starting candidate.
-- **D5 — Data reset.** Whether Platform data reset (ADR-135) keeps downloaded
-  packs, as it keeps installed tools. The proposal is to keep them.
-- **D6 — Pilot delivery.** On demand, as proposed, which reverses ADR-085's
-  ready-to-use preference; or bundled in the Linux installers.
+    workflow or publishing secrets. Each pack's first release needs the owner's
+    authorization under that repository's release policy.
+- **D4 — Model: measured against a reference device.**
+  - The candidates and their order follow cats-plugins ADR-002 D3: multilingual
+    `ggml-base`, then a quantized multilingual base, then multilingual `tiny`.
+  - Dictation's arm64 floor, and the measurement device, is a 4-core
+    Cortex-A76-class board such as a Raspberry Pi 5. On slower devices the
+    helper may time out and report `engine_unavailable`.
+  - A candidate passes when, as the median of five runs, `ready` arrives within
+    2 seconds and a 30-second capped utterance is transcribed within 30 seconds
+    of stop. The first candidate that passes is chosen.
+  - Linux's ready timeout and stop window are set to at least twice the worst
+    of those runs. They never fall below today's 3-second ready timeout or
+    SPEC-087's 60-second stop window.
+- **D5 — Data reset: keep packs.**
+  - Platform data reset (ADR-135) keeps downloaded packs, as it keeps installed
+    tools.
+  - Packs leave only through their Settings removal or the product's uninstall
+    data policy.
+- **D6 — Pilot delivery: on demand.**
+  - Linux users who never dictate do not carry the model.
+  - Desktop's Linux updates install a whole `.deb`; deployment.md lists
+    differential blockmaps only beside Windows installers. A bundled model would
+    therefore be downloaded again with every update.
+  - One downloaded artifact serves Desktop and Bot.
+  - The cost is network access on first use. The consent, progress, failure and
+    retry states are part of the pilot's acceptance.
 
 ## References
 
