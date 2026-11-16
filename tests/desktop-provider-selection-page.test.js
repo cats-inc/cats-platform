@@ -7,12 +7,16 @@ import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
 
 const codex = { provider: 'codex', backend: 'cli', instance: 'native' };
 const openclaw = { provider: 'openclaw', backend: 'agent', instance: 'gateway' };
-async function page() {
+const kimi = { provider: 'kimi', backend: 'cli', instance: 'native' };
+const kimiAsking = { provider: 'kimi', backend: 'cli', instance: 'hosted' };
+async function page({ targets = [] } = {}) {
   const saves = [];
   const actions = [];
   const helpers = [];
-  let selection = { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null };
-  const universe = [codex, openclaw].map((target) => ({ ...target, familyLabel: target.provider, binaryName: target.provider }));
+  let selection = targets.length
+    ? { state: 'selected', revision: 'saved-before', targets, nativeSetupTargets: [], diskChanged: false, error: null }
+    : { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null };
+  const universe = [codex, kimi, openclaw].map((target) => ({ ...target, familyLabel: target.provider, binaryName: target.provider }));
   const snapshot = { phase: 'ready_for_setup', app: { onboardingMode: 'setup_status', setupCompleted: false },
     actions: [], services: [], events: [], prerequisites: { providerSelection: selection } };
   const setup = () => ({ runtime: { selection, universe, observations: [], connections: [] }, helpers: [], platform: 'windows', operations: [], outcomes: {} });
@@ -69,4 +73,38 @@ test('an explicit empty selection continues without scanning or installing any p
     assert.deepEqual(p.actions, ['open_setup']);
     assert.deepEqual(p.helpers, []);
   } finally { p.dom.window.close(); }
+});
+
+test('ADR-155: Kimi offers its asking target as an option, saved beside print mode and read back', async () => {
+  const p = await page();
+  try {
+    assert.equal(p.document.getElementById('pick-kimi-asking'), null);
+    p.document.getElementById('pick-more')?.click();
+    await p.settle();
+    p.document.getElementById('pick-kimi').click();
+    await p.settle();
+    const option = p.document.getElementById('pick-kimi-asking');
+    assert.ok(option, 'the option appears once Kimi is chosen');
+    assert.equal(option.checked, false);
+    option.click();
+    await p.settle();
+    p.document.getElementById('go-check').click();
+    await p.settle();
+    assert.deepEqual(p.saves.at(-1).targets, [kimi, kimiAsking]);
+  } finally { p.dom.window.close(); }
+  // Read back: the option is ticked, and the asking target is not counted as an unmanaged target.
+  const again = await page({ targets: [kimi, kimiAsking] });
+  try {
+    assert.equal(again.document.getElementById('pick-kimi').checked, true);
+    assert.equal(again.document.getElementById('pick-kimi-asking').checked, true);
+    const footnote = [...again.document.querySelectorAll(".footnote")].map((node) => node.textContent).join(" | ");
+    assert.doesNotMatch(footnote, /other configured target/u, footnote);
+    // Unchoosing Kimi drops both targets; print mode never stays behind without its option.
+    again.document.getElementById('pick-kimi').click();
+    await again.settle();
+    assert.equal(again.document.getElementById('pick-kimi-asking'), null);
+    again.document.getElementById('go-check').click();
+    await again.settle();
+    assert.deepEqual(again.saves.at(-1).targets, []);
+  } finally { again.dom.window.close(); }
 });

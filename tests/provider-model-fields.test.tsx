@@ -23,6 +23,7 @@ import {
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
   shouldTreatPersistedTargetAsLegacyModel,
+  kimiInstanceLabel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
   updatePersistentControlValues,
@@ -342,6 +343,14 @@ test('instance field stays hidden when a provider only exposes one runtime insta
     }),
     false,
   );
+});
+
+test('ADR-155: the two Kimi targets are labelled by how they behave', () => {
+  const t = (key: string) => key;
+  assert.equal(kimiInstanceLabel('kimi', 'native', t as never), 'shared.providerModel.field.kimiNeverAsks');
+  assert.equal(kimiInstanceLabel('kimi', 'hosted', t as never), 'shared.providerModel.field.kimiAsksFirst');
+  assert.equal(kimiInstanceLabel('kimi', 'other', t as never), null);
+  assert.equal(kimiInstanceLabel('codex', 'native', t as never), null);
 });
 
 test('support badge labels match runtime catalog support tiers', () => {

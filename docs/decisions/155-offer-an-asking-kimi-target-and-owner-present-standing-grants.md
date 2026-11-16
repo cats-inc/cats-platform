@@ -71,30 +71,35 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
      that asks before acting". Turning that off removes the target.
    - Runtime owns the hosted target's configuration as a selection template, not as an entry in
      its provider universe, so setup and install rows stay one per provider.
-   - A provider's implicit default is never a hosted instance while another instance exists.
-     For Kimi, the legacy default `native` already ensures this.
+   - Kimi's legacy default instance is `native`, so adding the asking target never moves a
+     conversation that names no instance.
 2. **A conversation that uses it.**
-   - Pickers name the targets "Kimi Code — never asks" and "Kimi Code — asks before acting".
+   - Pickers label the targets "Never asks (default)" and "Asks before acting (needs full access
+     and network)".
    - The asking target needs the conversation's policy to be provider mode with full access and
      network on.
-     - A new conversation that picks the asking target is given that policy, and the draft
-       shows it.
-     - In an existing conversation, the option is disabled, with the reason shown, unless the
-       conversation already has that policy.
+     - The owner sets that policy when creating the conversation, as for Claude Code's provider
+       controls (PLAN-125). The policy editor's hint names both targets. This was amended on
+       2026-11-16, at implementation: Desktop does not change a conversation's policy for the
+       owner.
+     - In a conversation without that policy, the asking target fails before the turn and gives
+       the reason. It never falls back to print mode.
      - Because the policy is conversation-wide, a conversation that has it cannot run
        desktop control for any cat, and it cannot run print-mode Kimi or other targets without
        execution-policy support.
-   - A participant whose stored target is no longer configured, for example after the option
-     was turned off, shows that target as unavailable. Pickers never present it as the default,
-     so a later save cannot silently move the participant to print mode, and its turns fail
-     before they start.
+   - When the owner turns the option off, a participant whose stored target is gone fails
+     before its turns.
+     - If a picker later saves print-mode Kimi for that participant, that also fails before the
+       turn, because the conversation's provider policy cannot run print mode.
+     - Neither case runs Kimi unasked.
    - Turns that run in the conversation's sessions — heartbeats, Telegram, Boss Cat,
      collaboration loops and other cats' follow-on turns — show their cards and wait, up to the
      30-minute card deadline. They never use grants. This matches Cats Bot.
    - Surfaces that create their own sessions without that policy fail before the turn and never
-     fall back to print mode. Work runs are verified to; delivery verifies the others it reaches
-     (schedules, Catlas, relay and agent decisions) and makes any that would instead wait fail
-     first.
+     fall back to print mode. Only the conversation's own sessions resolve its execution policy
+     (`runtime-session/policy.ts`, used by session launch and Boss Cat join requests). Work runs,
+     schedules, Catlas, relay and agent decisions create sessions without one, so the hosted
+     target refuses them when the session spawns.
 3. **Desktop control is unchanged.** It never runs in an asking-Kimi conversation, because the
    two policies exclude each other. It is not a grant category.
 4. **Grant buttons.**
@@ -167,7 +172,7 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
      notes. Until that release, which the owner must authorize, 0.17.1 has neither the asking
      target nor grants.
 10. **Delivery.**
-    - **Runtime:** the template, the implicit-default rule, and the read-only grants listing.
+    - **Runtime:** the template and the read-only grants listing (cats-runtime#232).
     - **Platform fix:** strip client-supplied `desktopControlEntry` on every route. SPEC-133
       relies on that stamp today.
     - **Platform targets and policy:** decisions 1 to 3.

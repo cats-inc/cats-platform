@@ -3481,6 +3481,8 @@ export const messageKeys = {
     'shared.providerModel.field.registryEmptyHint',
   sharedProviderModelFieldProviderInstanceLabel:
     'shared.providerModel.field.providerInstanceLabel',
+  sharedProviderModelFieldKimiNeverAsks: 'shared.providerModel.field.kimiNeverAsks',
+  sharedProviderModelFieldKimiAsksFirst: 'shared.providerModel.field.kimiAsksFirst',
   sharedProviderModelFieldModelLabel: 'shared.providerModel.field.modelLabel',
   sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
   sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',

@@ -3432,6 +3432,8 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.registryEmptyHint':
     'cats-runtime is connected, but it did not report any currently usable provider targets.',
   'shared.providerModel.field.providerInstanceLabel': 'Provider instance',
+  'shared.providerModel.field.kimiNeverAsks': 'Never asks (default)',
+  'shared.providerModel.field.kimiAsksFirst': 'Asks before acting (needs full access and network)',
   'shared.providerModel.field.modelLabel': 'Model',
   'shared.providerModel.field.basisLabel': 'Model list basis: {basis}. {hint}',
   'shared.providerModel.field.basisChannelHint': 'Models listed for the {channel} channel. Enter a custom model to use another channel.',
@@ -4473,7 +4475,7 @@ export const enCatalog: MessageCatalog = {
   "providerControls.Computer": "Computer use",
   "providerControls.Setup": "Codex plugins and host setup",
   "providerControls.ClaudeChromeSetup": "Set up Claude in Chrome",
-  "providerControls.ClaudeCeiling": "Claude Code Cats can only run with full access and network. A narrower limit is refused when the session starts; choose full access or keep the legacy mode.",
+  "providerControls.ClaudeCeiling": "Claude Code Cats, and Kimi Code that asks before acting, can only run with full access and network. A narrower limit is refused when the session starts; choose full access or keep the legacy mode. Kimi that asks before acting also needs provider mode, never the legacy mode.",
   "desktopControl.SettingsTitle": "Desktop control",
   "desktopControl.SettingsDescription": "Lets Cats see the Windows apps you grant, only in conversations you enable and only in turns you send from this computer. Each tool call asks for your approval, and Cats never sees other windows.",
   "desktopControl.SettingsToggle": "Allow desktop control",

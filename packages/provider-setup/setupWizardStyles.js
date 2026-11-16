@@ -93,6 +93,10 @@ export const SETUP_WIZARD_CSS = `
 .cats-setup .pick:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .cats-setup .pick:has(input:focus-visible) { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
 .cats-setup .pick:has(input:disabled) { cursor: default; opacity: 0.6; }
+.cats-setup .pick-option { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; padding: 8px 10px; border: 1px dashed var(--line-strong); border-radius: 8px; cursor: pointer; }
+.cats-setup .pick-option input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--accent-strong); }
+.cats-setup .pick-option strong { display: block; font-size: 13px; font-weight: 600; }
+.cats-setup .pick-option small { display: block; font-size: 12px; color: var(--muted); }
 .cats-setup .pick-more { display: grid; place-items: center; min-height: 58px; padding: 6px; border: 1px dashed var(--line-strong); border-radius: 8px; background: transparent; color: var(--accent-strong); font: inherit; font-size: 13px; cursor: pointer; }
 .cats-setup .pick-more:hover { border-color: var(--accent); background: var(--accent-soft); }
 .cats-setup .pick-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
