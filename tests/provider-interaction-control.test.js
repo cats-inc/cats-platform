@@ -72,3 +72,53 @@ test('ended runs project interrupted receipts without exposing retained prompts'
   const i = (await control.snapshot('conversation')).interactions[0];
   assert.equal(i.status, 'interrupted'); assert.equal(i.prompt, undefined);
 });
+
+test('ADR-155: only the owner may grant; a grant answer passes through intact', async () => {
+  const { control, calls } = setup();
+  const granting = { ...response, answer: { action: 'accept', choice: 'allow_once', standingGrant: { until: 'session' } } };
+  await assert.rejects(control.respond('conversation', 'session', 'i', granting), { status: 403, code: 'standing_grant_owner_only' });
+  await assert.rejects(control.respond('conversation', 'session', 'i', granting, { owner: false }), { code: 'standing_grant_owner_only' });
+  assert.equal(calls.length, 0);
+  await control.respond('conversation', 'session', 'i', granting, { owner: true });
+  assert.deepEqual(calls[0][2].answer.standingGrant, { until: 'session' });
+});
+
+test('ADR-155: the snapshot lists grants, and Stop trusts only what Runtime confirms', async () => {
+  const { control, runtime } = setup();
+  const grant = { category: 'computer_use', until: 'session', grantedAt: new Date().toISOString() };
+  let held = [grant];
+  const read = runtime.getSessionInteractions;
+  runtime.getSessionInteractions = async () => ({ ...(await read()), ...(held.length ? { standingGrants: held } : {}) });
+  assert.deepEqual((await control.snapshot('conversation')).standingGrants, [{ binding, standingGrants: [grant] }]);
+  // Runtime still reports a grant: Stop fails and nothing is claimed.
+  runtime.revokeStandingGrants = async () => ({ version: 1, sessionId: 'session', workerGeneration: 'worker', revision: 1, interactions: [], standingGrants: held });
+  await assert.rejects(control.stopStandingGrants('conversation'), { code: 'standing_grants_unconfirmed' });
+  // An unreachable Runtime is not a confirmation either.
+  runtime.revokeStandingGrants = async () => { throw new Error('timeout'); };
+  await assert.rejects(control.stopStandingGrants('conversation'), { code: 'standing_grants_unconfirmed' });
+  // A session Runtime no longer has holds no grants: 404 counts as confirmed.
+  const { RuntimeRequestError } = await import('../build/server/runtime/client.js');
+  runtime.revokeStandingGrants = async () => { held = []; throw new RuntimeRequestError('gone', 404); };
+  assert.equal((await control.stopStandingGrants('conversation')).standingGrants, undefined);
+  // Confirmed by an empty list.
+  held = [grant];
+  runtime.revokeStandingGrants = async () => { held = []; return { version: 1, sessionId: 'session', workerGeneration: 'worker', revision: 1, interactions: [] }; };
+  assert.equal((await control.stopStandingGrants('conversation')).standingGrants, undefined);
+});
+
+test('ADR-155: no send is marked to use grants while Stop runs', async () => {
+  const { standingGrantSends } = await import('../build/server/platform/runtime/standingGrantSends.js');
+  const message = { id: 'owner-message', senderKind: 'user', metadata: { ownerStarted: 'desktop', desktopControlEntry: 'local' } };
+  assert.equal(standingGrantSends.allows(message), false, 'unmarked');
+  const release = standingGrantSends.mark(message.id);
+  assert.equal(standingGrantSends.allows(message), true);
+  assert.equal(standingGrantSends.allows({ ...message, metadata: { ownerStarted: 'desktop' } }), false, 'needs the local stamp');
+  assert.equal(standingGrantSends.allows({ ...message, metadata: { desktopControlEntry: 'local' } }), false, 'needs the owner stamp');
+  assert.equal(standingGrantSends.allows({ ...message, choiceResponse: { status: 'submitted' } }), false, 'never a choice answer');
+  let during = null;
+  await standingGrantSends.whileStopping(async () => { during = standingGrantSends.allows(message); });
+  assert.equal(during, false);
+  assert.equal(standingGrantSends.allows(message), true);
+  release(); release();
+  assert.equal(standingGrantSends.allows(message), false, 'released once, idempotently');
+});

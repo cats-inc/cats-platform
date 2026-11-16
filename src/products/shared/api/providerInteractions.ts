@@ -56,6 +56,10 @@ export async function routeProviderInteractions(context: RouteContext<{ bindings
     if (parts.length === 1 && context.method === 'GET') {
       sendJson(context.response, 200, await control.snapshot(conversationId), headers); return true;
     }
+    // ADR-155: the conversation's Stop for standing grants. Admins may stop; only the owner grants.
+    if (parts.length === 3 && sessions === 'grants' && sessionId === 'stop' && context.method === 'POST') {
+      sendJson(context.response, 200, await control.stopStandingGrants(conversationId), headers); return true;
+    }
     if (sessions !== 'sessions' || !sessionId) throw new ProviderControlError(404, 'provider_route_not_found');
     if (parts.length === 4 && operation === 'capabilities' && context.method === 'GET') {
       sendJson(context.response, 200, await control.capabilities(conversationId, sessionId, context.url.searchParams.get('refresh') === 'true'), headers); return true;
@@ -71,7 +75,8 @@ export async function routeProviderInteractions(context: RouteContext<{ bindings
     }
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as BoundInteractionResponse;
     const result = action === 'url' ? { url: await control.url(conversationId, sessionId, id, body) }
-      : await control.respond(conversationId, sessionId, id, body);
+      : await control.respond(conversationId, sessionId, id, body,
+        { owner: context.auth.principal.membership.roles.includes('owner') });
     sendJson(context.response, 200, result, headers);
   } catch (error) {
     const status = error instanceof ProviderControlError ? error.status : error instanceof SyntaxError ? 400 : 409;

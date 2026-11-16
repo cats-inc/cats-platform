@@ -1,6 +1,7 @@
-import type { RuntimeClient } from '../../runtime/client.js';
-import type { BoundInteractionResponse, BoundProviderInteraction, ProviderConversationSnapshot,
+import { RuntimeRequestError, type RuntimeClient } from '../../runtime/client.js';
+import type { BoundInteractionResponse, BoundProviderInteraction, BoundStandingGrants, ProviderConversationSnapshot,
   ProviderInteractionBinding, SessionCapabilitiesSnapshot } from '../../shared/providerInteractions.js';
+import { standingGrantSends } from './standingGrantSends.js';
 
 export class ProviderControlError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code); }
@@ -44,10 +45,13 @@ export function createProviderInteractionControl(port: ProviderControlPort) {
       if (rows.length > 32) throw new ProviderControlError(409, 'provider_session_limit');
       const result: ProviderConversationSnapshot = { version: 1, conversationId, supported: false, interactions: [], sessions: rows.map(r => r.binding) };
       if (!port.runtime.getSessionInteractions) { result.reason = 'runtime_unsupported'; return result; }
+      const grants: BoundStandingGrants[] = [];
       const snapshots = await Promise.all(rows.map(async row => {
         try {
           const snapshot = await port.runtime.getSessionInteractions!(row.binding.sessionId);
           const latest = await binding(conversationId, row.binding.sessionId, row.binding);
+          // ADR-155: the grants each session holds, for the conversation's bar and Stop.
+          if (snapshot.standingGrants?.length) grants.push({ binding: row.binding, standingGrants: snapshot.standingGrants });
           return snapshot.interactions.filter(i => i.sessionId === row.binding.sessionId).map(i => ({ ...i,
             ...(!latest.canRespond && ['pending', 'responding'].includes(i.status) ? { status: 'interrupted' as const, prompt: undefined, reason: 'owner_execution_ended' } : {}),
             binding: row.binding,
@@ -56,10 +60,14 @@ export function createProviderInteractionControl(port: ProviderControlPort) {
       }));
       result.supported = snapshots.some(s => s !== null);
       result.interactions = snapshots.flatMap(s => s ?? []);
+      if (grants.length) result.standingGrants = grants;
       if (snapshots.some(s => s === null) || rows.length === 0) result.reason = rows.length ? 'some_sessions_unavailable' : 'no_current_session';
       return result;
     },
-    async respond(conversationId: string, sessionId: string, id: string, response: BoundInteractionResponse): Promise<BoundProviderInteraction> {
+    async respond(conversationId: string, sessionId: string, id: string, response: BoundInteractionResponse,
+      access: { owner: boolean } = { owner: false }): Promise<BoundProviderInteraction> {
+      // ADR-155: only the owner may allow a kind of request once for longer; an admin answers one request.
+      if (response?.answer?.standingGrant !== undefined && !access.owner) throw new ProviderControlError(403, 'standing_grant_owner_only');
       await live(conversationId, sessionId, id, response);
       if (!port.runtime.respondSessionInteraction) throw new ProviderControlError(409, 'provider_interactions_unsupported');
       // Runtime owns answer validation, deadlines, revisions and idempotency. A
@@ -76,6 +84,21 @@ export function createProviderInteractionControl(port: ProviderControlPort) {
       const url = new URL(request.prompt.url);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new ProviderControlError(400, 'provider_url_unsupported');
       return url.href;
+    },
+    /**
+     * ADR-155: Stop. Ends the standing grants of every session in the conversation at once. No send is
+     * marked to use grants meanwhile. Only Runtime's answer counts: an empty list, or 404 for a session
+     * Runtime no longer has. Anything else throws, so the owner's Stop stays in view.
+     */
+    async stopStandingGrants(conversationId: string): Promise<ProviderConversationSnapshot> {
+      const rows = await port.bindings(conversationId);
+      if (!port.runtime.revokeStandingGrants) throw new ProviderControlError(409, 'provider_interactions_unsupported');
+      const results = await standingGrantSends.whileStopping(() => Promise.all(rows.map(async row => {
+        try { return !(await port.runtime.revokeStandingGrants!(row.binding.sessionId)).standingGrants?.length; }
+        catch (error) { return error instanceof RuntimeRequestError && error.status === 404; }
+      })));
+      if (results.includes(false)) throw new ProviderControlError(409, 'standing_grants_unconfirmed');
+      return this.snapshot(conversationId);
     },
     async capabilities(conversationId: string, sessionId: string, refresh: boolean): Promise<SessionCapabilitiesSnapshot> {
       const current = await binding(conversationId, sessionId);

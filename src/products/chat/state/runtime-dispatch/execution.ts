@@ -38,6 +38,7 @@ import { createDispatchPresentationRecorder } from './presentationRecorder.js';
 import { extractWorkflowRecommendationFromBody } from '../room-routing/recommendations.js';
 import { formatProposalOutcomeInstructions, pendingProposalOutcomes } from '../conversationProposals.js';
 import { readOwnerStarted } from '../../shared/ownerStarted.js';
+import { standingGrantSends } from '../../../../platform/runtime/standingGrantSends.js';
 import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
@@ -223,6 +224,8 @@ export async function executeDispatch(
     const knowledgeReceipt = knowledge ? productKnowledgeReceipt(knowledge) : null;
     // SPEC-142 FR-21: the outcome of each of this participant's closed proposals, once.
     const proposalOutcomes = pendingProposalOutcomes(state, channelId, request.target.participantId, now);
+    const sourceMessage = state.channels.find((entry) => entry.id === channelId)?.messages
+      .find((message) => message.id === request.sourceMessage.id) ?? null;
     const runtimeInvocationInput = enrichRuntimeInvocation(channel, {
       instructions: [dispatchPrompt.instructions?.trim(), knowledge && productKnowledgeInstructions(knowledge),
         formatProposalOutcomeInstructions(proposalOutcomes.lines)]
@@ -234,9 +237,7 @@ export async function executeDispatch(
           // SPEC-142: proposals come only from a turn the owner started on Desktop or mobile, by
           // the server's own stamp on its message. It survives a retry, and a continuation, a
           // Telegram turn, a choice answer or another principal's message has none.
-          turnOwnerStarted: Boolean(readOwnerStarted(
-            state.channels.find((entry) => entry.id === channelId)?.messages
-              .find((message) => message.id === request.sourceMessage.id) ?? null)),
+          turnOwnerStarted: Boolean(readOwnerStarted(sourceMessage)),
           ...(knowledgeReceipt ? { productKnowledge: knowledgeReceipt } : {}),
           ...(toolIntent ? { toolIntent } : {}),
         },
@@ -248,7 +249,9 @@ export async function executeDispatch(
       runtimeClient,
       sessionId,
       content: dispatchPrompt.message,
-      input: { ...runtimeInvocationInput, onMessageEvent: event => presentationRecorder.accept(event) },
+      input: { ...runtimeInvocationInput, onMessageEvent: event => presentationRecorder.accept(event),
+        // ADR-155: only the local owner's own message, while its own request dispatches it.
+        ...(standingGrantSends.allows(sourceMessage) ? { standingGrants: true as const } : {}) },
       supervision: {
         product: 'cats-chat',
         surface: 'runtime-dispatch',

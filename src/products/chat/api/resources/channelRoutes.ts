@@ -70,6 +70,7 @@ import {
 } from '../../shared/clientMessageIdentity.js';
 import type { RuntimeTransportContext } from '../../state/runtimeTargeting.js';
 import { isLocalOwnerRequest } from '../../../../platform/desktopControl/routes.js';
+import { standingGrantSends } from '../../../../platform/runtime/standingGrantSends.js';
 import { resolveOwnerStartedSurface } from '../../shared/ownerStarted.js';
 
 function resolveRestMessageTransport(
@@ -671,12 +672,17 @@ async function handleRestSendMessage(
         acknowledgedDispatch.userMessage,
       );
     }
+    // ADR-155: the local owner's own send may use standing grants while this dispatch runs.
+    const releaseGrantSend = localOwner && !acknowledgedDispatch.idempotent
+      ? standingGrantSends.mark(acknowledgedDispatch.userMessage.id) : null;
     void (async () => {
-      await continueAcknowledgedChannelDispatchInBackground(
-        context,
-        channelId,
-        acknowledgedDispatch,
-      );
+      try {
+        await continueAcknowledgedChannelDispatchInBackground(
+          context,
+          channelId,
+          acknowledgedDispatch,
+        );
+      } finally { releaseGrantSend?.(); }
     })();
   } catch (error) {
     handleRestError(context, error);
@@ -807,12 +813,18 @@ async function handleRestRetryMessage(
     }
 
     publishChannelMutationEvents(context, channelId, 'updated');
+    // ADR-155: a retry may use standing grants only when the retry request itself is the local owner's.
+    // The owner role too: a local admin's retry of the owner's message never uses the owner's grants.
+    const releaseGrantSend = isLocalOwnerRequest(context) && resolveRestMessageTransport(context.request) !== 'mobile'
+      && resolveOwnerStartedSurface(context.auth) === 'desktop' ? standingGrantSends.mark(messageId) : null;
     void (async () => {
-      await continueAcknowledgedChannelDispatchInBackground(
-        context,
-        channelId,
-        acknowledgedDispatch,
-      );
+      try {
+        await continueAcknowledgedChannelDispatchInBackground(
+          context,
+          channelId,
+          acknowledgedDispatch,
+        );
+      } finally { releaseGrantSend?.(); }
     })();
   } catch (error) {
     handleRestError(context, error);

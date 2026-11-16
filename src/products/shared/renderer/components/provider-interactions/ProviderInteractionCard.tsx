@@ -1,7 +1,8 @@
 import { messageKeys, type MessageKey } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { BoundProviderInteraction, InteractionAnswer, InteractionField, BoundInteractionResponse } from '../../../../../shared/providerInteractions.js';
+import { STANDING_GRANT_MINUTES, type BoundProviderInteraction, type InteractionAnswer, type InteractionField,
+  type BoundInteractionResponse } from '../../../../../shared/providerInteractions.js';
 
 function Field({ field }: { field: InteractionField }) {
   const { t } = useI18n();
@@ -43,11 +44,11 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const active = i.status === 'pending' && Date.parse(i.expiresAt) > now;
   useEffect(() => { if (!active) { form.current?.reset(); attempt.current = null; } }, [active]);
-  const send = async (action: InteractionAnswer['action'], choice?: string) => {
+  const send = async (action: InteractionAnswer['action'], choice?: string, standingGrant?: InteractionAnswer['standingGrant']) => {
     if (!active || busy) return;
     if (action === 'accept' && !form.current?.reportValidity()) return;
     const data = new FormData(form.current!);
-    const answer: InteractionAnswer = { action, ...(choice ? { choice } : {}) };
+    const answer: InteractionAnswer = { action, ...(choice ? { choice } : {}), ...(standingGrant ? { standingGrant } : {}) };
     if (action === 'accept') {
       if (i.prompt?.fields?.length) {
         const values: NonNullable<InteractionAnswer['values']> = Object.create(null);
@@ -85,6 +86,9 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
     } finally { setBusy(false); }
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void send('accept'); };
+  // ADR-155: allow this kind of request once for longer. Runtime takes only the first, one-action choice.
+  const firstChoice = i.prompt?.choices?.[0]?.id;
+  const grantable = Boolean(i.prompt?.grantCategory && firstChoice && !i.prompt?.fields?.length);
   return <section className="native-provider-card" aria-label={t(messageKeys.providerControlsRequest)}>
     <small>{i.binding.label}</small>
     <strong>{i.prompt?.title ?? t(messageKeys.providerControlsRequestKind, { kind: i.kind.replaceAll('_', ' ') })}</strong>
@@ -103,9 +107,14 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
           <button type="button" onClick={() => void openUrl(i).catch(() => setError(messageKeys.providerControlsUrlUnavailable))}>{t(messageKeys.providerControlsOpenBrowser)}</button>
           <p>{t(messageKeys.providerControlsUrlHelp)}</p>
         </div>}
+        {grantable && i.prompt?.grantCategory === 'computer_use' && <p className="native-provider-warning">{t(messageKeys.providerControlsComputerUseGrantWarning)}</p>}
         <div className="native-provider-actions">
           {i.prompt?.choices?.length ? i.prompt.choices.map(c => <button key={c.id} type="button" title={c.description} onClick={() => void send('accept', c.id)}>{c.label}</button>)
             : <button type="submit">{t(i.kind === 'mcp_url' ? messageKeys.providerControlsCompletedSteps : messageKeys.providerControlsSubmit)}</button>}
+          {grantable && <>
+            <button type="button" onClick={() => void send('accept', firstChoice, { until: 'session' })}>{t(messageKeys.providerControlsAllowConversation)}</button>
+            <button type="button" onClick={() => void send('accept', firstChoice, { until: 'time', durationMs: STANDING_GRANT_MINUTES * 60_000 })}>{t(messageKeys.providerControlsAllowMinutes, { minutes: STANDING_GRANT_MINUTES })}</button>
+          </>}
           <button type="button" onClick={() => void send('decline')}>{t(messageKeys.providerControlsDecline)}</button>
           <button type="button" onClick={() => void send('cancel')}>{t(messageKeys.providerControlsCancel)}</button>
         </div>

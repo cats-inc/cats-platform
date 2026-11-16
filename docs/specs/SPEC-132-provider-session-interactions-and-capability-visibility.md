@@ -300,6 +300,21 @@ Runtime/server/host/web builds passed. Full test-project typechecking requires
 Mobile dependencies absent in the local checkout and remains part of required CI.
 PLAN-124 records the candidate source identity and evidence scope.
 
+## Standing grants (2026-11-16, ADR-155)
+
+- **Cards.** A card whose prompt carries `grantCategory` (`computer_use`, `command` or `file`) adds "Allow for this conversation" and "Allow for 30 minutes". These answer with the first choice plus `standingGrant` (Runtime ADR-055).
+  - Only the owner role may send that. The route refuses it from an admin with `standing_grant_owner_only`.
+  - A computer-use card warns that the grant is as broad as the owner at the keyboard, Cats itself included.
+- **Which sends use grants.** A chat dispatch sends `standingGrants: true` only for a source message that bears both `ownerStarted: 'desktop'` and `desktopControlEntry: 'local'`, while the local owner's own request is dispatching it. A send qualifies on the channel route; a retry qualifies when its request itself passes the local-owner check with the owner role.
+  - The mark lives in Platform memory (`platform/runtime/standingGrantSends.ts`).
+  - No send is marked while a Stop is ending grants.
+- **Snapshot.** The conversation snapshot lists each session's `standingGrants` with its binding.
+  - A request Runtime answered from a grant (reason `standing_grant`) is never a card, never counts as waiting, and never extends the human-wait timer.
+- **Stop.**
+  - The conversation shows the grants with the time left and a Stop. Stop calls `POST …/conversations/:id/grants/stop` and the channel cancel together.
+  - The route revokes every session's grants at once. It answers 200 only when Runtime confirmed each one: an empty list, or 404 for a session Runtime no longer has.
+  - Otherwise it answers 409 `standing_grants_unconfirmed`, and the bar says Stop was not confirmed.
+
 ## Remaining environment validation
 
 - The supported fixture contract of Runtime SPEC-039 is wired; new native schemas still need

@@ -49,6 +49,7 @@ async function startServer(t, { withAuth }) {
     ? await createAuthenticatedTestSession({ now, sessionSecret: authConfig.sessionSecret, sessionTtlMs: authConfig.sessionTtlMs })
     : null;
   const chatStore = new MemoryChatStore();
+  const sends = [];
   const state = createChannel(await chatStore.read(), {
     title: 'Owner stamp', topic: 'SPEC-139', originSurface: 'chat', repoPath: platformDir,
     temporaryParticipants: [{ participantId: 'helper', name: 'Helper', provider: 'codex', instance: 'native', model: 'fixture' }],
@@ -61,7 +62,8 @@ async function startServer(t, { withAuth }) {
     async createSession(input) { return { id: 'helper-session', provider: input.provider, model: input.model, status: 'ready', cwd: platformDir }; },
     async observeSession(id) { return { session: { id, status: 'ready', provider: 'codex', model: 'fixture', cwd: platformDir } }; },
     async closeSession() {}, async cancelSession() {},
-    async sendMessage() {
+    async sendMessage(_sessionId, _content, input) {
+      sends.push(input ?? {});
       return { segments: [{ kind: 'text', text: 'Done.', toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
     },
   };
@@ -74,7 +76,7 @@ async function startServer(t, { withAuth }) {
   t.after(async () => { server.close(); await once(server, 'close'); await rm(platformDir, { recursive: true, force: true }); });
   const headers = { 'content-type': 'application/json', origin: 'http://127.0.0.1:8181',
     ...(auth ? { cookie: auth.cookie, 'x-cats-csrf-token': auth.csrfToken } : {}) };
-  return { base: `http://127.0.0.1:${server.address().port}`, headers, chatStore, channelId: state.selectedChannelId };
+  return { base: `http://127.0.0.1:${server.address().port}`, headers, chatStore, channelId: state.selectedChannelId, sends };
 }
 
 async function send(server, messageMetadata) {
@@ -146,4 +148,17 @@ test('SPEC-139 transport messages and choice answers are never stamped, even wit
   assert.equal(await entryOf({ body: 'hi', messageMetadata: audience }, { desktopControlEntry: 'local' }), 'local');
   assert.equal(await entryOf({ body: 'hi', messageMetadata: { ...audience, desktopControlEntry: 'local' } },
     { desktopControlEntry: null }), null);
+});
+
+test('ADR-155: only a send from the local owner may use standing grants', async (t) => {
+  const owner = await startServer(t, { withAuth: true });
+  const messageId = await send(owner, {});
+  assert.equal(owner.sends.at(-1).standingGrants, true, 'a send from the local owner');
+  const { standingGrantSends } = await import('../build/server/platform/runtime/standingGrantSends.js');
+  const stored = (await owner.chatStore.read()).channels.find((entry) => entry.id === owner.channelId).messages.find((entry) => entry.id === messageId);
+  // The mark is released in the dispatch's finally, which can run just after the reply is stored.
+  await waitForCondition(async () => !standingGrantSends.allows(stored), { timeoutMs: 5_000 });
+  const anonymous = await startServer(t, { withAuth: false });
+  await send(anonymous, { ownerStarted: 'desktop', desktopControlEntry: 'local' });
+  assert.equal('standingGrants' in anonymous.sends.at(-1), false, 'no owner, whatever the client says');
 });

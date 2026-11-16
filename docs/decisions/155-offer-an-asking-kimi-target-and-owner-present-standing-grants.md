@@ -118,9 +118,16 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
    `desktopControlEntry === 'local'`.
    - **Who strips the stamp.** Every route that accepts client message metadata, including
      parallel groups, strips `desktopControlEntry`. Only the channel route adds it back.
-   - **Retries.** A retry carries the flag only when the retry request itself passes the same
-     local-owner check.
-   - **Several cats.** One owner message addressed to several cats flags each cat's dispatch.
+   - **Only while the owner's own request dispatches it.** The channel route marks the message
+     for the life of that request's dispatch, in Platform memory. A retry is marked only when the
+     retry request itself passes the same local-owner check and comes from the owner role. A
+     dispatch that starts later from a queue, or after a Platform restart, asks instead.
+   - **Several cats.** Each cat the owner's message dispatches directly while its request runs is
+     flagged, including a cat the orchestrator or a Boss Cat lane picks for that message. A
+     sequential follow-up starts from the previous cat's message and asks.
+   - **Known limit.** The mark is keyed by the message. An operator's task retry that replays a
+     continuation of the same message while the owner's own request still runs would also be
+     flagged. Only owner or admin actions can start such a replay.
    - **What the flag proves.** Loopback plus the owner's cookie, not keystrokes. A local
      program holding the owner's cookie, or Kimi itself under a computer-use grant, also
      passes.
@@ -128,7 +135,7 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
      - Mobile and remote ingress
      - Telegram
      - Choice answers, continuations, parallel-group fan-out and other cats' turns
-     - Work, schedules, collaboration loops and Boss Cat
+     - Work, schedules, collaboration loops, and Boss Cat's decision and tool sessions
      - Catlas, relay and heartbeats
 6. **Never waiting.**
    - A request Runtime answered from a grant never shows as a card and never counts as waiting

@@ -8,6 +8,8 @@ import { JSDOM } from 'jsdom';
 import { ProviderInteractionCard } from '../src/products/shared/renderer/components/provider-interactions/ProviderInteractionCard.tsx';
 import { ProviderCapabilities } from '../src/products/shared/renderer/components/provider-interactions/ProviderCapabilities.tsx';
 import { ProviderPolicyEditor } from '../src/products/shared/renderer/components/provider-interactions/ProviderPolicyEditor.tsx';
+import { StandingGrantsBar } from '../src/products/shared/renderer/components/provider-interactions/StandingGrantsBar.tsx';
+import { nextVisibleGrants } from '../src/products/shared/renderer/components/provider-interactions/standingGrantsView.ts';
 import { PermissionModeChip } from '../src/products/shared/renderer/components/PermissionModeChip.tsx';
 import { ClaudeInChromeSection } from '../src/app/renderer/settings/ClaudeInChromeSection.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
@@ -240,4 +242,61 @@ test('workspace reconciliation preserves the requested provider policy and disab
       assert.match(chip.title, /live effective policy/);
     });
   } finally { globalThis.fetch = fetchBefore; }
+});
+
+test('ADR-155: a categorized card offers the two grants with the first choice; the computer-use card warns', async () => {
+  const interaction = { kind: 'tool_approval', status: 'pending', interactionId: 'i', sessionId: 's', workerGeneration: 'w', executionId: 'e',
+    revision: 2, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    binding: { conversationId: 'c', sessionId: 's', label: 'Kimi Cat', participantId: 'cat', laneId: null, turnId: 'turn', runId: null, provider: 'kimi' },
+    prompt: { kind: 'tool_approval', title: 'js', grantCategory: 'computer_use',
+      choices: [{ id: 'approve_once', label: 'Approve once' }] } } as BoundProviderInteraction;
+  await domTest(async (document, render) => {
+    const answers: BoundInteractionResponse[] = [];
+    await render(<ProviderInteractionCard interaction={interaction} refresh={async () => {}} openUrl={async () => {}}
+      respond={async (_i, body) => { answers.push(body); }} />);
+    assert.match(document.body.textContent!, /as broad as you at the keyboard/);
+    const button = (label: RegExp) => [...document.querySelectorAll('button')].find(b => label.test(b.textContent ?? ''))!;
+    act(() => { button(/Allow for 30 minutes/).click(); });
+    await settle();
+    assert.deepEqual(answers[0]!.answer, { action: 'accept', choice: 'approve_once', standingGrant: { until: 'time', durationMs: 30 * 60_000 } });
+  });
+  await domTest(async (document, render) => {
+    const answers: BoundInteractionResponse[] = [];
+    await render(<ProviderInteractionCard interaction={interaction} refresh={async () => {}} openUrl={async () => {}}
+      respond={async (_i, body) => { answers.push(body); }} />);
+    act(() => { [...document.querySelectorAll('button')].find(b => /Allow for this conversation/.test(b.textContent ?? ''))!.click(); });
+    await settle();
+    assert.deepEqual(answers[0]!.answer, { action: 'accept', choice: 'approve_once', standingGrant: { until: 'session' } });
+  });
+  // No category: no grant buttons and no warning.
+  await domTest(async (document, render) => {
+    await render(<ProviderInteractionCard interaction={{ ...interaction, prompt: { ...interaction.prompt!, grantCategory: undefined } }}
+      refresh={async () => {}} openUrl={async () => {}} respond={async () => {}} />);
+    assert.doesNotMatch(document.body.textContent!, /Allow for this conversation|as broad as you/);
+  });
+});
+
+test('ADR-155: grants stay in view through partial reads and a failed Stop', async () => {
+  const binding = (sessionId: string) => ({ conversationId: 'c', sessionId, label: sessionId, participantId: sessionId, laneId: null, turnId: null, runId: null });
+  const grant = { category: 'computer_use' as const, until: 'session' as const, grantedAt: new Date().toISOString() };
+  const held = [{ binding: binding('a'), standingGrants: [grant] }, { binding: binding('b'), standingGrants: [grant] }];
+  const base = { version: 1 as const, conversationId: 'c', supported: true, interactions: [], sessions: [binding('a'), binding('b')] };
+  // A partial read keeps every grant it did not see again, marked unknown; one it read replaces the old entry.
+  assert.deepEqual(nextVisibleGrants(held, { ...base, reason: 'some_sessions_unavailable' }), { grants: held, unknown: true });
+  const fresh = { binding: binding('a'), standingGrants: [{ ...grant, category: 'file' as const }] };
+  assert.deepEqual(nextVisibleGrants(held, { ...base, reason: 'some_sessions_unavailable', standingGrants: [fresh] }), { grants: [fresh, held[1]], unknown: true });
+  assert.deepEqual(nextVisibleGrants(held, { ...base, supported: false }), { grants: held, unknown: true });
+  assert.deepEqual(nextVisibleGrants(held, { ...base, standingGrants: [held[0]!] }), { grants: [held[0]], unknown: false });
+  assert.deepEqual(nextVisibleGrants(held, base), { grants: [], unknown: false });
+  await domTest(async (document, render) => {
+    let stops = 0;
+    await render(<StandingGrantsBar grants={held} unconfirmed failed onStop={async () => { stops += 1; }} />);
+    const text = document.body.textContent!;
+    assert.ok(text.includes('a: computer use (for this conversation)'), text);
+    assert.match(text, /could not read every session/);
+    assert.match(text, /Stop was not confirmed/);
+    act(() => { [...document.querySelectorAll('button')].find(b => /^Stop$/.test(b.textContent ?? ''))!.click(); });
+    await settle();
+    assert.equal(stops, 1);
+  });
 });
