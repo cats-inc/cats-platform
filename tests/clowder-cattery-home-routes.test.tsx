@@ -146,7 +146,9 @@ test('ClowderHome renders Cats tab by default and shows the parent-Cattery chip'
   assert.match(markup, />Dev Team</u);
   assert.match(markup, />Part of Acme Co\./u);
   assert.match(markup, /aria-current="page"[^>]*>Cats</u);
-  assert.match(markup, /No cats in this Clowder yet/u);
+  assert.match(markup, /Manage this Clowder’s cats in Settings\./u);
+  // The Settings tab is the Clowder canvas, which App routes ahead of this page.
+  assert.match(markup, /href="\/entities\/clowders\/clw-dev\/settings"[^>]*>Settings</u);
 });
 
 test('ClowderHome shows the cross-unit task force chip when parentCatteryId is null', () => {
@@ -164,23 +166,6 @@ test('ClowderHome shows the cross-unit task force chip when parentCatteryId is n
 
   assert.match(markup, />Project Phoenix</u);
   assert.match(markup, />Cross-unit task force</u);
-});
-
-test('ClowderHome /entities/clowders/:id/settings renders the Settings tab', () => {
-  const markup = renderClowderRoute(
-    '/entities/clowders/clw-dev/settings',
-    createEnvelope({
-      lobby: {
-        animationMode: 'reduced',
-        cats: [],
-        clowders: [devClowder],
-        catteries: [acmeCattery],
-      },
-    }),
-  );
-
-  assert.match(markup, /aria-current="page"[^>]*>Settings</u);
-  assert.match(markup, /Clowder settings .* PLAN-091 phase 6/u);
 });
 
 test('ClowderHome shows the not-found pane when the id is not in the registry', () => {

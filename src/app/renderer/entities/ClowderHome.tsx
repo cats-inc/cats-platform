@@ -51,15 +51,6 @@ function ClowderCatsTab() {
   );
 }
 
-function ClowderSettingsTab() {
-  const { t } = useI18n();
-  return (
-    <div className="entityDetailLensStub">
-      <p>{t(messageKeys.clowderHomeSettingsBody)}</p>
-    </div>
-  );
-}
-
 function ClowderNotFound({ clowderId }: { clowderId: string }) {
   const { t } = useI18n();
   // No back button here — EntitiesShell's sidebar already carries a
@@ -111,7 +102,7 @@ export function ClowderHome({ envelope }: { envelope: PlatformHostEnvelope }) {
       subtitle={subtitle}
       tabs={tabs}
     >
-      {activeTab === 'cats' ? <ClowderCatsTab /> : <ClowderSettingsTab />}
+      <ClowderCatsTab />
     </EntityDetailPane>
   );
 }
