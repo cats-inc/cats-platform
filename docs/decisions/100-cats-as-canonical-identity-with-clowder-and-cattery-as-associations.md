@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted (2026-11-16). Storage and deletion details are in
+[SPEC-103](../specs/SPEC-103-clowder-and-cattery-data-model.md) FR-24
+and §Storage.
 
 ## Context
 

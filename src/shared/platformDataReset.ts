@@ -101,7 +101,7 @@ export async function preparePlatformOwnedDataReset(chatStatePath: string, optio
 // This is an ownership allowlist, not permission to remove the Platform root or
 // a user-selected working directory. Keep the UI's reset disclosure in sync.
 export const PLATFORM_RESET_FILES = [
-  'chat-state.local.json', 'chat-state.local.memory.json',
+  'chat-state.local.json', 'chat-state.local.memory.json', 'chat-state.local.directory.json',
   'chat-state.local.companion-boxes.json', 'companion-activity.json',
   'chat-state.local.telegram-relay.json', 'chat-state.local.line-relay.json',
   'transport-work-delivery.json', 'scheduler-state.local.json',
@@ -176,7 +176,7 @@ export async function removePlatformOwnedData(chatStatePath: string, options: {
       targets.add(path.join(stateDir, name));
     }
   }
-  for (const suffix of ['memory', 'companion-boxes', 'telegram-relay', 'line-relay']) {
+  for (const suffix of ['memory', 'directory', 'companion-boxes', 'telegram-relay', 'line-relay']) {
     targets.add(path.join(stateDir, `${parsed.name}.${suffix}${parsed.ext || '.json'}`));
   }
   await assertParents(root, path.join(stateDir, 'placeholder'));

@@ -4,11 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress (Phase 7–14 IA correction landed 2026-05-05; legacy Phases 1–6 superseded; Phase 6 Clowder/Cattery still gated on user approval) |
+| **Status** | In Progress (Phase 7–14 IA correction landed 2026-05-05; legacy Phases 1–6 superseded; Phase 6 Clowder/Cattery approved 2026-11-16 and in progress) |
 | **Owner** | Claude |
 | **Related Spec** | [SPEC-102](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md) |
 | **Related ADR** | [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) |
-| **Implementation Note** | Phases 1–6 above describe the original draft. The shipped behaviour follows the [Phase 7+ — IA Correction & Polish](#phase-7--ia-correction--polish-2026-05-05) section and [SPEC-102 §Implementation Status (2026-05-05)](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md#implementation-status-2026-05-05). Outstanding items are tracked in [Open follow-ups](#open-follow-ups); Phase 6 Clowder & Cattery business logic is intentionally deferred until ADR-100 / SPEC-103 are accepted. |
+| **Implementation Note** | Phases 1–6 above describe the original draft. The shipped behaviour follows the [Phase 7+ — IA Correction & Polish](#phase-7--ia-correction--polish-2026-05-05) section and [SPEC-102 §Implementation Status (2026-05-05)](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md#implementation-status-2026-05-05). Outstanding items are tracked in [Open follow-ups](#open-follow-ups); ADR-100 and SPEC-103 were accepted on 2026-11-16; Phase 6 Clowder & Cattery work is in progress. |
 
 ## Objective
 
@@ -35,7 +35,7 @@ In scope:
 Out of scope (covered elsewhere or deferred):
 - Full Clowder/Cattery data model and registry — covered by
   [SPEC-103](../specs/SPEC-103-clowder-and-cattery-data-model.md);
-  Phase 6 prerequisite, gated on user approval
+  accepted 2026-11-16
 - Membership management business logic (invites, roles, ACL) — future
   follow-up plan
 - Cross-product Code/Work lens implementation — covered by SPEC-064
@@ -192,22 +192,23 @@ Out of scope (covered elsewhere or deferred):
 
 ### Phase 6: Clowder & Cattery Implementation
 
-> **Prerequisite**:
+> **Prerequisite** (met 2026-11-16):
 > [ADR-100](../decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md)
 > + [SPEC-103](../specs/SPEC-103-clowder-and-cattery-data-model.md)
-> approved. Until then, `/entities/clowders/:id` and `/entities/catteries/:id` continue to
-> render the Phase 1 stub.
+> accepted. `/entities/clowders/:id` and `/entities/catteries/:id` keep the
+> Phase 1 stub until the Directory pages land.
 
-- [ ] Approve ADR-100 and SPEC-103 with the user; resolve remaining
-      open questions (Cattery temp membership, archive vs delete
-      semantics, primary-Cattery affinity field, etc.)
-- [ ] Add Core types: `Cat` (existing), `Clowder`, `Cattery`,
-      `ClowderMembership`, `CatteryMembership`, `MembershipStatus =
-      'formal' | 'temp' | 'external'`
+- [x] Approve ADR-100 and SPEC-103 with the user (2026-11-16); archive
+      vs delete resolved as delete only (SPEC-103 FR-24)
+- [x] Records `Clowder`, `Cattery`, `ClowderMembership`,
+      `CatteryMembership` in the Platform directory file, not Core state
+      (SPEC-103 §Storage), with the model in `src/platform/directory/`
 - [ ] Add platform contract entries / payloads exposing the list APIs
       from SPEC-103 §FR 18-20
-- [ ] Storage: membership stored as separate normalized records, not as
+- [x] Storage: membership stored as separate normalized records, not as
       embedded arrays (SPEC-103 §Storage)
+- [x] A deleted Cat leaves every Clowder and Cattery; Platform data
+      reset removes the directory file
 - [ ] Implement `ClowderHome.tsx`:
   - Header chip: "Part of [Cattery]" or "Cross-unit task force"
   - Tabs (locked): `Cats / Settings`, default = `Cats`
@@ -230,11 +231,10 @@ Out of scope (covered elsewhere or deferred):
       Clowders + Catteries this Cat is in
 - [ ] Membership management UI initial pass: add member, change status,
       remove. Invites / role permissions deferred to a follow-up plan
-- [ ] Audit trail: every membership change produces an audit record (reuse
-      Activity record family if appropriate; otherwise add Membership-
-      specific audit per SPEC-103 §Non-Functional)
+- [ ] Audit trail: deferred until multi-user Catteries (SPEC-103
+      §Non-Functional)
 - [ ] Tests: list endpoints, dedup logic, statusFilter, expired-temp
-      hiding
+      display (FR-23: listed with the passed date, never hidden)
 
 ## Files / Areas Likely Affected
 
@@ -308,7 +308,7 @@ suite unless explicitly asked.
 | Sidebar adds visual weight to a previously minimal Lobby | Low | Default-collapsed sections; users opt-in to expand |
 | `/settings/cats` vs `/entities/cats/:id` partition unclear | Medium | SPEC-102 §Settings narrows `/settings/cats` to global preferences and lifts `SettingsAssistants` to top-level `/settings/assistants`; no `/settings/cats/my-cats` compatibility redirect is kept |
 | Removing mobile Lobby's `statRow / quickEntryRow / recentActivity` loses discoverability for chat/code/work | Low | Bottom-tab nav already provides product entry; recentActivity can come back as its own surface if needed (out of scope for this plan) |
-| Phase 6 (Clowder/Cattery) blocks on ADR-100 + SPEC-103 approval | Medium | ADR-100 + SPEC-103 are written; Phase 6 gated on user sign-off + remaining open questions. Phases 1–5 ship without them; sidebar shows empty state for clowders/catteries until Phase 6 |
+| Phase 6 (Clowder/Cattery) blocks on ADR-100 + SPEC-103 approval | Medium | Resolved 2026-11-16: both accepted. Until the Directory pages land, the sidebar shows the empty state for clowders/catteries |
 | Lobby sidebar duplicates Chat sidebar's Direct Messages | Low | They serve different intents (Lobby = manage, Chat = converse); SPEC-102 §Boundaries makes the distinction explicit |
 
 ## Resolved Decisions
