@@ -6,9 +6,9 @@ import { delimiter, dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { load } from 'js-yaml';
 
-// A push to main skips the suite only when its merged pull request already
-// passed on the same tree. These tests run the workflow's own shell steps
-// against a local origin and a stubbed gh.
+// CI skips the suite for documentation-only changes and for code that already
+// passed. These tests run the workflow's own shell steps against local git
+// fixtures, with a local origin and a stubbed gh for the merge lookups.
 const workflow = load(readFileSync('.github/workflows/ci.yaml', 'utf8'));
 const step = (id) => workflow.jobs.changes.steps.find((item) => item.id === id);
 const bash = process.platform === 'win32'
@@ -29,6 +29,103 @@ function runStep(script, { cwd, env }) {
   }
 }
 
+function gitFixture(t, prefix) {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const work = join(root, 'work');
+  const git = (cwd, ...args) => execFileSync('git', [
+    '-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid',
+    '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', ...args,
+  ], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const write = (path, content) => {
+    mkdirSync(dirname(join(work, path)), { recursive: true });
+    writeFileSync(join(work, path), content);
+  };
+  const remove = (path) => rmSync(join(work, path));
+  const commit = (message) => {
+    git(work, 'add', '.');
+    git(work, 'commit', '--quiet', '--allow-empty', '-m', message);
+    return git(work, 'rev-parse', 'HEAD');
+  };
+  mkdirSync(work);
+  git(work, 'init', '--initial-branch=main');
+  return { root, work, git, write, remove, commit };
+}
+
+// Paths inside the temporary fixture repositories, not files of this checkout.
+const guide = 'docs/guide.md'; // docs-boundary-ignore: fixture path
+const codeInDocs = 'docs/code.ts'; // docs-boundary-ignore: fixture path
+const agents = 'AGENTS.md'; // docs-boundary-ignore: fixture path
+const claude = 'CLAUDE.md'; // docs-boundary-ignore: fixture path
+const codex = 'CODEX.md'; // docs-boundary-ignore: fixture path
+const gemini = 'GEMINI.md'; // docs-boundary-ignore: fixture path
+const nestedAgents = 'sub/AGENTS.md';
+
+// Each case commits one change on top of base and runs a step against it.
+function seedAgentFixture(fixture) {
+  fixture.write('src/code.ts', 'base\n');
+  fixture.write(guide, 'guide\n');
+  fixture.write(agents, '# Agents\n');
+  fixture.write(claude, '# Claude\n');
+  fixture.write(nestedAgents, '# Nested agents\n');
+  const base = fixture.commit('base');
+  return (change) => {
+    fixture.git(fixture.work, 'checkout', '--quiet', '--detach', base);
+    change();
+    fixture.commit('change');
+    return base;
+  };
+}
+
+test('documentation is docs/ plus root agent instructions that still exist', (t) => {
+  const fixture = gitFixture(t, 'cats-ci-paths-');
+  const { git, work, write, remove } = fixture;
+  const change = seedAgentFixture(fixture);
+  const detect = (edit, { event = 'push', before } = {}) => {
+    const base = change(edit);
+    return runStep(step('paths').run, { cwd: work, env: { EVENT: event, BEFORE: before ?? base } });
+  };
+  const editAgents = () => write(agents, '# Edited\n');
+  assert.equal(detect(() => write(guide, 'edited\n')), 'code=false');
+  assert.equal(detect(editAgents), 'code=false', 'a root AGENTS.md-only edit is documentation');
+  assert.equal(detect(editAgents, { event: 'pull_request', before: '' }), 'code=false',
+    'a pull request compares against its base parent');
+  assert.equal(detect(() => { write(gemini, '# Gemini\n'); write(guide, 'edited\n'); }), 'code=false',
+    'adding a root agent file is documentation');
+  assert.equal(detect(() => remove(claude)), 'code=true', 'a deleted root CLAUDE.md is code');
+  assert.equal(detect(() => git(work, 'mv', agents, codex)), 'code=true', 'renaming a root agent file is code');
+  assert.equal(detect(() => git(work, 'mv', 'src/code.ts', codeInDocs)), 'code=true', 'moving code into docs/ is code');
+  assert.equal(detect(() => write(nestedAgents, '# Edited\n')), 'code=true', 'a nested sub/AGENTS.md is code');
+  assert.equal(detect(() => { editAgents(); write('src/code.ts', 'edited\n'); }), 'code=true');
+  assert.equal(detect(() => {}), 'code=true', 'an empty diff runs every check');
+  assert.equal(detect(editAgents, { before: '0'.repeat(40) }), 'code=true', 'an unknown base runs every check');
+  assert.equal(detect(editAgents, { event: 'workflow_dispatch' }), 'code=true', 'a manual run runs every check');
+});
+
+test('the fingerprint keeps root agent instructions by path and mode, not content', (t) => {
+  const fixture = gitFixture(t, 'cats-ci-fingerprint-');
+  const { work, write, remove } = fixture;
+  const change = seedAgentFixture(fixture);
+  const fingerprint = (edit) => {
+    change(edit);
+    return runStep(step('fingerprint').run, { cwd: work, env: {} });
+  };
+  const original = fingerprint(() => {});
+  assert.match(original, /^fingerprint=[0-9a-f]{64}$/);
+  assert.equal(fingerprint(() => write(agents, '# Edited\n')), original,
+    'an AGENTS.md content edit leaves the fingerprint unchanged');
+  assert.equal(fingerprint(() => { write(claude, '# Edited\n'); write(guide, 'edited\n'); }), original);
+  assert.notEqual(fingerprint(() => remove(claude)), original, 'removing a root agent file changes it');
+  assert.notEqual(fingerprint(() => write(gemini, '# Gemini\n')), original, 'adding a root agent file changes it');
+  assert.notEqual(fingerprint(() => write(nestedAgents, '# Edited\n')), original, 'a nested copy is code');
+  assert.notEqual(fingerprint(() => write('src/code.ts', 'edited\n')), original);
+  // The format changed with the agent-file placeholder, so markers saved under
+  // the v1 format can never be looked up for it.
+  const save = workflow.jobs.nodejs.steps.find((item) => item.name === 'Save the tested marker');
+  assert.equal(step('green').with.key, 'ci-green-v2-${{ steps.fingerprint.outputs.fingerprint }}');
+  assert.equal(save.with.key, 'ci-green-v2-${{ needs.changes.outputs.fingerprint }}');
+});
+
 test('the plan skips docs-only changes first, then code that already passed', () => {
   const decide = (code, green, merged) => runStep(step('plan').run, {
     cwd: process.cwd(), env: { CODE: code, GREEN: green, MERGED: merged },
@@ -45,27 +142,10 @@ test('a main push reuses its merged pull request\'s green run only for that exac
   const merged = step('merged');
   assert.equal(merged.if, "github.event_name == 'push' && steps.paths.outputs.code == 'true'");
   assert.deepEqual(workflow.jobs.changes.permissions, { contents: 'read', 'pull-requests': 'read', actions: 'read' });
-  const root = mkdtempSync(join(tmpdir(), 'cats-ci-merged-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const { root, work, git, write, commit } = gitFixture(t, 'cats-ci-merged-');
   const origin = join(root, 'origin.git');
-  const work = join(root, 'work');
   const bin = join(root, 'bin');
-  const git = (cwd, ...args) => execFileSync('git', [
-    '-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid',
-    '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', ...args,
-  ], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-  const write = (path, content) => {
-    mkdirSync(dirname(join(work, path)), { recursive: true });
-    writeFileSync(join(work, path), content);
-  };
-  const commit = (message) => {
-    git(work, 'add', '.');
-    git(work, 'commit', '-m', message);
-    return git(work, 'rev-parse', 'HEAD');
-  };
   git(root, 'init', '--bare', '--initial-branch=main', origin);
-  mkdirSync(work);
-  git(work, 'init', '--initial-branch=main');
   git(work, 'remote', 'add', 'origin', origin);
   write('src/code.ts', 'base\n');
   const base = commit('base');

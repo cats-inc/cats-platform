@@ -325,19 +325,27 @@ and startup integration; the renderer fixture above proves the width behavior.
 
 ### Docs-only changes in CI
 
-The CI workflow first checks whether every changed file is under `docs/`. If so,
-the required `nodejs (24)` job still runs, so branch protection sees a passing check
-with a stable name, but it skips install, typecheck and tests. `validate` runs as
-usual. Any other path, a manual run or a failed detection runs every step.
+The CI workflow first checks whether every changed file is documentation: a file
+under `docs/`, or one of the root agent instruction files (`AGENTS.md`, `CLAUDE.md`,
+`CODEX.md`, `GEMINI.md`) that still exists after the change. If so, the required
+`nodejs (24)` job still runs, so branch protection sees a passing check with a stable
+name, but it skips install, typecheck and tests. `validate` runs as usual. Deleting or
+renaming a root agent file counts as code, because `validate` and the skill sync
+scripts require the root `AGENTS.md`; nested copies such as `sub/AGENTS.md` are code
+too. Any other path, a manual run or a failed detection runs every step.
 
 The same job also skips code that already passed. `changes` fingerprints the mode, blob
 and path of every tracked file outside `docs/` (for a pull request, the merge result)
-and looks up the Actions cache key `ci-green-v1-<fingerprint>`, which a fully passing
-`nodejs (24)` run saves. When a pull request is rebased only because main gained
-documentation or release notes, its fingerprint is unchanged, so the rerun reuses the
-earlier green result instead of the full suite. Any change outside `docs/`, including
-the workflow, lockfile or `.nvmrc`, changes the fingerprint and runs everything. A
-missing or evicted cache entry, or a manual run, also runs everything.
+and looks up the Actions cache key `ci-green-v2-<fingerprint>`, which a fully passing
+`nodejs (24)` run saves. The root agent instruction files contribute their mode and
+path but a fixed placeholder instead of their blob, so editing one keeps the
+fingerprint while adding or removing one changes it. The `v2` prefix marks that format,
+so a marker saved under the earlier `v1` format is never matched. When a pull request
+is rebased only because main gained documentation or release notes, its fingerprint is
+unchanged, so the rerun reuses the earlier green result instead of the full suite. Any
+other change outside `docs/`, including the workflow, lockfile or `.nvmrc`, changes the
+fingerprint and runs everything. A missing or evicted cache entry, or a manual run,
+also runs everything.
 
 Pull-request caches stay within that pull request's scope, so the push to main after a
 merge cannot find one. Instead, `changes` reuses the merged pull request's own run when
@@ -353,16 +361,19 @@ Main requires up-to-date branches, so an ordinary squash merge meets these. Any 
 push, or a failed lookup, runs everything. The reuse trusts the pull request's run as
 much as branch protection already does. `npm-publish.yml` likewise skips its test gate
 when CI passed on the dispatched commit on main, and runs it otherwise.
-`tests/ci-workflow.test.js` runs both steps against a local origin with a stubbed `gh`.
+`tests/ci-workflow.test.js` runs both steps against a local origin with a stubbed `gh`,
+and runs the detection and fingerprint steps against local git fixtures.
 
 A pull request can also reuse a green run from main when its code outside `docs/` equals
 main's, which means that exact code already passed there. The skip trusts everyone who can
 push to the branch: such a person could save a marker for untested code. Pull requests from
 forks cannot write to the base branch's cache scope.
 
-Tests, scripts and tools must therefore not read repository documentation; keep
-executable inputs under `tests/fixtures/`. `tests/docs-boundary.test.js` enforces the
-rule. A line that names a docs path without reading it carries
+Tests, scripts and tools must therefore not read repository documentation or the root
+agent instruction files; keep executable inputs under `tests/fixtures/`.
+`tests/docs-boundary.test.js` enforces the rule. Checking that a root agent file exists
+is allowed, as the skill sync script does for `AGENTS.md`. Any other line that names a
+docs path or a root agent file without reading it carries
 `// docs-boundary-ignore: <reason>`.
 
 ## Running Tests

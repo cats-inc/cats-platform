@@ -8,15 +8,18 @@ on:
     branches: [main, master]
 
 jobs:
-  # A change confined to docs/ skips install, typecheck and tests. So does code
-  # that already passed: the fingerprint covers every tracked file outside docs/,
-  # so a rebase that only brings in docs from main reuses the earlier green run.
-  # A pull request's cache is scoped to that request, so a push to main instead
-  # reuses its merged pull request's run when that run tested the same tree.
-  # The required nodejs (24) job still runs and passes, so branch protection is
-  # satisfied; its matrix name stays stable because only steps are skipped. Any
-  # other path, a manual run or a failed detection runs every step.
-  # tests/docs-boundary.test.js keeps tests, scripts and tools from reading docs/.
+  # A change confined to documentation skips install, typecheck and tests:
+  # docs/, plus the root agent instructions (AGENTS.md, CLAUDE.md, CODEX.md and
+  # GEMINI.md) while they still exist. So does code that already passed: the
+  # fingerprint covers every tracked file outside docs/, and the root agent
+  # instructions by path and mode only, so a rebase that only brings in docs
+  # from main reuses the earlier green run. A pull request's cache is scoped to
+  # that request, so a push to main instead reuses its merged pull request's run
+  # when that run tested the same tree. The required nodejs (24) job still runs
+  # and passes, so branch protection is satisfied; its matrix name stays stable
+  # because only steps are skipped. Any other path, a manual run or a failed
+  # detection runs every step. tests/docs-boundary.test.js keeps tests, scripts
+  # and tools from reading docs/ or the root agent instructions.
   changes:
     runs-on: ubuntu-latest
     # Job permissions replace the defaults: checkout and the merge lookups read
@@ -48,9 +51,24 @@ jobs:
           esac
           code=true
           if [ -n "$base" ] && git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
-            changed=$(git diff --name-only "$base" HEAD)
+            # --no-renames lists both sides of a rename, so moving a file into
+            # docs/ or renaming an agent instruction file counts as code.
+            changed=$(git diff --name-only --no-renames "$base" HEAD)
             printf 'Changed files:\n%s\n' "$changed"
-            if [ -n "$changed" ] && ! grep -qv '^docs/' <<< "$changed"; then code=false; fi
+            if [ -n "$changed" ]; then
+              code=false
+              while IFS= read -r file; do
+                case "$file" in
+                  docs/*) ;;
+                  # A root agent instruction file counts as documentation only
+                  # while it still exists: validate and the skill sync scripts
+                  # require the root AGENTS.md. Nested copies are code.
+                  AGENTS.md | CLAUDE.md | CODEX.md | GEMINI.md)
+                    git cat-file -e "HEAD:$file" 2> /dev/null || code=true ;;
+                  *) code=true ;;
+                esac
+              done <<< "$changed"
+            fi
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
@@ -59,8 +77,14 @@ jobs:
         run: |
           set -euo pipefail
           # Mode, blob and path of every tracked file outside docs/. For a pull
-          # request this is the merge result that the tests would exercise.
-          fingerprint=$(git ls-tree -r --full-tree HEAD | awk -F '\t' '$2 !~ /^docs\//' | sha256sum | cut -d ' ' -f 1)
+          # request this is the merge result that the tests would exercise. The
+          # root agent instructions keep their mode and path but not their blob,
+          # so editing one keeps the fingerprint while adding or removing one
+          # changes it. This format began with the ci-green-v2- cache keys.
+          fingerprint=$(git ls-tree -r --full-tree HEAD | awk -F '\t' '
+            $2 ~ /^docs\// { next }
+            $2 ~ /^(AGENTS|CLAUDE|CODEX|GEMINI)\.md$/ { sub(/ [^ ]+$/, " agent-instructions", $1); print $1 "\t" $2; next }
+            { print }' | sha256sum | cut -d ' ' -f 1)
           echo "fingerprint=$fingerprint" | tee -a "$GITHUB_OUTPUT"
 
       - name: Look for an earlier green run of this exact code
@@ -69,7 +93,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .ci-green
-          key: ci-green-v1-${{ steps.fingerprint.outputs.fingerprint }}
+          key: ci-green-v2-${{ steps.fingerprint.outputs.fingerprint }}
           lookup-only: true
 
       - name: Reuse the merged pull request's green run
@@ -130,11 +154,11 @@ jobs:
     steps:
       - name: Documentation-only change
         if: needs.changes.outputs.skip == 'docs'
-        run: echo "Only docs/ changed; install, typecheck and tests are skipped."
+        run: echo "Only docs/ or the root agent instructions (AGENTS.md, CLAUDE.md, CODEX.md, GEMINI.md) changed; install, typecheck and tests are skipped."
 
       - name: Already tested
         if: needs.changes.outputs.skip == 'tested'
-        run: echo "This exact code outside docs/ already passed; install, typecheck and tests are skipped."
+        run: echo "This exact code outside docs/ and the root agent instructions already passed; install, typecheck and tests are skipped."
 
       - uses: actions/checkout@v4
         if: needs.changes.outputs.skip == ''
@@ -176,7 +200,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .ci-green
-          key: ci-green-v1-${{ needs.changes.outputs.fingerprint }}
+          key: ci-green-v2-${{ needs.changes.outputs.fingerprint }}
 
   desktop-state:
     if: github.event_name == 'workflow_dispatch'
