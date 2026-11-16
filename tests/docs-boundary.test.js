@@ -3,16 +3,24 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import test from 'node:test';
 
-// CI skips application checks when a change touches only docs/, so no test,
-// script or tool may read repository documentation. Keep executable inputs
-// under tests/fixtures/.
+// CI skips application checks when a change touches only docs/ or the root
+// agent instructions (AGENTS.md, CLAUDE.md, CODEX.md, GEMINI.md), so no test,
+// script or tool may read repository documentation or those files. Keep
+// executable inputs under tests/fixtures/.
 const repoRoot = process.cwd();
 const sourceFile = /\.(?:[cm]?js|[cm]?ts|tsx)$/;
 const testFile = /\.test\.(?:[cm]?js|[cm]?ts|tsx)$/;
 // A quoted path that starts at docs/, or a 'docs' segment passed to join/resolve.
 const docsPath = /['"`](?:\.{1,2}\/)*docs\/|['"`]docs['"`]\s*[,)]/;
-// A single line that names docs/ without reading it carries a trailing
-// `docs-boundary-ignore: <reason>` comment.
+// A quoted root agent instruction file. Nested copies such as sub/AGENTS.md
+// are ordinary files that CI tests.
+const agentFile = /['"`](?:\.{1,2}\/)*(?:AGENTS|CLAUDE|CODEX|GEMINI)\.md['"`]/;
+// Checking that a root agent file exists does not read it; the pinned skill
+// sync script requires the root AGENTS.md this way.
+const existenceCheck = /\b(?:exists|l?stat|access)(?:Sync)?\(/;
+const readsFile = /read/i;
+// A single line that names docs/ or a root agent file without reading it
+// carries a trailing `docs-boundary-ignore: <reason>` comment.
 const ignoreMarker = /docs-boundary-ignore: \S/;
 const skippedDirectories = new Set(['node_modules', 'build', 'dist', 'generated', '.expo']);
 
@@ -26,6 +34,22 @@ function listSources(directory) {
   });
 }
 
+function readsDocumentation(line) {
+  if (ignoreMarker.test(line)) return false;
+  if (docsPath.test(line)) return true;
+  return agentFile.test(line) && !(existenceCheck.test(line) && !readsFile.test(line));
+}
+
+test('the guard covers root agent instructions but allows existence checks', () => {
+  assert.ok(readsDocumentation("readFileSync('AGENTS.md', 'utf8');"));
+  assert.ok(readsDocumentation("await readFile(path.join(root, 'CLAUDE.md'));"));
+  assert.ok(readsDocumentation("readFileSync(`../GEMINI.md`);"));
+  assert.ok(readsDocumentation("if (existsSync('CODEX.md')) readFileSync('CODEX.md');"));
+  assert.ok(!readsDocumentation("if (!(await exists(path.join(root, 'AGENTS.md')))?.isFile()) throw error;"));
+  assert.ok(!readsDocumentation("readFileSync(join(root, 'sub/AGENTS.md'));"));
+  assert.ok(!readsDocumentation("seed(root, 'AGENTS.md'); // docs-boundary-ignore: temporary project"));
+});
+
 test('tests, scripts and tools stay independent of repository docs', () => {
   const candidates = [
     ...['tests', 'scripts', 'tools'].flatMap((root) => listSources(join(repoRoot, root))),
@@ -38,7 +62,8 @@ test('tests, scripts and tools stay independent of repository docs', () => {
     .filter((path) => path !== 'tests/docs-boundary.test.js')
     .flatMap((path) => readFileSync(join(repoRoot, path), 'utf8').split(/\r?\n/)
       .map((line, index) => ({ line, at: `${path}:${index + 1}` }))
-      .filter(({ line }) => docsPath.test(line) && !ignoreMarker.test(line))
+      .filter(({ line }) => readsDocumentation(line))
       .map(({ at, line }) => `${at}: ${line.trim()}`));
-  assert.deepEqual(violations, [], 'Move executable inputs under tests/fixtures/ instead of reading docs/.');
+  assert.deepEqual(violations, [],
+    'Move executable inputs under tests/fixtures/ instead of reading docs/ or the root agent instructions.');
 });
