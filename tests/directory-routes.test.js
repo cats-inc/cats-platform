@@ -10,6 +10,7 @@ import { createServer } from '../build/server/app/server/index.js';
 import { deriveDirectoryStatePath } from '../build/server/platform/directory/snapshot.js';
 import { archiveCat, createCat, unarchiveCat } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
 const NOW = new Date('2026-11-16T08:00:00.000Z');
 
@@ -220,4 +221,51 @@ test('an archived Cat is hidden from the Directory and the lobby but keeps its m
     directory = (await call('GET', '/api/platform/directory')).body.directory;
     assert.deepEqual(directory.clowders[0].members.map((member) => member.catId), [cats.mochi, cats.tiger, cats.tofu]);
   });
+});
+
+test('with an owner session, the Directory API needs the session cookie and CSRF token', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cats-directory-auth-'));
+  const authConfig = createTestAuthConfig();
+  const auth = await createAuthenticatedTestSession({
+    now: new Date(), sessionSecret: authConfig.sessionSecret, sessionTtlMs: authConfig.sessionTtlMs,
+  });
+  const chatStore = new MemoryChatStore();
+  const server = createServer({
+    shared: {
+      config: {
+        host: '127.0.0.1', port: 0, runtimeBaseUrl: 'http://127.0.0.1:3110', runtimeApiKey: '',
+        chatStatePath: path.join(dir, 'platform', 'state', 'chat-state.local.json'),
+        runtimeDataDir: path.join(dir, 'runtime-data'), auth: authConfig,
+      },
+      authStore: auth.authStore,
+      runtimeClient: {
+        async getHealth() { return { baseUrl: 'http://127.0.0.1:3110', reachable: false, status: 'unreachable', service: 'cats-runtime' }; },
+        async getProviderConfig() { return {}; },
+      },
+    },
+    chat: { chatStore },
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const json = { 'content-type': 'application/json', origin: 'http://127.0.0.1:8181' };
+  try {
+    const anonymous = await fetch(`${base}/api/platform/clowders`, { method: 'POST', headers: json, body: JSON.stringify({ name: 'Dev' }) });
+    assert.equal(anonymous.status, 401);
+    const noCsrf = await fetch(`${base}/api/platform/clowders`, {
+      method: 'POST', headers: { ...json, cookie: auth.cookie }, body: JSON.stringify({ name: 'Dev' }),
+    });
+    assert.equal(noCsrf.status, 403);
+    const owner = await fetch(`${base}/api/platform/clowders`, {
+      method: 'POST',
+      headers: { ...json, cookie: auth.cookie, 'x-cats-csrf-token': auth.csrfToken },
+      body: JSON.stringify({ name: 'Dev' }),
+    });
+    assert.equal(owner.status, 201);
+    assert.deepEqual((await owner.json()).directory.clowders.map((clowder) => clowder.name), ['Dev']);
+  } finally {
+    server.close();
+    await once(server, 'close');
+    await rm(dir, { recursive: true, force: true });
+  }
 });

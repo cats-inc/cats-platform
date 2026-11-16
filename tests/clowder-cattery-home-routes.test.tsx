@@ -199,7 +199,7 @@ test('CatteryHome renders Members tab by default and exposes all four tab links'
   assert.match(markup, /href="\/entities\/catteries\/acme\/clowders"/u);
   assert.match(markup, /href="\/entities\/catteries\/acme\/cats"/u);
   assert.match(markup, /href="\/entities\/catteries\/acme\/settings"/u);
-  assert.match(markup, /No members yet/u);
+  assert.match(markup, /Manage this Cattery’s direct members in Settings\./u);
 });
 
 test('CatteryHome /entities/catteries/:id/clowders renders the Clowders tab empty state', () => {
@@ -216,7 +216,7 @@ test('CatteryHome /entities/catteries/:id/clowders renders the Clowders tab empt
   );
 
   assert.match(markup, /aria-current="page"[^>]*>Clowders</u);
-  assert.match(markup, /No clowders in this Cattery yet/u);
+  assert.match(markup, /See this Cattery’s Clowders in the org chart in Settings\./u);
 });
 
 test('CatteryHome /entities/catteries/:id/cats renders the aggregate-Cats tab empty state', () => {
@@ -233,7 +233,7 @@ test('CatteryHome /entities/catteries/:id/cats renders the aggregate-Cats tab em
   );
 
   assert.match(markup, /aria-current="page"[^>]*>Cats</u);
-  assert.match(markup, /aggregate \(direct members \+ via formal Clowders\)/u);
+  assert.match(markup, /See every cat in this Cattery in the org chart in Settings\./u);
 });
 
 test('CatteryHome shows the not-found pane when the id is not in the registry', () => {

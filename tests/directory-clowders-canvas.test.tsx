@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ClowdersCanvasPage } from '../src/app/renderer/entities/ClowdersCanvas.tsx';
+import { MembershipStatusChip } from '../src/app/renderer/entities/directoryParts.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import type {
   PlatformDirectoryView,
@@ -181,4 +182,32 @@ test('an unreadable directory file is reported with a retry, not shown as empty'
   await waitFor(() => view.getByText('The Clowder and Cattery file could not be read. It was left unchanged.'));
   assert.ok(view.getByRole('button', { name: 'Try again' }));
   assert.equal(view.queryByRole('navigation', { name: 'Choose a Clowder' }), null);
+});
+
+test('typing an end date saves nothing until the field is left, then saves the whole date once', async (t) => {
+  const api = installFakeApi(t);
+  const view = renderCanvas(t, '/entities/clowders/dev/settings');
+  fireEvent.click(await waitFor(() => view.getByRole('button', { name: 'More actions for Tiger' })));
+  const field = view.getByLabelText('End date') as HTMLInputElement;
+  assert.equal(field.value, '2026-12-31');
+  fireEvent.change(field, { target: { value: '2027-01-15' } });
+  assert.deepEqual(api.writes(), []);
+  assert.equal(field.disabled, false);
+  fireEvent.blur(field);
+  await waitFor(() => assert.equal(api.writes().length, 1));
+  assert.deepEqual(api.writes(), [
+    { method: 'PATCH', url: '/api/platform/clowders/dev/members/tiger', body: { expiresAt: '2027-01-15' } },
+  ]);
+});
+
+test('a temporary member is still in on their end date and ends the day after', (t) => {
+  resetTestDom();
+  t.after(() => { cleanup(); resetTestDom(); });
+  const chip = (now: string) => render(
+    <I18nProvider locale="en">
+      <MembershipStatusChip status="temp" expiresAt="2026-12-31T00:00:00.000Z" now={new Date(now)} />
+    </I18nProvider>,
+  ).container.textContent;
+  assert.equal(chip('2026-12-31T20:00:00.000Z'), 'Temporary until 12/31/2026');
+  assert.equal(chip('2027-01-01T00:00:00.000Z'), 'Temporary, ended 12/31/2026');
 });
