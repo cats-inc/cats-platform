@@ -1,5 +1,14 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-154: Deliver optional native dependencies as host-managed feature packs](154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md)
+  — proposed, 2026-11-16; documentation only. Native files that only host code runs (a speech
+  helper and model, possibly FFmpeg later) are neither Plugins nor setup prerequisites: a product
+  pins them by SHA-256 and either downloads them on first use with consent or bundles them. The
+  mechanism targets `@cats-inc/platform-host`, a producer repository builds them, and each
+  product selects them. Linux dictation is the pilot, reusing SPEC-087's helper without
+  ADR-085's submodule; on-demand delivery would reverse ADR-085's ready-to-use preference. ngrok
+  stays in the host ingress. The name, producer, hosting, model, reset and pilot delivery are
+  D1–D6.
 - [ADR-153: Port Kimi Code into packaged setup and the provider catalog](153-port-kimi-code-into-packaged-setup-and-the-provider-catalog.md)
   — accepted, 2026-11-16. Native Kimi Code helpers on Windows, macOS and Linux that count
   only `~/.kimi-code/bin`, never wait on the installer's prompt, upgrade only when behind,
