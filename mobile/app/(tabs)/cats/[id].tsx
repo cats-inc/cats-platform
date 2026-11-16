@@ -1,20 +1,14 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 
-import { MobileEntityDetail } from '../../../src/renderer/screens/MobileEntityDetail';
-import {
-  getMobileCatsTabCopy,
-  resolveDefaultMobileLocale,
-} from '../../../../src/mobile/index.js';
+import { MobileCatDetail } from '../../../src/renderer/screens/MobileCatDetail';
 
+/** A Cat's screen; it titles itself with the Cat's name once loaded. */
 export default function MobileCatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const copy = getMobileCatsTabCopy(resolveDefaultMobileLocale());
-  const resolvedId = typeof id === 'string' && id.length > 0 ? id : 'unknown-cat';
-
   return (
     <>
-      <Stack.Screen options={{ title: copy.entityDetailTitleCat, headerShown: true }} />
-      <MobileEntityDetail kind="cat" id={resolvedId} />
+      <Stack.Screen options={{ title: '', headerShown: true }} />
+      <MobileCatDetail catId={typeof id === 'string' ? id : ''} />
     </>
   );
 }

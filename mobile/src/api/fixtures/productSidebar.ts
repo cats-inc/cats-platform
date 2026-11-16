@@ -171,27 +171,12 @@ export function resolveMobileDraftApiEntryKind(
 
 type MobileCreateChannelInputEntryKind = 'default' | 'group' | 'direct';
 
-export function getMobileNewEntityDesktopOnlyAlertCopy(
-  sectionKey: MobileCatsDirectorySectionKey,
-  copy: MobileCatsTabCopy,
-): MobileDesktopOnlyAlertCopy | null {
-  if (sectionKey === 'cats') {
-    return {
-      title: copy.newCatDesktopOnlyTitle,
-      body: copy.newCatDesktopOnlyBody,
-    };
-  }
-  // Clowders and Catteries are created on the phone (SPEC-103 §Mobile).
-  return null;
-}
-
 export default {
   chatSidebarConfig,
   codeSidebarConfig,
   getChatSidebarConfig,
   getCodeSidebarConfig,
   getMobileDesktopOnlyAlertCopy,
-  getMobileNewEntityDesktopOnlyAlertCopy,
   getWorkSidebarConfig,
   resolveMobileDraftApiEntryKind,
   workSidebarConfig,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
+import { isMembershipEnded } from '../../../shared/directoryMembership.js';
 import { messageKeys, type MessageLocale } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
@@ -11,8 +12,6 @@ import { useI18n } from '../i18n/index.js';
 import type { DirectoryRequestError, useDirectory } from './directoryApi.js';
 
 type Translate = ReturnType<typeof useI18n>['t'];
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** What a Directory canvas hands its parts: run a change, report it, report a failure. */
 export interface DirectoryCanvasActions {
@@ -110,8 +109,8 @@ export function describeMembershipStatus(
   expiresAt: string | null | undefined,
   now: Date,
 ): { label: string; ended: boolean } {
-  // The end date is a whole day: a Cat temporary until 12/31 is still a member on 12/31.
-  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) + DAY_MS <= now.getTime() : false;
+  // The end date is a whole day; the rule is shared with mobile.
+  const ended = isMembershipEnded(status, expiresAt, now);
   const label = status === 'temp' && expiresAt
     ? t(ended ? messageKeys.directoryStatusTempEnded : messageKeys.directoryStatusTempUntil, {
         date: formatDirectoryDate(expiresAt, locale),

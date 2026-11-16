@@ -41,6 +41,14 @@ export interface MobileChatCat {
   avatarUrl: string | null;
   status: 'active' | 'archived';
   products: string[];
+  /** Who runs the Cat: provider, its instance and model. Older servers omit it. */
+  defaultExecutionTarget?: MobileExecutionTarget;
+}
+
+export interface MobileExecutionTarget {
+  provider: string;
+  instance: string | null;
+  model: string | null;
 }
 
 export type MobileChatChannelStatus =
@@ -88,6 +96,10 @@ export interface MobileChatChannelSummary {
 export interface MobileChatShellState {
   channels: MobileChatChannelSummary[];
   cats: MobileChatCat[];
+  /** `maxCats` caps the active Cats; older servers omit it. */
+  capabilities?: { maxCats: number };
+  /** Bot bindings; archiving a Cat removes its own. Older servers omit them. */
+  botBindings?: Array<{ catId: string | null; platform: string }>;
 }
 
 /**
@@ -105,6 +117,13 @@ export interface MobileDirectoryGroupSummary {
 export interface MobileLobbyDirectory {
   clowders?: MobileDirectoryGroupSummary[];
   catteries?: MobileDirectoryGroupSummary[];
+  /** Each Cat's model in words, such as "Claude-CLI · Opus 5.5 · medium". */
+  cats?: MobileLobbyCatSummary[];
+}
+
+export interface MobileLobbyCatSummary {
+  id: string;
+  executionLabel: string | null;
 }
 
 export interface MobileAppShellPayload {
@@ -279,4 +298,64 @@ export interface MobileChatEvent {
  */
 export interface MobileRoomUpdatedDetail {
   mutation: 'created' | 'updated' | 'message_added';
+}
+
+/**
+ * The providers Cats can run on, from `GET /api/providers`: a subset of
+ * `ProductProviderRegistryReadModel`. When Runtime is unreachable or has
+ * no usable target, `state` says so and the list is empty.
+ */
+export interface MobileProviderRegistry {
+  state: 'ready' | 'no_usable_targets' | 'runtime_unreachable';
+  providers: MobileProviderDescriptor[];
+}
+
+export interface MobileProviderDescriptor {
+  id: string;
+  label: string;
+  defaultModel: string | null;
+  defaultInstance: string | null;
+}
+
+/** A provider's models, from `GET /api/providers/:id/models`; a subset of `ProviderModelCatalog`. */
+export interface MobileProviderModelCatalog {
+  catalogRevision?: string;
+  provider: string;
+  instance: string | null;
+  defaultModel: string | null;
+  models: Array<{ id: string; label: string; default?: boolean }>;
+}
+
+/** `GET /api/providers/:id/models` wraps the catalog. */
+export interface MobileProviderModelsResponse {
+  catalog: MobileProviderModelCatalog;
+}
+
+/** A plain model pick, as Desktop records one: the entry, chosen explicitly. */
+export interface MobileModelSelection {
+  entryId: string;
+  entryMode: 'explicit';
+  catalogRevision?: string;
+}
+
+/** `POST /api/cats`: the fields the phone sets; Desktop sets the rest. */
+export interface MobileCreateCatInput {
+  name: string;
+  provider: string;
+  instance?: string;
+  model?: string;
+  modelSelection?: MobileModelSelection | null;
+  group?: 'admin' | 'standard';
+}
+
+/** `PATCH /api/cats/:id`: the changes the phone makes. */
+export interface MobileUpdateCatInput {
+  name?: string;
+  group?: 'admin' | 'standard';
+  archive?: boolean;
+  unarchive?: boolean;
+  provider?: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: MobileModelSelection | null;
 }

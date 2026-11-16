@@ -164,6 +164,10 @@ const ALLOWED_CONSUMER_PROJECT_DIRS = [
   // SPEC-103 membership rules (inclusive end date, a Cattery only by
   // direct membership) that Desktop and mobile both read. No imports.
   'src/shared/directoryMembership.ts',
+  // Maps the Cat API's English errors (duplicate name, Cat limit, …) to
+  // the catalog's words, so mobile says what Desktop Settings says.
+  // Imports only `src/shared/i18n`.
+  'src/products/shared/renderer/hooks/settingsCatsRegistryErrorLabels.ts',
 ];
 
 const IMPORT_REGEX =
