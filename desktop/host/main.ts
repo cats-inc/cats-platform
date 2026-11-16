@@ -1069,7 +1069,8 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     updates: updateState,
   });
   const granted = standingGrants.holders.length > 0 || standingGrantsStopFailed
-    ? { standingGrantsStop: { label: standingGrantsNoticeText(standingGrants, { hotkey: standingGrantsHotkey }, app.getLocale()).trayStop } } : {};
+    ? { standingGrantsStop: { label: standingGrantsNoticeText(standingGrants,
+      { hotkey: standingGrantsHotkey, stopFailed: standingGrantsStopFailed }, app.getLocale()).trayStop } } : {};
   if (!desktopControlHolding.length) return { ...state, ...granted };
   const text = desktopControlNoticeText(desktopControlHolding, app.getLocale());
   return { ...state, ...granted, desktopControlStop: { label: text.trayStop }, tooltip: text.tooltip };
@@ -2814,6 +2815,8 @@ async function main(): Promise<void> {
         globalShortcut.unregister(STANDING_GRANTS_STOP_ACCELERATOR);
         standingGrantsHotkey = false;
       }
+      // While quitting, nothing reopens the notice; the process is ending.
+      if (shuttingDown) { notice.update({ holders: [], unconfirmed: false }, { hotkey: false }); return; }
       notice.update(standingGrants, { hotkey: standingGrantsHotkey, stopFailed: standingGrantsStopFailed });
       if (latestSnapshot && !shuttingDown) trayController?.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
     };
@@ -2822,6 +2825,7 @@ async function main(): Promise<void> {
       runtimeKey: process.env.CATS_RUNTIME_API_KEY || undefined,
       platformBaseUrl: hostConfig.appBaseUrl,
       desktopKey: desktopAuthKey,
+      onUnreadable: () => hostLogger?.record('standing-grants-unreadable'),
       onChange: (state) => {
         standingGrants = state;
         // Runtime confirmed none are left: a failed Stop no longer needs saying.

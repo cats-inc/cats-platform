@@ -323,7 +323,7 @@ PLAN-124 records the candidate source identity and evidence scope.
   - the global hotkey `CommandOrControl+Alt+Shift+D`, registered only while grants exist. When registration fails, the notice and tray omit the chord.
 - A failed read keeps the known grants and marks them unconfirmed. It never clears them.
 - Stop revokes every held session's grants in Runtime and cancels their turns at the same time.
-  - Cancelling goes through `POST /api/internal/provider-grants/host-cancel`, which is key-authenticated, loopback-only and refused on ingress. It requests chat cancellation for every conversation holding those sessions and cancels the sessions.
+  - Cancelling goes through `POST /api/internal/provider-grants/host-cancel`, which is key-authenticated, loopback-only and refused on ingress. It requests chat cancellation for every conversation holding those sessions and cancels every given session, orphans included. The notice and tray name the chord as the owner presses it: Cmd+Option+Shift+D on macOS, Ctrl+Alt+Shift+D elsewhere.
   - If Platform does not answer, the host cancels the sessions in Runtime, and those turns show as failed rather than stopped.
   - Stop is confirmed only by Runtime: an empty list or a 404. Otherwise the notice and tray stay, saying Stop was not confirmed.
 

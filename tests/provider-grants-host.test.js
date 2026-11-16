@@ -36,11 +36,11 @@ test('host cancel needs the host key, cancels only conversations holding the ses
   assert.equal((await post({ sessionIds: ['session-1'] }, {})).status, 403);
   assert.equal((await post({ sessionIds: ['session-1'] }, { 'x-cats-desktop-auth-key': 'x'.repeat(40) })).status, 403);
   assert.equal((await post({ sessionIds: 'session-1' })).status, 400);
-  const answer = await post({ sessionIds: ['session-1'] });
+  const answer = await post({ sessionIds: ['session-1', 'orphan'] });
   assert.equal(answer.status, 200);
   const body = await answer.json();
   assert.deepEqual(body.channels, ['granted']);
-  assert.deepEqual(cancelled, ['session-1']);
+  assert.deepEqual(cancelled.sort(), ['orphan', 'session-1'], 'an orphan session is cancelled too');
   assert.ok(channelDispatchCancellationRegistry.read('granted'), 'the turn ends as stopped');
   assert.equal(channelDispatchCancellationRegistry.read('other') ?? null, null);
   channelDispatchCancellationRegistry.consume('granted');

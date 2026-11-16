@@ -23,7 +23,7 @@ function fakeFetch(route) {
     const parsed = new URL(url);
     const entry = { origin: parsed.origin, path: parsed.pathname, method: init.method, headers: init.headers, body: init.body };
     requests.push(entry);
-    const next = route(entry);
+    const next = await route(entry);
     if (next instanceof Error) throw next;
     return { ok: next.status >= 200 && next.status < 300, status: next.status, json: async () => next.body };
   };
@@ -90,7 +90,9 @@ test('Stop falls back to Runtime cancel without Platform, counts 404 as confirme
 
 test('the notice says what is allowed, never takes focus, sits above desktop control and only Stops', () => {
   const state = { holders: [{ sessionId: 's', categories: ['computer_use'] }], unconfirmed: false };
-  assert.match(standingGrantsNoticeText(state, { hotkey: true }, 'en-US').stop, /Ctrl\+Alt\+Shift\+D/u);
+  assert.match(standingGrantsNoticeText(state, { hotkey: true, platform: 'win32' }, 'en-US').stop, /Ctrl\+Alt\+Shift\+D/u);
+  assert.match(standingGrantsNoticeText(state, { hotkey: true, platform: 'darwin' }, 'en-US').stop, /Cmd\+Option\+Shift\+D/u, 'what macOS owners press');
+  assert.match(standingGrantsNoticeText(state, { hotkey: true, stopFailed: true, platform: 'win32' }, 'en-US').trayStop, /not confirmed/u);
   assert.doesNotMatch(standingGrantsNoticeText(state, { hotkey: false }, 'en-US').stop, /Ctrl/u, 'no chord it does not hold');
   assert.match(standingGrantsNoticeText({ ...state, unconfirmed: true }, { hotkey: true }, 'zh-TW').message, /無法確認/u);
   assert.match(standingGrantsNoticeText(state, { hotkey: true, stopFailed: true }, 'en-US').message, /not confirmed/u);
@@ -127,4 +129,32 @@ test('the notice says what is allowed, never takes focus, sits above desktop con
   assert.equal(window.visible, true, 'a failed Stop stays in view');
   notice.update({ holders: [], unconfirmed: false }, { hotkey: false });
   assert.equal(window.visible, false);
+});
+
+test('a read failure followed by an empty list clears the unconfirmed state; Stop starts the cancel before revokes finish', async () => {
+  let mode = 'granted';
+  const { w, changes } = watcher((r) => mode === 'down' ? new Error('restarting')
+    : r.path === '/interactions/grants' ? { status: 200, body: mode === 'granted' ? GRANTED : { version: 1, sessions: [] } } : { status: 404 });
+  await w.poll();
+  mode = 'down'; await w.poll();
+  assert.equal(changes.at(-1).unconfirmed, true);
+  mode = 'gone'; await w.poll();
+  assert.deepEqual(changes.at(-1), { holders: [], unconfirmed: false }, 'Runtime restarted without grants');
+
+  const order = [];
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let held = true;
+  const second = watcher(async (r) => {
+    if (r.path === '/interactions/grants') return { status: 200, body: held ? GRANTED : { version: 1, sessions: [] } };
+    if (r.method === 'DELETE') { order.push('revoke-start'); await gate; held = false; order.push('revoke-end'); return { status: 200, body: {} }; }
+    if (r.path === '/api/internal/provider-grants/host-cancel') { order.push('cancel'); return { status: 200, body: {} }; }
+    return { status: 500 };
+  });
+  await second.w.poll();
+  const stopping = second.w.stop();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual(order, ['revoke-start', 'cancel'], 'the cancel does not wait for the revoke');
+  release();
+  assert.equal(await stopping, true);
 });

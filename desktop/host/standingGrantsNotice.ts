@@ -16,7 +16,10 @@ export interface StandingGrantHolder { sessionId: string; categories: string[] }
 export interface StandingGrantsState { holders: StandingGrantHolder[]; unconfirmed: boolean }
 
 export const STANDING_GRANTS_STOP_ACCELERATOR = 'CommandOrControl+Alt+Shift+D';
-export const STANDING_GRANTS_STOP_LABEL = 'Ctrl+Alt+Shift+D';
+/** What the owner presses: Command and Option on macOS, Ctrl and Alt elsewhere. */
+export function standingGrantsStopLabel(platform: string = process.platform): string {
+  return platform === 'darwin' ? 'Cmd+Option+Shift+D' : 'Ctrl+Alt+Shift+D';
+}
 const RUNTIME_GRANTS_PATH = '/interactions/grants';
 const PLATFORM_CANCEL_PATH = '/api/internal/provider-grants/host-cancel';
 const AUTH_HEADER = 'x-cats-desktop-auth-key';
@@ -48,6 +51,8 @@ export function createStandingGrantsWatcher(options: {
   platformBaseUrl: string;
   desktopKey: string;
   onChange(state: StandingGrantsState): void;
+  /** Called once when Runtime's grants cannot be read and none are known, so the absence is logged. */
+  onUnreadable?(): void;
   intervalMs?: number;
   fetch?: typeof fetch;
 }) {
@@ -55,7 +60,8 @@ export function createStandingGrantsWatcher(options: {
   let state: StandingGrantsState = { holders: [], unconfirmed: false };
   let last = JSON.stringify(state);
   let timer: NodeJS.Timeout | null = null;
-  let polling = false;
+  let polling: Promise<void> | null = null;
+  let reportedUnreadable = false;
 
   const publish = (next: StandingGrantsState) => {
     const serialized = JSON.stringify(next);
@@ -69,19 +75,25 @@ export function createStandingGrantsWatcher(options: {
     headers: options.runtimeKey ? { authorization: `Bearer ${options.runtimeKey}` } : {},
   });
 
-  async function poll(): Promise<void> {
-    if (polling) return;
-    polling = true;
-    try {
-      const response = await runtime(RUNTIME_GRANTS_PATH, 'GET');
-      if (!response.ok) throw new Error(`Runtime grants answered ${response.status}`);
-      publish({ holders: parseHolders(await response.json()), unconfirmed: false });
-    } catch {
-      // Unknown is not "none": keep what was shown, and say it is unconfirmed.
-      publish({ holders: state.holders, unconfirmed: state.holders.length > 0 });
-    } finally {
-      polling = false;
-    }
+  /** One read at a time; a caller that needs a read started after now uses `freshPoll`. */
+  function poll(): Promise<void> {
+    polling ??= (async () => {
+      try {
+        const response = await runtime(RUNTIME_GRANTS_PATH, 'GET');
+        if (!response.ok) throw new Error(`Runtime grants answered ${response.status}`);
+        publish({ holders: parseHolders(await response.json()), unconfirmed: false });
+        reportedUnreadable = false;
+      } catch {
+        // Unknown is not "none": keep what was shown, and say it is unconfirmed.
+        publish({ holders: state.holders, unconfirmed: state.holders.length > 0 });
+        if (!state.holders.length && !reportedUnreadable) { reportedUnreadable = true; options.onUnreadable?.(); }
+      }
+    })().finally(() => { polling = null; });
+    return polling;
+  }
+  async function freshPoll(): Promise<void> {
+    await polling?.catch(() => undefined);
+    await poll();
   }
 
   /**
@@ -91,7 +103,7 @@ export function createStandingGrantsWatcher(options: {
    */
   async function stop(): Promise<boolean> {
     const sessionIds = state.holders.map((holder) => holder.sessionId);
-    if (!sessionIds.length) { await poll(); return !state.unconfirmed; }
+    if (!sessionIds.length) { await freshPoll(); return !state.unconfirmed; }
     const revoke = Promise.all(sessionIds.map(async (id) => {
       try {
         const response = await runtime(`/sessions/${encodeURIComponent(id)}/interactions/grants`, 'DELETE');
@@ -114,12 +126,15 @@ export function createStandingGrantsWatcher(options: {
       }
     })();
     const [confirmed] = await Promise.all([revoke, cancel]);
-    await poll();
-    return confirmed.every(Boolean) && !state.unconfirmed;
+    await freshPoll();
+    // Confirmed by Runtime: every revoke answered, and a read after them lists none of the stopped sessions.
+    return confirmed.every(Boolean) && !state.unconfirmed
+      && !state.holders.some((holder) => sessionIds.includes(holder.sessionId));
   }
 
   return {
     poll,
+    freshPoll,
     stop,
     current: () => state,
     start() {
@@ -137,11 +152,11 @@ export function createStandingGrantsWatcher(options: {
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/gu, (char) => `&#${char.charCodeAt(0)};`);
 
-export function standingGrantsNoticeText(state: StandingGrantsState, options: { hotkey: boolean; stopFailed?: boolean },
+export function standingGrantsNoticeText(state: StandingGrantsState, options: { hotkey: boolean; stopFailed?: boolean; platform?: string },
   localeInput?: string | null) {
   const locale: DesktopTrayLocale = normalizeDesktopTrayLocale(localeInput);
   const zh = locale === 'zh-TW';
-  const hotkey = options.hotkey ? STANDING_GRANTS_STOP_LABEL : null;
+  const hotkey = options.hotkey ? standingGrantsStopLabel(options.platform) : null;
   const message = options.stopFailed
     ? (zh ? '停止沒有得到確認，授權可能仍然有效' : 'Stop was not confirmed; grants may still be in force')
     : state.unconfirmed
@@ -150,7 +165,9 @@ export function standingGrantsNoticeText(state: StandingGrantsState, options: { 
   return {
     message,
     stop: hotkey ? (zh ? `停止（${hotkey}）` : `Stop (${hotkey})`) : (zh ? '停止' : 'Stop'),
-    trayStop: zh ? `停止免詢問的動作${hotkey ? `（${hotkey}）` : ''}` : `Stop actions allowed without asking${hotkey ? ` (${hotkey})` : ''}`,
+    trayStop: options.stopFailed
+      ? (zh ? `停止沒有得到確認，再停止一次${hotkey ? `（${hotkey}）` : ''}` : `Stop not confirmed — stop again${hotkey ? ` (${hotkey})` : ''}`)
+      : zh ? `停止免詢問的動作${hotkey ? `（${hotkey}）` : ''}` : `Stop actions allowed without asking${hotkey ? ` (${hotkey})` : ''}`,
     tooltip: zh ? 'Cats — 有免詢問的動作' : 'Cats — actions allowed without asking',
   };
 }

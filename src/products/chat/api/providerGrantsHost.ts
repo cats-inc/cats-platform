@@ -7,7 +7,8 @@ import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../state/runtime-dispatch/cancellation.js';
-import type { ChatState } from './contracts.js';
+import type { ChatStore } from '../state/store.js';
+import { readConversationCatalog } from './scopedConversationState.js';
 
 /**
  * ADR-155: the Desktop host's Stop for standing grants. The host revokes grants in Runtime itself; this
@@ -18,7 +19,7 @@ export const PROVIDER_GRANTS_HOST_CANCEL_PATH = '/api/internal/provider-grants/h
 const MAX_SESSIONS = 64;
 
 export async function routeProviderGrantsHost(request: IncomingMessage, response: ServerResponse,
-  dependencies: { chatStore: { read(): Promise<ChatState> }; runtimeClient: Pick<RuntimeClient, 'cancelSession'>; now?: () => Date },
+  dependencies: { chatStore: ChatStore; runtimeClient: Pick<RuntimeClient, 'cancelSession'>; now?: () => Date },
   expected: string | undefined): Promise<boolean> {
   if (new URL(request.url ?? '/', 'http://localhost').pathname !== PROVIDER_GRANTS_HOST_CANCEL_PATH) return false;
   const headers = { 'cache-control': 'no-store' };
@@ -38,7 +39,8 @@ export async function routeProviderGrantsHost(request: IncomingMessage, response
     sessionIds = body.sessionIds as string[];
   } catch { sendJson(response, 400, { error: 'invalid_provider_grants_request' }, headers); return true; }
   const wanted = new Set(sessionIds);
-  const state = await dependencies.chatStore.read();
+  // Headers only: leases and the active turn, never every message of every conversation.
+  const state = await readConversationCatalog(dependencies.chatStore);
   const nowIso = (dependencies.now?.() ?? new Date()).toISOString();
   const channels: string[] = [];
   const sessions = new Set<string>();
@@ -51,6 +53,9 @@ export async function routeProviderGrantsHost(request: IncomingMessage, response
       channelDispatchCancellationRegistry.request(channel.id, nowIso, DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE);
     }
   }
+  // Every given session is cancelled, also one no conversation holds any more (an orphan); cancelling
+  // a session with nothing running is harmless.
+  for (const id of wanted) sessions.add(id);
   await Promise.allSettled([...sessions].map((id) => dependencies.runtimeClient.cancelSession(id)));
   sendJson(response, 200, { channels, sessions: sessions.size }, headers);
   return true;
