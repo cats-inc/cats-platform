@@ -54,15 +54,6 @@ function CatteryEmptyTab({ tab }: { tab: Exclude<CatteryTab, 'settings'> }) {
   );
 }
 
-function CatterySettingsTab() {
-  const { t } = useI18n();
-  return (
-    <div className="entityDetailLensStub">
-      <p>{t(messageKeys.catteryHomeSettingsBody)}</p>
-    </div>
-  );
-}
-
 function CatteryNotFound({ catteryId }: { catteryId: string }) {
   const { t } = useI18n();
   // No back button here — EntitiesShell's sidebar already carries a
@@ -104,7 +95,8 @@ export function CatteryHome({ envelope }: { envelope: PlatformHostEnvelope }) {
       title={cattery.name}
       tabs={tabs}
     >
-      {activeTab === 'settings' ? <CatterySettingsTab /> : <CatteryEmptyTab tab={activeTab} />}
+      {/* The Settings tab is the Cattery canvas, which App routes ahead of this page. */}
+      <CatteryEmptyTab tab={activeTab === 'settings' ? 'members' : activeTab} />
     </EntityDetailPane>
   );
 }

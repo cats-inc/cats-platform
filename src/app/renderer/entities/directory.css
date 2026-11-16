@@ -594,3 +594,171 @@
 .directoryLoadError p {
   margin: 0;
 }
+
+/* ── Cattery canvas ── */
+
+.directoryCatteryBody {
+  display: grid;
+  gap: 16px;
+}
+
+.directoryChip--domain {
+  background: var(--muted-bg);
+  color: var(--muted-text);
+}
+
+.directoryMemberGrid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+/* The org chart: a lane for members in no Clowder, then one column per Clowder. */
+.directoryBoard {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.directoryBoardColumn {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 160px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--directory-clowder-bg) 60%, var(--border) 40%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 70%, var(--directory-clowder-bg) 30%);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.directoryBoardLane {
+  border-style: dashed;
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--panel) 60%, var(--sidebar-bg) 40%);
+}
+
+.directoryBoardColumn[data-drop='accepting'] {
+  border: 2px dashed var(--accent);
+  padding: 9px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent) 12%);
+}
+
+.directoryBoardColumn[data-drop='refused'] {
+  border-style: dashed;
+}
+
+.directoryBoardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 2px 4px;
+}
+
+.directoryBoardTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directoryBoardTitleLink {
+  text-decoration: none;
+}
+
+.directoryBoardTitleLink:hover {
+  text-decoration: underline;
+}
+
+.directoryBoardCard {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  cursor: grab;
+}
+
+.directoryBoardCard:active {
+  cursor: grabbing;
+}
+
+.directoryBoardCard[data-dragging='true'] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.directoryBoardCardName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directoryBoardLead {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.directoryBoardCard .directoryStatusChip {
+  padding: 1px 7px;
+  font-size: 0.7rem;
+}
+
+.directoryMoreButtonSmall {
+  width: 26px;
+  height: 26px;
+}
+
+.directoryBoardSlot {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.directoryBoardSlotRefused {
+  border-color: var(--border);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.directoryBoardAdd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 160px;
+  padding: 10px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, var(--border) 45%);
+  border-radius: 14px;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+}
+
+.directoryBoardAdd:hover {
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent) 12%);
+}

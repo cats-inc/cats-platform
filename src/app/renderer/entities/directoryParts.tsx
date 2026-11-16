@@ -1,15 +1,38 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import { messageKeys, type MessageLocale } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
   MembershipStatus,
+  PlatformDirectoryView,
   PlatformLobbyCatSummary,
 } from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
-import type { DirectoryRequestError } from './directoryApi.js';
+import type { DirectoryRequestError, useDirectory } from './directoryApi.js';
 
 type Translate = ReturnType<typeof useI18n>['t'];
+
+/** What a Directory canvas hands its parts: run a change, report it, report a failure. */
+export interface DirectoryCanvasActions {
+  run: ReturnType<typeof useDirectory>['run'];
+  toast: (message: string) => void;
+  fail: (error: DirectoryRequestError) => void;
+  pending: boolean;
+}
+
+/** Clowders under each Cattery in creation order, then the ones without a Cattery. */
+export function groupClowders(directory: PlatformDirectoryView, crossUnitLabel: string) {
+  const groups = directory.catteries
+    .map((cattery) => ({
+      key: cattery.id,
+      label: cattery.name,
+      clowders: directory.clowders.filter((clowder) => clowder.parentCatteryId === cattery.id),
+    }))
+    .filter((group) => group.clowders.length > 0);
+  const loose = directory.clowders.filter((clowder) => clowder.parentCatteryId === null);
+  if (loose.length > 0) groups.push({ key: 'none', label: crossUnitLabel, clowders: loose });
+  return groups;
+}
 
 export function useCatLookup(cats: readonly PlatformLobbyCatSummary[]): Map<string, PlatformLobbyCatSummary> {
   const lookup = new Map<string, PlatformLobbyCatSummary>();
@@ -81,10 +104,13 @@ export function membershipStatusLabel(t: Translate, status: MembershipStatus): s
 export function MembershipStatusChip({
   status,
   expiresAt,
+  compact = false,
   now = new Date(),
 }: {
   status: MembershipStatus;
   expiresAt?: string | null;
+  /** Just the status, with the end date in the tooltip, for narrow org-chart cards. */
+  compact?: boolean;
   now?: Date;
 }) {
   const { t, locale } = useI18n();
@@ -95,7 +121,12 @@ export function MembershipStatusChip({
       })
     : membershipStatusLabel(t, status);
   return (
-    <span className={`directoryStatusChip directoryStatusChip--${ended ? 'ended' : status}`}>{label}</span>
+    <span
+      className={`directoryStatusChip directoryStatusChip--${ended ? 'ended' : status}`}
+      title={compact && label !== membershipStatusLabel(t, status) ? label : undefined}
+    >
+      {compact ? membershipStatusLabel(t, status) : label}
+    </span>
   );
 }
 
@@ -103,6 +134,7 @@ export function directoryErrorMessage(t: Translate, error: DirectoryRequestError
   if (error.code === 'directory_unreadable') return t(messageKeys.directoryErrorUnreadable);
   if (error.code === 'directory_newer') return t(messageKeys.directoryErrorNewer);
   if (error.code === 'directory_name_required') return t(messageKeys.directoryErrorNameRequired);
+  if (error.code === 'cattery_domain_invalid') return t(messageKeys.directoryErrorDomainInvalid);
   return t(messageKeys.directoryErrorSaveFailed, { message: error.message });
 }
 
@@ -175,6 +207,61 @@ export function DirectorySegmented<T extends string>({
           {option.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** "Add a cat": the Cats not yet in the group, each added with one click. */
+export function AddCatPopover({
+  memberIds,
+  cats,
+  pending,
+  onAdd,
+}: {
+  memberIds: ReadonlySet<string>;
+  cats: readonly PlatformLobbyCatSummary[];
+  pending: boolean;
+  onAdd: (cat: PlatformLobbyCatSummary) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(ref, open, () => setOpen(false));
+  const candidates = cats.filter((cat) => !memberIds.has(cat.id));
+
+  return (
+    <div className="directoryPopoverAnchor" ref={ref}>
+      <button
+        type="button"
+        className="secondaryButton directorySmallButton"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        disabled={pending}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t(messageKeys.directoryAddCatAction)}
+      </button>
+      {open ? (
+        <div className="accountMenu accountMenu--below accountMenu--alignEnd directoryMenu" role="menu">
+          <p className="directoryMenuCaption">{t(messageKeys.directoryAddCatHint)}</p>
+          {cats.length === 0 ? <p className="directoryMenuEmpty">{t(messageKeys.directoryNoCats)}</p> : null}
+          {cats.length > 0 && candidates.length === 0 ? (
+            <p className="directoryMenuEmpty">{t(messageKeys.directoryAddCatNone)}</p>
+          ) : null}
+          {candidates.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              role="menuitem"
+              className="accountMenuItem directoryMenuItem"
+              onClick={() => { setOpen(false); onAdd(cat); }}
+            >
+              <DirectoryCatAvatar cat={cat} size="small" />
+              <span>{cat.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

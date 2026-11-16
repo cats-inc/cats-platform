@@ -45,7 +45,7 @@ import { CatteryHome } from './entities/CatteryHome.js';
 import { ClowderHome } from './entities/ClowderHome.js';
 import { ClowdersCanvasPage } from './entities/ClowdersCanvas.js';
 import { EntitiesIndexPage } from './entities/EntitiesIndexPage.js';
-import { CatteriesCanvasPage } from './entities/EntityCanvasPages.js';
+import { CatteriesCanvasPage } from './entities/CatteriesCanvas.js';
 import { EntitiesShell } from './entities-shell/EntitiesShell.js';
 import { SettingsShell } from './settings/SettingsShell.js';
 import { SettingsCanvasContent } from './settings/SettingsCanvasContent.js';
@@ -740,7 +740,9 @@ export default function PlatformApp() {
             <Route path="/entities/clowders/:clowderId/settings" element={<ClowdersCanvasPage envelope={readyEnvelope} />} />
             <Route path="/entities/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
             <Route path="/entities/catteries" element={<CatteriesCanvasPage envelope={readyEnvelope} />} />
+            <Route path="/entities/catteries/new" element={<CatteriesCanvasPage envelope={readyEnvelope} />} />
             <Route path="/entities/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
+            <Route path="/entities/catteries/:catteryId/settings" element={<CatteriesCanvasPage envelope={readyEnvelope} />} />
             <Route path="/entities/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
           </Route>
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
