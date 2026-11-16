@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; Phases 0–1 authorized by the owner and implemented, 2026-11-16 |
+| Status | In progress; Phases 0–2 authorized by the owner and implemented, 2026-11-16 |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -111,11 +111,19 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
 
 ## Phase 2 — Pack manager (SPEC-145 FR-B1–FR-B10)
 
-- [ ] **Layout and status (FR-B1, FR-B2).**
+The manager is `desktop/host/featurePacks/featurePackManager.ts`. Its tests are
+`tests/desktop-feature-pack-manager.test.ts`, against an in-memory transport
+from `tests/fixtures/featurePackFixtures.mjs`.
+
+- [x] **Layout and status (FR-B1, FR-B2).**
   - All statuses are implemented.
   - The glibc check reads `glibcVersionRuntime`.
   - A prerequisite check that cannot decide counts as satisfied.
-- [ ] **Resumable download (FR-B3).**
+  - The default probe reports a library missing only when `ldconfig -p` also
+    lists this architecture's `libc.so.6`.
+  - Each snapshot carries the active version and `usable`, because dictation
+    follows the FR-B5 check, not the status. SPEC-145 FR-B2 now says so.
+- [x] **Resumable download (FR-B3).**
   - It writes the partial file and its sidecar, and resumes with `Range`:
     - a `206` response continues;
     - a `200` restarts;
@@ -124,17 +132,26 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
   - It checks free space with `statfs`, allows HTTPS-only redirects and
     enforces the size cap.
   - It runs one download per `id`.
-- [ ] **Verify and activate (FR-B4).** Hashing and extraction stream. Modes,
+  - It does not re-hash on resume, unlike FR-B3's first wording. The verifier
+    hashes the whole archive once, and SPEC-145 now says so. The sidecar
+    records only fsynced bytes, and a complete partial skips the request.
+  - The transport must not follow redirects. Electron's `net.request` with
+    `redirect: 'manual'` can return them, which Phase 3 confirms.
+- [x] **Verify and activate (FR-B4).** Hashing and extraction stream. Modes,
   fsync, the receipt, the rename and the atomic `active.json` follow FR-B4, and
   the old version is deleted only when no helper uses it.
-- [ ] **Start-time check (FR-B5)** and **Check files**, which hashes fully.
-- [ ] **Remove (FR-B6)** and **startup cleanup (FR-B7)**, which keeps a partial
+  - Extraction is an option of the contract's verifier, which awaits each
+    write and honors an `AbortSignal` for Pause and Cancel while verifying.
+  - Started helpers hold a lease from `acquireHelper`. The previous version is
+    deleted when the last lease is released.
+- [x] **Start-time check (FR-B5)** and **Check files**, which hashes fully.
+- [x] **Remove (FR-B6)** and **startup cleanup (FR-B7)**, which keeps a partial
   download that matches the lock.
-- [ ] **Data reset (FR-B8).**
+- [x] **Data reset (FR-B8).**
   - `feature-packs` stays out of `PLATFORM_RESET_DIRECTORIES`.
   - "downloaded optional features" joins `PLATFORM_RESET_RETAINED`.
   - The reset confirmation shows it.
-- [ ] **Boundary and logging (FR-B9, FR-B10).**
+- [x] **Boundary and logging (FR-B9, FR-B10).**
   - The transport, directories and clock are injected.
   - Log lines carry the stage.
   - The manager is its own file and takes the contract's types through
@@ -142,13 +159,15 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
     the transport, directories and clock.
   - Code outside the contract file reads an error's `stage` and `code`, not
     `instanceof FeaturePackError`.
-- [ ] **Guard Linux-only assertions** (file modes, the glibc report) by
+- [x] **Guard Linux-only assertions** (file modes, the glibc report) by
   platform. A local `npm test` also runs on Windows and macOS.
-- [ ] Record the manager's file closure for Bot in the progress log. The Phase 0
+- [x] Record the manager's file closure for Bot in the progress log. The Phase 0
   boundary test already loads every file in the directory under Node's type
   stripping, so the manager is covered once it is added.
 
-**Covers:** SPEC-145 AC-02, AC-03.
+**Covers:** SPEC-145 AC-02, AC-03, and the "nothing activated" half of AC-01:
+the AC-01 defects run through `download()` and leave no version directory, no
+`active.json` and an empty `.staging/`.
 
 ## Phase 3 — Host wiring (SPEC-145 FR-C1 host side, FR-C4, FR-D1–FR-D4, FR-D8)
 
@@ -323,6 +342,7 @@ Empty until Phase 6. One row per run set.
 | 2026-11-16 | Plan drafted; no phase started. |
 | 2026-11-16 | The owner authorized Phases 0–1. This does not authorize the rest of SPEC-145 or SPEC-146, so the first Phase 0 item stays open. |
 | 2026-11-16 | Phases 0–1 implemented. The Bot closure is `desktop/host/featurePacks/featurePackContract.ts`. SPEC-145 FR-A2 gained the ZIP subset, and its dependencies use `node:zlib` instead of fflate. |
+| 2026-11-16 | The owner authorized Phase 2, and it was implemented. The Bot closure is now `desktop/host/featurePacks/featurePackContract.ts` and `featurePackManager.ts`. SPEC-145 FR-B2–FR-B7 and FR-B9 now match the manager. Electron 41.2.0 runs Node 24.14.0, which has what the manager uses: `AbortSignal.any`, `statfs` and the report's `glibcVersionRuntime` (2.41 on the arm64 board). |
 
 ### Voice path inventory (Phase 0, 2026-11-16)
 

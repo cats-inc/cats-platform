@@ -7,7 +7,8 @@
 
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { open, readFile, stat, type FileHandle } from 'node:fs/promises';
+import { mkdir, open, readFile, stat, type FileHandle } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createInflateRaw } from 'node:zlib';
 
@@ -86,6 +87,16 @@ export interface FeaturePackModel {
 
 export interface FeaturePackManifestLicense extends FeaturePackLicense {
   path: string;
+}
+
+export interface FeaturePackVerifyOptions {
+  /**
+   * Extracts every verified file under this directory, which must not exist
+   * yet (FR-B4). On failure the caller removes it.
+   */
+  extractTo?: string;
+  /** Aborting rejects with the signal's reason, not a `FeaturePackError`. */
+  signal?: AbortSignal;
 }
 
 export interface FeaturePackManifest {
@@ -748,34 +759,35 @@ async function locateEntryData(
 async function streamEntry(
   archivePath: string,
   entry: ZipEntry,
-  onChunk: (chunk: Buffer) => void,
+  onChunk: (chunk: Buffer) => void | Promise<void>,
+  signal?: AbortSignal,
 ): Promise<void> {
+  signal?.throwIfAborted();
   let received = 0;
-  const accept = (chunk: Buffer): void => {
-    received += chunk.length;
-    if (received > entry.size) {
-      failExtract('file_size_mismatch', `${entry.name} is larger than its recorded size`);
-    }
-    onChunk(chunk);
-  };
   if (entry.compressedSize > 0) {
     const source = createReadStream(archivePath, {
       start: entry.dataOffset,
       end: entry.dataOffset + entry.compressedSize - 1,
     });
+    // Awaiting each chunk applies backpressure, so an extracted model never
+    // buffers in memory.
     const sink = async (chunks: AsyncIterable<Buffer>): Promise<void> => {
       for await (const chunk of chunks) {
-        accept(chunk);
+        received += chunk.length;
+        if (received > entry.size) {
+          failExtract('file_size_mismatch', `${entry.name} is larger than its recorded size`);
+        }
+        await onChunk(chunk);
       }
     };
     try {
       if (entry.method === METHOD_DEFLATED) {
-        await pipeline(source, createInflateRaw(), sink);
+        await pipeline(source, createInflateRaw(), sink, { signal });
       } else {
-        await pipeline(source, sink);
+        await pipeline(source, sink, { signal });
       }
     } catch (error) {
-      if (error instanceof FeaturePackError) {
+      if (error instanceof FeaturePackError || signal?.aborted) {
         throw error;
       }
       failExtract('inflate_failed', `${entry.name} could not be read: ${describeError(error)}`);
@@ -788,7 +800,11 @@ async function streamEntry(
   }
 }
 
-async function hashArchive(archivePath: string, entry: FeaturePackLockEntry): Promise<void> {
+async function hashArchive(
+  archivePath: string,
+  entry: FeaturePackLockEntry,
+  signal?: AbortSignal,
+): Promise<void> {
   let size: number;
   try {
     size = (await stat(archivePath)).size;
@@ -804,6 +820,7 @@ async function hashArchive(archivePath: string, entry: FeaturePackLockEntry): Pr
   }
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(archivePath)) {
+    signal?.throwIfAborted();
     hash.update(chunk);
   }
   if (hash.digest('hex') !== entry.sha256) {
@@ -819,12 +836,18 @@ async function hashArchive(archivePath: string, entry: FeaturePackLockEntry): Pr
  * Verifies a downloaded archive against its lock entry (FR-A2, FR-A3): the
  * archive's size and SHA-256, the ZIP structure, the manifest and every file's
  * size and SHA-256. Throws a `FeaturePackError` naming the failing stage.
+ *
+ * With `extractTo`, it also writes each file while hashing it (FR-B4): mode
+ * 0755 for executables and 0644 otherwise, whatever the archive stored, and
+ * each file fsynced. The manifest is written too, for the start-time check.
  */
 export async function verifyFeaturePackArchive(
   archivePath: string,
   entry: FeaturePackLockEntry,
+  options: FeaturePackVerifyOptions = {},
 ): Promise<FeaturePackManifest> {
-  await hashArchive(archivePath, entry);
+  const { extractTo, signal } = options;
+  await hashArchive(archivePath, entry, signal);
 
   const handle = await open(archivePath, 'r');
   let entries: ZipEntry[];
@@ -854,10 +877,13 @@ export async function verifyFeaturePackArchive(
     return failManifest('manifest_invalid', `${FEATURE_PACK_MANIFEST_PATH} is too large`);
   }
   const manifestChunks: Buffer[] = [];
-  await streamEntry(archivePath, manifestEntry, (chunk) => manifestChunks.push(chunk));
+  await streamEntry(archivePath, manifestEntry, (chunk) => {
+    manifestChunks.push(chunk);
+  }, signal);
+  const manifestBytes = Buffer.concat(manifestChunks);
   let manifestJson: unknown;
   try {
-    manifestJson = JSON.parse(Buffer.concat(manifestChunks).toString('utf8'));
+    manifestJson = JSON.parse(manifestBytes.toString('utf8'));
   } catch (error) {
     return failManifest(
       'manifest_invalid',
@@ -894,16 +920,88 @@ export async function verifyFeaturePackArchive(
     );
   }
 
+  if (extractTo !== undefined) {
+    await mkdir(extractTo, { recursive: true, mode: 0o700 });
+    await writeExtractedFile(extractTo, FEATURE_PACK_MANIFEST_PATH, 0o644, async (write) => {
+      await write(manifestBytes);
+    });
+  }
   for (const file of manifest.files) {
     const zipEntry = archived.get(file.path);
     if (!zipEntry) {
       continue;
     }
     const hash = createHash('sha256');
-    await streamEntry(archivePath, zipEntry, (chunk) => hash.update(chunk));
+    if (extractTo === undefined) {
+      await streamEntry(archivePath, zipEntry, (chunk) => {
+        hash.update(chunk);
+      }, signal);
+    } else {
+      const mode = file.executable ? 0o755 : 0o644;
+      await writeExtractedFile(extractTo, file.path, mode, async (write) => {
+        await streamEntry(archivePath, zipEntry, async (chunk) => {
+          hash.update(chunk);
+          await write(chunk);
+        }, signal);
+      });
+    }
     if (hash.digest('hex') !== file.sha256) {
       failExtract('file_hash_mismatch', `${file.path} does not have its manifest sha256`);
     }
   }
   return manifest;
 }
+
+/**
+ * Creates one extracted file, lets `fill` write it, then sets its mode and
+ * fsyncs it. The archive's stored modes are never used (FR-A2).
+ */
+async function writeExtractedFile(
+  root: string,
+  relativePath: string,
+  mode: number,
+  fill: (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>,
+): Promise<void> {
+  const target = join(root, ...relativePath.split('/'));
+  await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+  const handle = await open(target, 'wx', mode);
+  try {
+    await fill(async (chunk) => {
+      let offset = 0;
+      while (offset < chunk.length) {
+        const { bytesWritten } = await handle.write(chunk, offset, chunk.length - offset, null);
+        offset += bytesWritten;
+      }
+    });
+    await handle.chmod(mode);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * The contract functions the pack manager uses. Desktop and Bot pass this
+ * object in, because the manager may not import this file by value (FR-B9).
+ */
+export interface FeaturePackContract {
+  verifyArchive(
+    archivePath: string,
+    entry: FeaturePackLockEntry,
+    options?: FeaturePackVerifyOptions,
+  ): Promise<FeaturePackManifest>;
+  parseManifest(value: unknown): FeaturePackManifest;
+  compareVersions(left: string, right: string): number;
+  archiveName(entry: Pick<FeaturePackLockEntry, 'id' | 'version' | 'os' | 'arch'>): string;
+  isSafePath(value: string): boolean;
+  isVersion(value: string): boolean;
+}
+
+export const featurePackContract: FeaturePackContract = {
+  verifyArchive: verifyFeaturePackArchive,
+  parseManifest: parseFeaturePackManifest,
+  compareVersions: compareFeaturePackVersions,
+  archiveName: featurePackArchiveName,
+  isSafePath: isSafeFeaturePackPath,
+  isVersion: (value) => VERSION_PATTERN.test(value),
+};
