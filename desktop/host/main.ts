@@ -2822,7 +2822,12 @@ async function main(): Promise<void> {
       runtimeKey: process.env.CATS_RUNTIME_API_KEY || undefined,
       platformBaseUrl: hostConfig.appBaseUrl,
       desktopKey: desktopAuthKey,
-      onChange: (state) => { standingGrants = state; refresh(); },
+      onChange: (state) => {
+        standingGrants = state;
+        // Runtime confirmed none are left: a failed Stop no longer needs saying.
+        if (!state.holders.length && !state.unconfirmed) standingGrantsStopFailed = false;
+        refresh();
+      },
     });
     let stopping = false;
     stopStandingGrants = () => {
