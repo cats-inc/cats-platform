@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import { CATS_DIRECTORY_NEW_CAT_PATH } from '../../../shared/catsDirectoryPaths.js';
+import { CATTERIES_DIRECTORY_NEW_PATH, CLOWDERS_DIRECTORY_NEW_PATH } from '../../../shared/directoryPaths.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
@@ -158,7 +159,7 @@ function buildEntityIndexCards(envelope: PlatformHostEnvelope): EntityIndexCard[
       detailPathPrefix: '/entities/clowders/',
       placeholderLabelKey: messageKeys.entitiesSidebarNewClowder,
       placeholderIconKind: 'groupPeople',
-      placeholderTarget: null,
+      placeholderTarget: CLOWDERS_DIRECTORY_NEW_PATH,
     },
     {
       key: 'catteries',
@@ -175,7 +176,7 @@ function buildEntityIndexCards(envelope: PlatformHostEnvelope): EntityIndexCard[
       detailPathPrefix: '/entities/catteries/',
       placeholderLabelKey: messageKeys.entitiesSidebarNewCattery,
       placeholderIconKind: 'orgChart',
-      placeholderTarget: null,
+      placeholderTarget: CATTERIES_DIRECTORY_NEW_PATH,
     },
   ];
 }

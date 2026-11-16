@@ -187,6 +187,8 @@ test('Lobby entity cards show three fixed rows + placeholder when empty (no foot
   assert.match(markup, />New cat</u);
   assert.match(markup, />New clowder</u);
   assert.match(markup, />New cattery</u);
+  // Every "New …" placeholder opens its create form; none is a disabled stub.
+  assert.doesNotMatch(markup, /class="entityIndexItem entityIndexItemPlaceholder" disabled/u);
   assert.doesNotMatch(markup, /class="entityIndexCardFooter"/u);
   assert.doesNotMatch(markup, /class="entityIndexCardTotal"/u);
   assert.doesNotMatch(markup, />0 total</u);
@@ -527,6 +529,12 @@ test('Drilled-down /entities/clowders/:id and /entities/catteries/:id routes bot
   assert.match(clowderMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(clowderMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
   assert.match(clowderMarkup, />Dev Team</u);
+  // The sidebar lists the Clowder under My Clowders, marked as the open one.
+  assert.match(
+    clowderMarkup,
+    /class="myCatItem myCatItemActive" aria-current="page"><span class="myCatAvatarWrap directoryGroupAvatar directoryGroupAvatar--clowder directoryGroupAvatar--small" aria-hidden="true">D<\/span><span class="myCatName">Dev Team<\/span>/u,
+  );
+  assert.match(clowderMarkup, /directoryGroupAvatar--cattery directoryGroupAvatar--small" aria-hidden="true">A<\/span><span class="myCatName">Acme Co\.<\/span>/u);
 
   const catteryMarkup = renderApp('/entities/catteries/acme', envelope);
   assert.match(catteryMarkup, /<div[^>]*class="screen claudeShell"/u);
@@ -591,4 +599,12 @@ test('Drilled-down /entities/clowders and /entities/catteries canvas routes both
   const catteriesMarkup = renderApp('/entities/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(catteriesMarkup, /class="catsCanvasPageBoot"/u);
+});
+
+test('An empty Directory sidebar offers New clowder and New cattery as working rows', () => {
+  const markup = renderApp('/entities', createEnvelope());
+  assert.match(markup, />New clowder</u);
+  assert.match(markup, />New cattery</u);
+  assert.doesNotMatch(markup, /myCatRowPlaceholderStatic/u);
+  assert.doesNotMatch(markup, /class="myCatItem myCatItemPlaceholder"[^>]*disabled/u);
 });
