@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; Phases 0–3 authorized by the owner and implemented, 2026-11-16 |
+| Status | In progress; Phases 0–4 authorized by the owner and implemented, 2026-11-16 |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -228,23 +228,45 @@ directory. Its tests are `tests/desktop-feature-pack-host.test.js`.
 
 ## Phase 4 — Renderer (SPEC-145 FR-C1–FR-C3, FR-D1, FR-D5)
 
-- [ ] **No Web Speech in Desktop (FR-D1).** `useVoiceInputComposer` never falls
+The tests are `tests/desktop-feature-pack-renderer.test.tsx`.
+
+- [x] **No Web Speech in Desktop (FR-D1).** `useVoiceInputComposer` never falls
   back to Web Speech in the Desktop renderer, and the Web deployment is
   unchanged (AC-05).
-- [ ] **The composer toast (FR-C1).** `pack_required` reads the pack status and
+  - A Desktop renderer without a native voice bridge shows no button. A test
+    proves the `SpeechRecognition` constructor is never called there.
+- [x] **The composer toast (FR-C1).** `pack_required` reads the pack status and
   shows the right toast. **Open Settings** opens
   `/settings/desktop#optional-downloads` and keeps the draft.
-- [ ] **Optional downloads section (FR-C2).**
+  - The toast asks the app to navigate with a `cats:navigate` event, which
+    `App` handles inside the router. A full reload would drop the draft.
+  - Drafts live in `conversationViewMemory`. A routed test types a draft, opens
+    Settings and returns to find it intact.
+  - A snapshot the host cannot give gets the plain message. A pack that became
+    usable meanwhile gets "start voice input again" without Open Settings.
+    SPEC-145 FR-C1 now says so.
+- [x] **Optional downloads section (FR-C2).**
   - Every status shows its actions; pause, resume and discard included.
-  - Progress is announced through `aria-live`.
-  - The row links to Voice input, and feedback is toast-only.
-  - Section order: Updates, Mobile pairing, Startup behavior, Voice input,
-    Optional downloads.
-- [ ] **Composer states (FR-D5).** The `limit_warning` chip, and the
+  - Progress is announced through `aria-live`, in 10 % steps. The visible
+    progress keeps its full rate.
+  - Feedback is toast-only. Failures map their `stage` and `code` to catalog
+    strings; raw host messages never reach the owner.
+  - It sits after Startup behavior, and its `id` exists before the list loads,
+    so the hash can scroll to it.
+- [ ] **Voice input link and final order (FR-C2).** The row links to Voice
+  input, and the order is Updates, Mobile pairing, Startup behavior, Voice
+  input, Optional downloads. This needs Phase 5's Voice input section, so it
+  stays open.
+- [x] **Composer states (FR-D5).** The `limit_warning` chip, and the
   `processing` busy state, which Escape cancels.
-- [ ] **Strings (FR-C3).** `en` and `zh-TW` entries for every new key.
+  - Escape is heard on the whole document while voice is active, because
+    clicking the mic moves focus off the textarea.
+  - A click on the busy button does nothing.
+  - The chip clears on `processing`, `end` and `error`.
+- [x] **Strings (FR-C3).** `en` and `zh-TW` entries for every new key.
 
-**Covers:** SPEC-145 AC-04 (renderer), AC-05 and AC-06.
+**Covers:** SPEC-145 AC-04 (renderer) and AC-05. AC-06 is covered except for
+the Voice input link, which waits for Phase 5.
 
 ## Phase 5 — Dictation language (SPEC-146; SPEC-145 FR-C5)
 
@@ -373,6 +395,7 @@ Empty until Phase 6. One row per run set.
 | 2026-11-16 | Phases 0–1 implemented. The Bot closure is `desktop/host/featurePacks/featurePackContract.ts`. SPEC-145 FR-A2 gained the ZIP subset, and its dependencies use `node:zlib` instead of fflate. |
 | 2026-11-16 | The owner authorized Phase 2, and it was implemented. The Bot closure is now `desktop/host/featurePacks/featurePackContract.ts` and `featurePackManager.ts`. SPEC-145 FR-B2–FR-B7 and FR-B9 now match the manager. Electron 41.2.0 runs Node 24.14.0, which has what the manager uses: `AbortSignal.any`, `statfs` and the report's `glibcVersionRuntime` (2.41 on the arm64 board). |
 | 2026-11-16 | The owner authorized Phase 3, and it was implemented. With the shipped empty lock, Linux still exposes no voice bridge. SPEC-145 FR-C4, FR-D1 and FR-D2 now match the wiring. |
+| 2026-11-16 | The owner authorized Phase 4 ("cnr後繼續" after Phase 3), and it was implemented. The Voice input link and the final section order wait for Phase 5. |
 
 ### Voice path inventory (Phase 0, 2026-11-16)
 

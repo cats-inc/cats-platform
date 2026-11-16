@@ -190,7 +190,10 @@ test('useVoiceInputComposer prefers native bridge and routes privacy mode warnin
   );
   const enCatalog = await readFile(path.join(I18N_DIR, 'catalogs', 'en.ts'), 'utf8');
 
-  assert.match(source, /nativeVoiceInput\.supported \? nativeVoiceInput : webSpeechInput/u);
+  // SPEC-145 FR-D1: Desktop always takes the native path, and never Web Speech.
+  assert.match(source, /nativeChosen = nativeVoiceInput\.supported \|\| desktopRenderer/u);
+  assert.match(source, /desktopRenderer = useMemo\(\(\) => isDesktopEnvironment\(\), \[\]\)/u);
+  assert.match(source, /nativeChosen \? nativeVoiceInput : webSpeechInput/u);
   assert.match(source, /resolveVoicePrivacyMessage/u);
   assert.match(source, /mode === 'unknown'/u);
   assert.match(source, /messageKeys\.sharedVoiceInputPrivacyUnknown/u);

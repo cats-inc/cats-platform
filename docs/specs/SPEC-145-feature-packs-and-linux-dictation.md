@@ -403,8 +403,14 @@ download.
   | `paused` | The offline speech recognition download is paused (P%) | **Open Settings** |
   | `unsupported` | Names the missing glibc version or library | none |
 
+- Two cases have no row in the table above:
+  - **No status.** When the host cannot give one, the toast says voice input
+    needs offline speech recognition and offers **Open Settings**.
+  - **Already usable.** A pack that became usable meanwhile (`installed`,
+    `update_available`) gets "start voice input again", with no action.
 - **Open Settings** navigates to Settings > Desktop and scrolls to the
-  Optional downloads row (`#optional-downloads`).
+  Optional downloads row (`#optional-downloads`). It is an in-app route change,
+  so the draft is kept.
 - The composer draft survives the round trip.
 - This follows the toast-with-action pattern that ADR-147 uses for macOS
   permissions.
@@ -540,7 +546,9 @@ appear in Settings > Desktop > Voice input on every platform.
 
 - `limit_warning` shows "Recording stops in 5 s" beside the button.
 - `processing` puts the button in a busy state until `final` or `end`. The
-  button gets `aria-busy` and the label "Transcribing…". Escape cancels.
+  button gets `aria-busy` and the label "Transcribing…". Clicking it does
+  nothing. Escape cancels wherever focus is, because stopping with the mic
+  button moves focus off the textarea.
 - `mode: "on-device"` shows no privacy badge, as on macOS.
 
 **FR-D6 — Helper behavior (helper).** Producer tests and host contract tests
