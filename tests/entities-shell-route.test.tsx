@@ -12,10 +12,8 @@ import {
 import { CatsCanvasPage } from '../src/app/renderer/entities/CatsCanvasPage.tsx';
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
-import {
-  CatteriesCanvasPage,
-  ClowdersCanvasPage,
-} from '../src/app/renderer/entities/EntityCanvasPages.tsx';
+import { ClowdersCanvasPage } from '../src/app/renderer/entities/ClowdersCanvas.tsx';
+import { CatteriesCanvasPage } from '../src/app/renderer/entities/EntityCanvasPages.tsx';
 import { EntitiesIndexPage } from '../src/app/renderer/entities/EntitiesIndexPage.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { EntitiesShell } from '../src/app/renderer/entities-shell/EntitiesShell.tsx';
@@ -584,17 +582,11 @@ test('Drilled-down /entities/clowders and /entities/catteries canvas routes both
     },
   });
 
+  // The Clowder canvas loads the directory itself (directory-clowders-canvas.test.tsx);
+  // statically it renders its boot placeholder inside the shell.
   const clowdersMarkup = renderApp('/entities/clowders', envelope);
   assert.match(clowdersMarkup, /<div[^>]*class="screen claudeShell"/u);
-  assert.match(clowdersMarkup, /class="entityCanvas entityCanvas--clowders"/u);
-  assert.match(clowdersMarkup, /href="\/entities\/clowders\/clw-dev"/u);
-  assert.match(clowdersMarkup, />New Team</u);
-  assert.match(clowdersMarkup, />Parent Cattery</u);
-  assert.match(clowdersMarkup, /href="\/entities\/catteries\/acme"/u);
-  assert.match(clowdersMarkup, />My Clowders</u);
-  const devClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">Dev Team');
-  const newClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">New Team');
-  assert.ok(devClowderIndex < newClowderIndex);
+  assert.match(clowdersMarkup, /class="catsCanvasPageBoot"/u);
 
   const catteriesMarkup = renderApp('/entities/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
