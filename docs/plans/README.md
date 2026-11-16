@@ -1,7 +1,7 @@
 # Implementation Plans
 
 - [PLAN-138: Feature packs, Linux dictation and dictation language](PLAN-138-feature-packs-linux-dictation-and-dictation-language.md)
-  — in progress, 2026-11-16; Phases 0–1 (boundary, contract and verifier) implemented. Delivers
+  — in progress, 2026-11-16; Phases 0–2 (boundary, contract, verifier, pack manager) done. Delivers
   SPEC-145 and SPEC-146: contract and verifier, the resumable pack manager, host wiring, renderer,
   and the dictation language (mergeable on its own) on fixture packs (M1); first contact with real
   `linux-stt` candidates, measurement and the Bot vendoring gate (M2); release-bound lock and notes
