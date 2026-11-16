@@ -56,7 +56,8 @@ posture are out of scope for this spec — they remain owned by the
   (FR-048).
 - A mobile port of Work's Projects / Work Items / Tasks / Runs / Missions
   management surfaces.
-- A mobile port of the `Settings > Cats` registry editor.
+- A mobile port of the whole `Settings > Cats` registry editor. The
+  Cats tab edits a Cat's core fields only (FR-17, amended 2026-11-17).
 - Inline rendering of product-mode side panels (`CodeBuilderView`,
   `ProjectDetailView`, `ApprovalQueuePanel`, etc.) on the conversation
   surface. They surface on mobile as bottom sheets or fullscreen modals
@@ -156,7 +157,18 @@ posture are out of scope for this spec — they remain owned by the
     - Owner / account info
     - A deep link out to the web for advanced settings
 17. The `Settings > Cats` registry editor shall not be reimplemented on
-    mobile.
+    mobile as a whole. Amended 2026-11-17 at the owner's request: the
+    Cats tab creates a Cat (name, provider and model, Boss Cat) and,
+    from a Cat's screen, renames it, changes its provider and model,
+    turns Boss Cat on or off, archives or recovers it, and deletes it.
+    - A model change records a fresh explicit selection, so advanced
+      controls such as effort return to the model's defaults; the
+      screen says so.
+    - The provider and model lists come from `/api/providers`; when
+      Runtime is unreachable or has no usable target, the screen says
+      so in Desktop's words instead of showing an empty list.
+    - Avatar, cover, skills, MCP, memory, companion and Telegram stay in
+      Desktop Settings, and the screen says so.
 18. Settings content beyond the four items above is an Open Question.
 
 #### Shared ChatView

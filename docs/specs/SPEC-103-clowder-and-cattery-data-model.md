@@ -413,6 +413,12 @@ Two illustrative cases:
     another Clowder or also adds it there (FR-25), and removes it.
   - A group removed elsewhere answers 404; the phone says so and goes
     back.
+- A Cat's screen on the phone lists its Catteries, then its Clowders,
+  each with role and any non-formal status and opening the group, by
+  the same FR-16 rule as Desktop's profile. A Cat in no group shows
+  nothing; a failed read offers a retry; an archived Cat's memberships
+  stay hidden until it is restored. Archived Cats stay listed on the
+  Cats tab, marked, so they can be recovered from the phone.
 
 ## Boundaries
 

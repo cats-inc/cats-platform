@@ -9,6 +9,7 @@ import {
   mobileDirectoryRequests,
   mobileDirectorySaveError,
   parseMobileEndDate,
+  pendingMobileEndDate,
   selectMobileAddableCats,
   selectMobileMoveTargets,
   toMobileEndDateText,
@@ -142,4 +143,16 @@ test('edit copy reads Desktop wording and fills its placeholders', () => {
   assert.equal(fillMobileCopy(zh.moveConfirmMove, { group: 'Ops' }), '移到「Ops」');
   assert.equal(fillMobileCopy(zh.newClowderInCattery, { name: 'Acme' }), '在Acme新增貓群');
   assert.equal(getMobileDirectoryEditCopy('en').cancelAction, 'Cancel');
+});
+
+test('a typed end date is owed when the sheet closes, once, and never when invalid or unchanged', () => {
+  const temp = { status: 'temp', expiresAt: '2027-01-15T00:00:00.000Z' };
+  assert.deepEqual(pendingMobileEndDate(temp, '2027-01-15', undefined), { kind: 'none' });
+  assert.deepEqual(pendingMobileEndDate(temp, '2027-02-01', undefined), { kind: 'save', value: '2027-02-01' });
+  // Already sent by a blur, waiting for the Directory to refresh: not sent again on close.
+  assert.deepEqual(pendingMobileEndDate(temp, '2027-02-01', '2027-02-01'), { kind: 'none' });
+  assert.deepEqual(pendingMobileEndDate(temp, '', undefined), { kind: 'save', value: null });
+  assert.deepEqual(pendingMobileEndDate(temp, '2027-02-30', undefined), { kind: 'invalid' });
+  assert.deepEqual(pendingMobileEndDate({ status: 'temp', expiresAt: null }, '', undefined), { kind: 'none' });
+  assert.deepEqual(pendingMobileEndDate({ status: 'formal', expiresAt: null }, 'garbage', undefined), { kind: 'none' });
 });

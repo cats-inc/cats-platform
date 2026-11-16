@@ -248,7 +248,7 @@ Out of scope (covered elsewhere or deferred):
       read only (SPEC-103 §Mobile)
 - [x] Mobile: create, edit and delete Clowders and Catteries, and
       manage their members
-- [ ] Mobile: create and edit Cats (core fields), with their Clowders
+- [x] Mobile: create and edit Cats (core fields), with their Clowders
       and Catteries on the Cat screen (amends SPEC-095 FR-17)
 - [ ] Audit trail: deferred until multi-user Catteries (SPEC-103
       §Non-Functional)

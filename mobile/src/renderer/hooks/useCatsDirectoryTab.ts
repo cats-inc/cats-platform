@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
+  mobileCatLimit,
   type MobileCatsDirectoryData,
   selectMobileCatsDirectory,
 } from '../../../../src/mobile/index.js';
@@ -12,7 +13,7 @@ export type CatsDirectoryTabState =
   | { kind: 'unconfigured' }
   | { kind: 'unauthenticated' }
   | { kind: 'error'; error: MobileApiError }
-  | { kind: 'data'; data: MobileCatsDirectoryData };
+  | { kind: 'data'; data: MobileCatsDirectoryData; limit: ReturnType<typeof mobileCatLimit> };
 
 export interface CatsDirectoryTabHook {
   state: CatsDirectoryTabState;
@@ -52,7 +53,7 @@ export function useCatsDirectoryTab(): CatsDirectoryTabHook {
       state = { kind: 'error', error: shellState.error };
       break;
     case 'data':
-      state = { kind: 'data', data: data! };
+      state = { kind: 'data', data: data!, limit: mobileCatLimit(shellState.payload) };
       break;
   }
 

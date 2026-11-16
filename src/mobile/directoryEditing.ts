@@ -89,6 +89,28 @@ export function toMobileEndDateText(expiresAt: string | null): string {
   return expiresAt ? expiresAt.slice(0, 10) : '';
 }
 
+export type MobilePendingEndDate = { kind: 'none' } | { kind: 'invalid' } | { kind: 'save'; value: string | null };
+
+/**
+ * What a member sheet still owes for its end-date field. A phone does not
+ * blur a field when a button is tapped, so the sheet asks this before it
+ * closes or changes step, not only on blur — the loss Desktop fixed in
+ * #494. `lastSent` is the value already on its way, so it is never sent
+ * twice while the Directory refreshes.
+ */
+export function pendingMobileEndDate(
+  member: { status: string; expiresAt: string | null },
+  text: string,
+  lastSent: string | null | undefined,
+): MobilePendingEndDate {
+  if (member.status !== 'temp') return { kind: 'none' };
+  const parsed = parseMobileEndDate(text);
+  if (!parsed.ok) return { kind: 'invalid' };
+  const stored = member.expiresAt ? toMobileEndDateText(member.expiresAt) : null;
+  if (parsed.value === stored || (lastSent !== undefined && parsed.value === lastSent)) return { kind: 'none' };
+  return { kind: 'save', value: parsed.value };
+}
+
 export interface MobileAddableCat {
   id: string;
   name: string;

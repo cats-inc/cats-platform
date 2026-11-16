@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 
+import { membershipsOfCat } from '../../../shared/directoryMembership.js';
 import { buildCatteryHomePath, buildClowderHomePath } from '../../../shared/directoryPaths.js';
 import { messageKeys, type MessageLocale } from '../../../shared/i18n/index.js';
 import type {
@@ -55,9 +56,8 @@ export function catMembershipTags(
   now: Date,
 ): CatMembershipTag[] {
   const tags: CatMembershipTag[] = [];
-  for (const cattery of directory.catteries) {
-    const member = cattery.members.find((entry) => entry.catId === catId);
-    if (!member) continue;
+  const found = membershipsOfCat(directory, catId);
+  for (const { group: cattery, member } of found.catteries) {
     const role = catteryRoleLabel(t, member.role);
     const status = describeMembershipStatus(t, locale, member.status, null, now).label;
     tags.push({
@@ -72,9 +72,7 @@ export function catMembershipTags(
     });
   }
   const catteryNames = new Map(directory.catteries.map((cattery) => [cattery.id, cattery.name]));
-  for (const clowder of directory.clowders) {
-    const member = clowder.members.find((entry) => entry.catId === catId);
-    if (!member) continue;
+  for (const { group: clowder, member } of found.clowders) {
     const role = clowderRoleLabel(t, member.role);
     const status = describeMembershipStatus(t, locale, member.status, member.expiresAt, now).label;
     const catteryName = clowder.parentCatteryId ? catteryNames.get(clowder.parentCatteryId) : undefined;

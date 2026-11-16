@@ -15,6 +15,8 @@ export interface MobileCatsDirectoryCatSummary {
   avatarUrl: string | null;
   avatarColor: string | null;
   isBoss: boolean;
+  /** Archived Cats stay listed, marked, so they can be restored from the phone. */
+  archived: boolean;
 }
 
 export interface MobileCatsDirectoryData {
@@ -46,6 +48,7 @@ export function selectMobileCatsDirectory(
     avatarUrl: null,
     avatarColor: cat.avatarColor ?? null,
     isBoss: cat.group === 'admin',
+    archived: cat.status !== 'active',
   }));
 
   const limited =

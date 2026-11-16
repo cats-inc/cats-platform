@@ -51,14 +51,6 @@ export interface MobileCatsTabCopy {
   newCat: string;
   newClowder: string;
   newCattery: string;
-  newCatDesktopOnlyTitle: string;
-  newCatDesktopOnlyBody: string;
-  entityDetailEyebrow: string;
-  entityDetailTitleCat: string;
-  entityDetailTitleClowder: string;
-  entityDetailTitleCattery: string;
-  entityDetailIdLabel: string;
-  entityDetailBody: string;
   entityDetailBackToDirectoryLabel: string;
 }
 
@@ -209,16 +201,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCat: '+ New Cat',
     newClowder: '+ New Clowder',
     newCattery: '+ New Cattery',
-    newCatDesktopOnlyTitle: 'New cat — desktop only',
-    newCatDesktopOnlyBody:
-      'Creating a new cat is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
-    entityDetailEyebrow: 'Coming soon',
-    entityDetailTitleCat: 'Cat home',
-    entityDetailTitleClowder: 'Clowder home',
-    entityDetailTitleCattery: 'Cattery home',
-    entityDetailIdLabel: 'ID',
-    entityDetailBody:
-      'This entity page is being built. The route resolves; richer content lands with PLAN-091 phase 6 once the data model SPEC is approved.',
     entityDetailBackToDirectoryLabel: 'Back to Cats',
   },
   'zh-TW': {
@@ -237,15 +219,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCat: '+ 新增貓咪',
     newClowder: '+ 新增貓群',
     newCattery: '+ 新增貓窩',
-    newCatDesktopOnlyTitle: '新增貓咪僅限桌面版',
-    newCatDesktopOnlyBody:
-      '行動版尚未支援新增貓咪。請在桌面版新增，建立後會出現在這裡。',
-    entityDetailEyebrow: '開發中',
-    entityDetailTitleCat: '貓的主頁',
-    entityDetailTitleClowder: '貓群主頁',
-    entityDetailTitleCattery: '貓窩主頁',
-    entityDetailIdLabel: '識別碼',
-    entityDetailBody: '此頁面正在建置中。路由已連通，等 PLAN-091 phase 6 的資料模型 SPEC 通過後就會接上實際內容。',
     entityDetailBackToDirectoryLabel: '返回 Cats',
   },
 };

@@ -17,14 +17,11 @@ import type {
   MobileCatsTabCopy,
 } from '../../../../src/mobile/index.js';
 import {
+  getMobileCatCopy,
   getMobileCatsTabCopy,
-  getMobileTabsCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
-import {
-  getMobileNewEntityDesktopOnlyAlertCopy,
-  type MobileCatsDirectorySectionKey,
-} from '../../api/fixtures/productSidebar';
+import type { MobileCatsDirectorySectionKey } from '../../api/fixtures/productSidebar';
 import { GroupAvatar } from '../directory/DirectoryParts';
 import { MobileAuthPanel } from './MobileAuthPanel';
 import { colors, radii, spacing, typography } from '../theme';
@@ -45,7 +42,7 @@ export function CatsDirectoryTab() {
   const { state, refetch } = useCatsDirectoryTab();
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileCatsTabCopy(locale);
-  const tabsCopy = getMobileTabsCopy(locale);
+  const catCopy = getMobileCatCopy(locale);
 
   if (state.kind === 'loading') {
     return (
@@ -54,6 +51,7 @@ export function CatsDirectoryTab() {
       </View>
     );
   }
+  const limitReached = state.kind === 'data' && state.limit.reached;
   if (state.kind === 'unconfigured') {
     return (
       <Panel
@@ -85,21 +83,19 @@ export function CatsDirectoryTab() {
       router.push(mobileRoutes.newCattery());
       return;
     }
-    const desktopOnly = getMobileNewEntityDesktopOnlyAlertCopy(sectionKey, copy);
-    if (!desktopOnly) {
+    // The server refuses a Cat past the limit too; saying so here saves a form.
+    if (limitReached) {
+      Alert.alert(catCopy.limitReached);
       return;
     }
-    Alert.alert(
-      desktopOnly.title,
-      desktopOnly.body,
-      [{ text: tabsCopy.desktopOnlyOkAction, style: 'cancel' }],
-    );
+    router.push(mobileRoutes.newCat());
   };
 
   return (
     <DirectoryBody
       data={state.data}
       copy={copy}
+      archivedLabel={catCopy.archivedBadge}
       onSelectCat={(catId) => router.push(mobileRoutes.catDetail(catId))}
       onSelectGroup={(kind, groupId) => router.push(
         kind === 'clowder' ? mobileRoutes.clowderDetail(groupId) : mobileRoutes.catteryDetail(groupId),
@@ -112,12 +108,13 @@ export function CatsDirectoryTab() {
 interface DirectoryBodyProps {
   data: MobileCatsDirectoryData;
   copy: MobileCatsTabCopy;
+  archivedLabel: string;
   onSelectCat: (catId: string) => void;
   onSelectGroup: (kind: 'clowder' | 'cattery', groupId: string) => void;
   onCreateNew: (sectionKey: SectionKey) => void;
 }
 
-function DirectoryBody({ data, copy, onSelectCat, onSelectGroup, onCreateNew }: DirectoryBodyProps) {
+function DirectoryBody({ data, copy, archivedLabel, onSelectCat, onSelectGroup, onCreateNew }: DirectoryBodyProps) {
   const sections: SectionDescriptor[] = [
     {
       key: 'cats',
@@ -159,7 +156,7 @@ function DirectoryBody({ data, copy, onSelectCat, onSelectGroup, onCreateNew }: 
         >
           {section.key === 'cats'
             ? data.cats.map((cat) => (
-                <CatRow key={cat.id} cat={cat} onPress={() => onSelectCat(cat.id)} />
+                <CatRow key={cat.id} cat={cat} archivedLabel={archivedLabel} onPress={() => onSelectCat(cat.id)} />
               ))
             : (section.key === 'clowders' ? data.clowders : data.catteries).map((group) => (
                 <GroupRow
@@ -217,10 +214,11 @@ function DirectorySection({ section, onCreateNew, children }: DirectorySectionPr
 
 interface CatRowProps {
   cat: MobileCatsDirectoryCatSummary;
+  archivedLabel: string;
   onPress: () => void;
 }
 
-function CatRow({ cat, onPress }: CatRowProps) {
+function CatRow({ cat, archivedLabel, onPress }: CatRowProps) {
   return (
     <Pressable
       accessibilityRole="link"
@@ -240,9 +238,10 @@ function CatRow({ cat, onPress }: CatRowProps) {
           {cat.name.slice(0, 1).toUpperCase()}
         </Text>
       </View>
-      <Text style={styles.catName} numberOfLines={1}>
+      <Text style={[styles.catName, cat.archived ? styles.catNameArchived : null]} numberOfLines={1}>
         {cat.name}
       </Text>
+      {cat.archived ? <Text style={styles.groupDetail}>{archivedLabel}</Text> : null}
       <Text style={styles.catChevron}>›</Text>
     </Pressable>
   );
@@ -386,6 +385,9 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.fg.primary,
     ...typography.body,
+  },
+  catNameArchived: {
+    color: colors.fg.muted,
   },
   catChevron: {
     color: colors.fg.muted,

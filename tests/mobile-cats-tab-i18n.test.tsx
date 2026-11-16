@@ -26,7 +26,6 @@ import productSidebarFixtures from '../mobile/src/api/fixtures/productSidebar.ts
 
 const {
   getMobileDesktopOnlyAlertCopy,
-  getMobileNewEntityDesktopOnlyAlertCopy,
   resolveMobileDraftApiEntryKind,
 } = productSidebarFixtures;
 
@@ -79,6 +78,7 @@ test('selectMobileCatsDirectory projects chat cats into the mobile directory sha
       avatarUrl: null,
       avatarColor: null,
       isBoss: false,
+      archived: false,
     },
   ]);
   assert.deepEqual(data.clowders, []);
@@ -112,31 +112,9 @@ test('mobile cats tab copy ships directory section labels and entity-detail stri
   assert.equal(zh.sectionMyCatteries, '我的貓窩');
   assert.equal(zh.newCat, '+ 新增貓咪');
 
-  // `+ New cat` on the Cats tab fires a desktop-only alert until the
-  // mobile cat-creation screen lands. The copy must round-trip cleanly
-  // so the runtime intercept (CatsDirectoryTab) has something
-  // non-undefined to render. Clowders and Catteries open their own
-  // create screens instead.
-  assert.equal(en.newCatDesktopOnlyTitle, 'New cat — desktop only');
-  assert.equal(zh.newCatDesktopOnlyTitle, '新增貓咪僅限桌面版');
-  assert.match(en.newCatDesktopOnlyBody, /Creating a new cat is not yet wired/u);
-  assert.match(zh.newCatDesktopOnlyBody, /行動版尚未支援新增貓咪/u);
-
-
-  // Entity detail (Stack screens that drill into a single Cat /
-  // Clowder / Cattery from the Cats tab)
-  assert.equal(en.entityDetailEyebrow, 'Coming soon');
-  assert.equal(en.entityDetailTitleCat, 'Cat home');
-  assert.equal(en.entityDetailTitleClowder, 'Clowder home');
-  assert.equal(en.entityDetailTitleCattery, 'Cattery home');
-  assert.equal(en.entityDetailIdLabel, 'ID');
+  // `+ New X` rows open their create screens (SPEC-095 FR-17 as
+  // amended, SPEC-103 §Mobile); a missing Cat or group says so.
   assert.equal(en.entityDetailBackToDirectoryLabel, 'Back to Cats');
-  assert.match(en.entityDetailBody, /This entity page is being built/u);
-
-  assert.equal(zh.entityDetailEyebrow, '開發中');
-  assert.equal(zh.entityDetailTitleCat, '貓的主頁');
-  assert.equal(zh.entityDetailTitleClowder, '貓群主頁');
-  assert.equal(zh.entityDetailTitleCattery, '貓窩主頁');
   assert.equal(zh.entityDetailBackToDirectoryLabel, '返回 Cats');
 });
 
@@ -365,32 +343,6 @@ test('getMobileDesktopOnlyAlertCopy routes Code peer into the desktop-only alert
   assert.ok(zhAlert, 'expected code/peer to be desktop-only on mobile (zh-TW)');
   assert.equal(zhAlert.title, zh.peerCodeDesktopOnlyTitle);
   assert.equal(zhAlert.body, zh.peerCodeDesktopOnlyBody);
-});
-
-// `getMobileNewEntityDesktopOnlyAlertCopy` is the parallel of
-// `getMobileDesktopOnlyAlertCopy` for the Cats tab's `+ New X` rows.
-// `+ New cat` MUST resolve to a desktop-only alert pair until the
-// mobile cat-creation screen lands — a regression to the silent no-op
-// (the bug that prompted the 2026-05-06 follow-up after the user
-// reported `+ New cat` did nothing) gets caught in CI instead of in
-// production. Clowders and Catteries are created on the phone
-// (SPEC-103 §Mobile), so they get no alert.
-test('getMobileNewEntityDesktopOnlyAlertCopy alerts for a new cat only', () => {
-  const en = getMobileCatsTabCopy('en');
-  const zh = getMobileCatsTabCopy('zh-TW');
-
-  const enCats = getMobileNewEntityDesktopOnlyAlertCopy('cats', en);
-  assert.ok(enCats, 'expected cats section to be desktop-only on mobile');
-  assert.equal(enCats.title, en.newCatDesktopOnlyTitle);
-  assert.equal(enCats.body, en.newCatDesktopOnlyBody);
-
-  const zhCats = getMobileNewEntityDesktopOnlyAlertCopy('cats', zh);
-  assert.ok(zhCats, 'expected cats section to be desktop-only on mobile (zh-TW)');
-  assert.equal(zhCats.title, zh.newCatDesktopOnlyTitle);
-  assert.equal(zhCats.body, zh.newCatDesktopOnlyBody);
-
-  assert.equal(getMobileNewEntityDesktopOnlyAlertCopy('clowders', en), null);
-  assert.equal(getMobileNewEntityDesktopOnlyAlertCopy('catteries', zh), null);
 });
 
 test('getMobileDesktopOnlyAlertCopy lets non-fan-out actions through to the draft route', () => {

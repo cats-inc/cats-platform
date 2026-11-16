@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 
 import {
   fillMobileCopy,
   mobileDirectoryRequests,
-  parseMobileEndDate,
+  pendingMobileEndDate,
   selectMobileAddableCats,
   selectMobileMoveTargets,
   toMobileEndDateText,
@@ -241,15 +241,19 @@ export function MemberSheet({
   const [endDate, setEndDate] = useState('');
   const [endDateError, setEndDateError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The end date already sent, so a blur and a close never send it twice.
+  const sentRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!visible) return;
     setStep('actions');
     setError(null);
     setEndDateError(null);
+    sentRef.current = undefined;
   }, [visible]);
   useEffect(() => {
     setEndDate(toMobileEndDateText(member?.expiresAt ?? null));
+    sentRef.current = undefined;
   }, [member?.expiresAt, member?.catId]);
 
   if (!member) return null;
@@ -261,15 +265,29 @@ export function MemberSheet({
     if (!message && closeAfter) onClose();
   }
 
-  function saveEndDate() {
-    const parsed = parseMobileEndDate(endDate);
-    if (!parsed.ok) {
+  /** Saves a changed end date; false when the typed date cannot be saved. */
+  async function flushEndDate(): Promise<boolean> {
+    const pending = pendingMobileEndDate(member!, endDate, sentRef.current);
+    if (pending.kind === 'invalid') {
       setEndDateError(copy.endDateInvalid);
-      return;
+      return false;
     }
     setEndDateError(null);
-    if (parsed.value === toMobileEndDateText(member!.expiresAt) || (parsed.value === null && member!.expiresAt === null)) return;
-    void apply(mobileDirectoryRequests.updateClowderMember(groupId, catId, { expiresAt: parsed.value }));
+    if (pending.kind === 'none') return true;
+    sentRef.current = pending.value;
+    const message = await perform(mobileDirectoryRequests.updateClowderMember(groupId, catId, { expiresAt: pending.value }));
+    setError(message);
+    if (message) sentRef.current = undefined;
+    return !message;
+  }
+
+  function saveEndDate() {
+    void flushEndDate();
+  }
+
+  /** Leaves the actions only once a typed end date is saved, or kept on screen when it cannot be. */
+  async function leave(next: () => void) {
+    if (await flushEndDate()) next();
   }
 
   const moveGroups = kind === 'clowder' ? selectMobileMoveTargets(directory, cats, groupId, catId, locale) : [];
@@ -315,7 +333,7 @@ export function MemberSheet({
       visible={visible}
       title={step === 'actions' ? member.name : moving ? copy.moveTo : copy.alsoAdd}
       closeLabel={step === 'actions' ? copy.doneAction : copy.cancelAction}
-      onClose={step === 'actions' ? onClose : () => setStep('actions')}
+      onClose={step === 'actions' ? () => { void leave(onClose); } : () => setStep('actions')}
     >
       {step !== 'actions' ? targets : (
       <>
@@ -369,8 +387,8 @@ export function MemberSheet({
           </SheetSection>
           {member.status === 'temp' ? <Text style={styles.hint}>{copy.endDateHint}</Text> : null}
           <SheetSection>
-            <SheetAction label={copy.moveTo} onPress={() => setStep('move')} disabled={pending} />
-            <SheetAction label={copy.alsoAdd} onPress={() => setStep('add')} disabled={pending} />
+            <SheetAction label={copy.moveTo} onPress={() => { void leave(() => setStep('move')); }} disabled={pending} />
+            <SheetAction label={copy.alsoAdd} onPress={() => { void leave(() => setStep('add')); }} disabled={pending} />
           </SheetSection>
         </>
       ) : (
@@ -402,7 +420,7 @@ export function MemberSheet({
       )}
       <SheetError message={error} />
       <SheetSection>
-        <SheetAction label={copy.viewProfile} onPress={() => onViewProfile(catId)} />
+        <SheetAction label={copy.viewProfile} onPress={() => { void leave(() => onViewProfile(catId)); }} />
         <SheetAction
           label={kind === 'clowder' ? copy.removeFromClowder : copy.removeFromCattery}
           tone="danger"

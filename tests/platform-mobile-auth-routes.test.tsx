@@ -16,6 +16,7 @@ import {
   type PlatformGoogleIdTokenVerifier,
 } from '../src/platform/auth/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { createMobileModelSelection, mobileCatRequests, mobileModelChange } from '../src/mobile/index.ts';
 
 const NOW = new Date('2026-05-10T00:00:00.000Z');
 const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
@@ -413,6 +414,46 @@ test('a mobile bearer reaches the Directory, Cat and provider routes, and change
   const providers = await request(fixture.server, '/api/providers', { authorization });
   assert.notEqual(providers.status, 401);
   assert.notEqual(providers.status, 403);
+});
+
+test('the requests the phone builds for a Cat change it on a real server', async (t) => {
+  const fixture = await createAppFixture(t);
+  const login = await request(fixture.server, '/api/mobile/auth/login', {
+    method: 'POST',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const authorization = `Bearer ${login.payload?.token}`;
+  const send = (built: { method: string; path: string; body?: unknown }) =>
+    request(fixture.server, built.path, { method: built.method, body: built.body, authorization });
+  const readCat = async (catId: string) => (await request(fixture.server, `/api/cats/${catId}`, { authorization })).payload?.cat;
+
+  const created = await send(mobileCatRequests.create({
+    name: 'Mochi',
+    provider: 'claude',
+    model: 'claude-sonnet',
+    modelSelection: createMobileModelSelection('claude-sonnet', 'rev-1'),
+  }));
+  assert.equal(created.status, 201);
+  const catId = created.payload?.cat?.id as string;
+  assert.deepEqual((await readCat(catId))?.defaultModelSelection, { entryId: 'claude-sonnet', entryMode: 'explicit', catalogRevision: 'rev-1' });
+
+  assert.equal((await send(mobileCatRequests.update(catId, { name: 'Mochi Two' }))).status, 200);
+  assert.equal((await readCat(catId))?.name, 'Mochi Two');
+
+  const remodel = await send(mobileCatRequests.update(catId, mobileModelChange('claude', null, 'claude-opus', { catalogRevision: 'rev-2' })));
+  assert.equal(remodel.status, 200);
+  const remodelled = await readCat(catId);
+  assert.equal(remodelled?.defaultExecutionTarget?.model, 'claude-opus');
+  // The new pick replaces the saved one, so no control from the old model is left behind.
+  assert.deepEqual(remodelled?.defaultModelSelection, { entryId: 'claude-opus', entryMode: 'explicit', catalogRevision: 'rev-2' });
+
+  assert.equal((await send(mobileCatRequests.update(catId, { archive: true }))).status, 200);
+  assert.equal((await readCat(catId))?.status, 'archived');
+  assert.equal((await send(mobileCatRequests.update(catId, { unarchive: true }))).status, 200);
+  assert.equal((await readCat(catId))?.status, 'active');
+
+  assert.equal((await send(mobileCatRequests.remove(catId))).status, 200);
+  assert.equal((await request(fixture.server, `/api/cats/${catId}`, { authorization })).status, 404);
 });
 
 test('request router serves mobile auth before mobile manifest pairing gate', async (t) => {
