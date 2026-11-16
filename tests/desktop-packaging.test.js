@@ -236,6 +236,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'config', 'provider-capability-bootstrap.yaml.example'), '# example\n');
+  await seedFile(join(packageRoot, 'config', 'desktop-feature-packs.lock.json'), '{"schemaVersion":1,"packs":[]}\n');
 }
 
 async function seedUnixSetupAssets(packageRoot, platform) {
@@ -1507,6 +1508,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
 
   assert.deepEqual(JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'cats-platform',
     'config', 'google-desktop-oauth.json'), 'utf8')), { clientId: 'publisher-desktop-client' });
+  // SPEC-145 FR-A1: the feature pack lock ships beside the other Platform config.
+  assert.deepEqual(JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'cats-platform',
+    'config', 'desktop-feature-packs.lock.json'), 'utf8')), { schemaVersion: 1, packs: [] });
   assert.ok(plan.targets.every((target) => target.artifacts.some((artifact) =>
     artifact.id === 'desktop-google-oauth-config')));
 

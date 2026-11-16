@@ -39,6 +39,7 @@ test('desktop voice capture contract exposes channels, modes, and closed errors'
     'helper_crashed',
     'cancelled',
     'aborted',
+    'pack_required',
   ]);
 });
 

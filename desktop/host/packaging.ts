@@ -147,6 +147,13 @@ const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
     targetRelativePath: join('shared', 'cats-platform', 'config', 'provider-capability-bootstrap.yaml.example'),
     directory: false,
   },
+  // SPEC-145 FR-A1: the reviewed feature pack lock. The host reads it from
+  // app-sidecar/config at run time; an empty lock means no pack.
+  {
+    sourceRelativePath: join('config', 'desktop-feature-packs.lock.json'),
+    targetRelativePath: join('shared', 'cats-platform', 'config', 'desktop-feature-packs.lock.json'),
+    directory: false,
+  },
 ];
 
 const PLATFORM_KNOWLEDGE_ASSETS = [

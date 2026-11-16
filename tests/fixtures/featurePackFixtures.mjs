@@ -21,7 +21,10 @@ export const FIXTURE_LANGUAGES = ['en', 'zh', 'ja'];
  * - `final` (default): `ready`, then `final` on stop;
  * - `mic_unavailable`, `engine_unavailable`: that error, then `end`;
  * - `exit_before_ready`: exits with status 1 and prints nothing;
- * - `no_ready`: never sends `ready`.
+ * - `no_ready`: never sends `ready`;
+ * - `overrun`: after `ready`, sends `aborted` once CATS_STT_FIXTURE_OVERRUN_MS
+ *   (default 50) pass, as the real helper does past 31 s of audio;
+ * - `hang_on_stop`: ignores `stop`.
  * Cancel sends `cancelled` and closing stdin sends `aborted`.
  * `--locale` is echoed in `ready`, and its absence is `"auto"`.
  *
@@ -62,6 +65,10 @@ export const FIXTURE_HELPER_SOURCE = `#!/usr/bin/env node
   if (scenario !== 'no_ready') {
     process.stdout.write(line({ type: 'ready', locale, mode: 'on-device' }));
   }
+  if (scenario === 'overrun') {
+    const overrunMs = Number(process.env.CATS_STT_FIXTURE_OVERRUN_MS ?? 50);
+    setTimeout(() => finish([{ type: 'error', reason: 'aborted' }, { type: 'end' }]), overrunMs);
+  }
   const lines = createInterface({ input: process.stdin });
   lines.on('line', (input) => {
     let command;
@@ -71,6 +78,7 @@ export const FIXTURE_HELPER_SOURCE = `#!/usr/bin/env node
       return;
     }
     if (command.sessionId !== sessionId) return;
+    if (command.type === 'stop' && scenario === 'hang_on_stop') return;
     if (command.type === 'stop') finish([{ type: 'final', text }, { type: 'end' }]);
     if (command.type === 'cancel') {
       finish([{ type: 'error', reason: 'cancelled' }, { type: 'end' }]);
