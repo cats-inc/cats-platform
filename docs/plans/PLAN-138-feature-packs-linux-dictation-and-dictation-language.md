@@ -23,8 +23,14 @@ Each phase starts only after the owner authorizes it.
 - **Fixture packs until Phase 6.** Phases 1–5 need nothing from cats-plugins.
   Desktop first meets a real `linux-stt` archive in Phase 6.
 - **Bot.** Bot vendors this work after milestone M2 (ADR-029 D1).
-  - The pack manager's file closure must stay vendorable: Node built-ins only,
-    erasable TypeScript syntax, and relative imports confined to the closure.
+  - The pack manager's file closure must stay vendorable verbatim (Bot
+    [SPEC-016](https://github.com/cats-inc/cats-bot/blob/main/docs/specs/SPEC-016-linux-dictation-pack-and-dictation-language-in-notes.md)
+    FR-A2):
+    - no relative value imports (type-only imports are allowed);
+    - Node built-ins only;
+    - erasable TypeScript syntax only.
+  - The reason: Bot runs vendored TypeScript through Node's type stripping, so a
+    relative `./x.js` value import would not resolve there.
   - Phase 2 records the closure's file list here.
 - **Upgrade boundary.** Two additions, both additive within the current minor
   line:
@@ -58,8 +64,9 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
     `useVoiceInputComposer`;
   - the helpers in `desktop/native/`.
 - [ ] Fix the pack manager's location as a Node-only directory under
-  `desktop/host/featurePacks/`. A boundary test fails on any Electron import
-  (FR-B9).
+  `desktop/host/featurePacks/`. A boundary test fails on any Electron import, any
+  relative value import, or any import other than `node:` built-ins and type-only
+  imports (FR-B9 and Bot SPEC-016 FR-A2).
 
 ## Phase 1 — Contract and verifier (SPEC-145 FR-A1–FR-A4)
 
@@ -110,7 +117,8 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
   - Log lines carry the stage.
 - [ ] **Guard Linux-only assertions** (file modes, the glibc report) by
   platform. A local `npm test` also runs on Windows and macOS.
-- [ ] Record the manager's file closure for Bot in the progress log.
+- [ ] Record the manager's file closure for Bot in the progress log, and prove
+  it runs under Node's type stripping, unchanged, in one test.
 
 **Covers:** SPEC-145 AC-02, AC-03.
 
@@ -277,7 +285,7 @@ Empty until Phase 6. One row per run set.
 | --- | --- | --- |
 | A real pack differs from the fixtures | High | Gate M2 runs Desktop's verifier on real candidates before any release |
 | The reference board misses the D4 bar | Medium | Candidate order in cats-plugins ADR-002 D3; measure before choosing |
-| Bot vendoring drifts | Medium | Keep the closure vendorable and record its file list; Bot starts at M2 |
+| Bot vendoring drifts | Medium | Keep the closure vendorable verbatim, enforced by the boundary test; record its file list; Bot starts at M2 |
 | Listing on macOS causes a permission prompt | Medium | Manual check in Phase 5; an empty list falls back to Follow system |
 
 ## Progress log
