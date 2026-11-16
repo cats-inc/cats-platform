@@ -357,9 +357,10 @@ download.
   | `update_required`, `damaged` | — | **Download**, **Remove** |
   | `unsupported` | The reason | none |
 
-- **Dictation language.** While the status allows dictation (`installed` or
-  `update_available`), the row also shows the dictation language setting
-  (FR-C5).
+- **Dictation language.** The setting lives in Settings > Desktop > Voice
+  input ([SPEC-146](SPEC-146-dictation-language-for-desktop-voice-input.md)
+  FR-6), which sits above this section. While the status allows dictation, the
+  row links there.
 
 - **Feedback.**
   - Errors go through the page's toast, including network failures, a hash
@@ -374,28 +375,23 @@ entries.
 
 - Preload exposes a pack bridge with these operations:
   - `list()` and `get(id)` return status, version, sizes and lock licenses;
-    when installed, also the active manifest's `languages` and the saved
-    dictation language;
   - `download(id)`, `pause(id)`, `resume(id)`, `cancel(id)`, `check(id)` and
     `remove(id)`;
-  - `setLanguage(id, value)`, where `value` is `"auto"` or one of the active
-    manifest's `languages` (FR-C5);
   - `onChange(listener)` reports status and progress.
+- The dictation language has its own bridge (SPEC-146 FR-7).
 - Pack channels accept only the Platform window's main frame, like the
   existing voice channels.
-- They validate `id` against the lock, and a language against the active
-  manifest. They accept no other input.
+- They validate `id` against the lock and accept no other input.
 
-**FR-C5 — Dictation language (renderer, host).** The owner added this on
-2026-11-16.
+**FR-C5 — Dictation language on Linux (host).** The owner added this on
+2026-11-16. The control, its help text and its feedback are specified in
+[SPEC-146](SPEC-146-dictation-language-for-desktop-voice-input.md) FR-6. They
+appear in Settings > Desktop > Voice input on every platform.
 
-- **The control.** The row shows a select labelled "Dictation language":
-  - **Automatic** comes first and is the default;
-  - then each of the active manifest's `languages`, by its native name, such
-    as English, 中文 and 日本語.
-- **Help text.**
-  - Automatic detects the spoken language from each recording, and short
-    phrases may be detected wrongly.
+- **Options on Linux.** Automatic, which detects the spoken language from each
+  recording, then each of the active manifest's `languages`.
+- **Help text on Linux.**
+  - Short phrases may be detected wrongly.
   - Chinese text may come out in Simplified characters (FR-D7).
 - **Storage.**
   - The host saves the choice as `dictationLanguage` (`"auto"` or a subtag) in
@@ -414,8 +410,7 @@ entries.
     treated as `"auto"`. The saved value is unchanged until the owner chooses
     again.
   - For `linux-stt` sessions, the host ignores any locale the renderer sends.
-- **Feedback.** Saving follows AGENTS.md's Settings UI rules: silent on
-  success, and a toast on failure that restores the previous value.
+    SPEC-146 FR-5 extends this to every platform.
 
 ### D. Linux dictation
 
@@ -615,9 +610,8 @@ mic click (Linux Desktop)
   Web deployment is unchanged.
 - **AC-06 — Settings.**
   - Every FR-C2 status shows its actions.
-  - The dictation language select appears only while dictation is allowed.
-    It lists Automatic and then the manifest's languages, and it persists in
-    the Desktop preferences file across a restart and a data reset.
+  - While dictation is allowed, the row links to Voice input. The select is
+    checked by SPEC-146 AC-03.
   - Feedback is toast-only.
   - `en` and `zh-TW` strings exist for every new key.
 - **AC-07 — Real pack (manual, recorded in the PLAN).** On x64 and on the arm64

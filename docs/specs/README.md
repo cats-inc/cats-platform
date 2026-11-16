@@ -1,5 +1,11 @@
 # Feature Specifications
 
+- [SPEC-146: Dictation language for Desktop voice input](SPEC-146-dictation-language-for-desktop-voice-input.md)
+  — draft, 2026-11-16; not implemented. One `dictationLanguage` setting in a new Settings > Desktop
+  "Voice input" section on every platform. macOS and Windows pass it as `--locale` instead of
+  following the OS, with options from a new helper `--list-languages`. Automatic means detection on
+  Linux and the system language elsewhere, and an unavailable language fails closed with Open
+  Settings. Amends SPEC-084 Req 15 and SPEC-145's control placement. D1–D3 resolved under owner delegation.
 - [SPEC-145: Feature packs and Linux dictation (`linux-stt`)](SPEC-145-feature-packs-and-linux-dictation.md)
   — draft, 2026-11-16; not implemented. Specifies ADR-154's first pack: the lock entry,
   `.catspack` archive, manifest and helper protocol 1 shared with cats-plugins; Desktop's
