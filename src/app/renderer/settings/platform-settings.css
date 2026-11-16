@@ -386,6 +386,24 @@
   padding-top: var(--space-2);
 }
 
+/* SPEC-146 FR-6: Settings > Desktop > Voice input. */
+.settingsVoiceInputControl {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.settingsVoiceInputControl select {
+  max-width: min(360px, 100%);
+}
+
+.settingsVoiceInputPackLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
 /* SPEC-145 FR-C2: Settings > Desktop > Optional downloads. */
 .settingsOptionalDownloadLine {
   display: block;

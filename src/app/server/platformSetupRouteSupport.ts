@@ -177,6 +177,9 @@ export function parsePlatformPreferencesUpdate(
       // Changed only through the local-owner desktop control routes (SPEC-133).
       desktopControlEnabled: currentPrefs.desktopControlEnabled,
       desktopControlConversations: currentPrefs.desktopControlConversations,
+      // Changed only by the Desktop host, which checks it against the
+      // platform's dictation languages (SPEC-146 FR-1, FR-7).
+      dictationLanguage: currentPrefs.dictationLanguage,
     },
   };
 }

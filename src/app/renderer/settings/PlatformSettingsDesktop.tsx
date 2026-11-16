@@ -4,6 +4,7 @@ import { PlatformSettingsDesktopMobilePairing } from './PlatformSettingsDesktopM
 import { PlatformSettingsDesktopOptionalDownloads } from './PlatformSettingsDesktopOptionalDownloads.js';
 import { PlatformSettingsDesktopStartupBehavior } from './PlatformSettingsDesktopStartupBehavior.js';
 import { PlatformSettingsDesktopUpdates } from './PlatformSettingsDesktopUpdates.js';
+import { PlatformSettingsDesktopVoiceInput } from './PlatformSettingsDesktopVoiceInput.js';
 
 export interface PlatformSettingsDesktopProps {
   payload: AppShellPayload;
@@ -31,8 +32,8 @@ export function PlatformSettingsDesktop({
     <>
       {/* SPEC-111 section 4 fixes this order: App updates first, with the
           existing relative order of Mobile pairing before Startup behavior
-          preserved. SPEC-145 FR-C2 puts Optional downloads last; SPEC-146's
-          Voice input will sit between Startup behavior and it. */}
+          preserved. SPEC-146 FR-6 puts Voice input next, and SPEC-145 FR-C2
+          puts Optional downloads last. */}
       <PlatformSettingsDesktopUpdates showToast={showToast} />
       <PlatformSettingsDesktopMobilePairing
         payload={payload}
@@ -43,6 +44,7 @@ export function PlatformSettingsDesktop({
         onPayloadUpdate={onPayloadUpdate}
         showToast={showToast}
       />
+      <PlatformSettingsDesktopVoiceInput showToast={showToast} />
       <PlatformSettingsDesktopOptionalDownloads showToast={showToast} />
 
       <ToastContainer toasts={toasts} />

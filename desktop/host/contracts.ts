@@ -233,6 +233,21 @@ export const DESKTOP_FEATURE_PACK_CANCEL_CHANNEL = 'cats-host:feature-pack-cance
 export const DESKTOP_FEATURE_PACK_CHECK_CHANNEL = 'cats-host:feature-pack-check';
 export const DESKTOP_FEATURE_PACK_REMOVE_CHANNEL = 'cats-host:feature-pack-remove';
 export const DESKTOP_FEATURE_PACK_EVENT_CHANNEL = 'cats-host:feature-pack-event';
+// SPEC-146 FR-7: the dictation language, exposed wherever the voice bridge is.
+export const DESKTOP_DICTATION_LANGUAGE_OPTIONS_CHANNEL = 'cats-host:dictation-language-options';
+export const DESKTOP_DICTATION_LANGUAGE_SET_CHANNEL = 'cats-host:dictation-language-set';
+
+/** SPEC-146 FR-7; mirrors src/shared/dictationLanguageBridge.ts. */
+export interface DesktopDictationLanguageOptions {
+  /** What Automatic means: detection from speech (Linux) or the system language. */
+  automatic: 'detect' | 'system';
+  /** macOS and Windows: the language Automatic uses, when the helper reports it. */
+  system?: string;
+  /** The languages this machine can dictate, besides Automatic. */
+  options: string[];
+  /** The saved value: `"auto"` or a tag, which may no longer be among `options`. */
+  value: string;
+}
 export const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
 // ADR-147: the macOS System Settings panes the host opens for a missing
 // permission; mirrors src/shared/desktopSystemSettings.ts.

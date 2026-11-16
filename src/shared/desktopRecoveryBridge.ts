@@ -198,6 +198,9 @@ export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
   onVoiceCaptureEvent?: VoiceCaptureBridge['onVoiceCaptureEvent'];
   // SPEC-145 FR-C4: present only when the lock has a pack for this machine.
   featurePacks?: import('./featurePackBridge.js').FeaturePackBridge;
+  // SPEC-146 FR-7: present wherever the voice bridge is.
+  getDictationLanguageOptions?: import('./dictationLanguageBridge.js').DictationLanguageBridge['getDictationLanguageOptions'];
+  setDictationLanguage?: import('./dictationLanguageBridge.js').DictationLanguageBridge['setDictationLanguage'];
   // Update commands take no arguments: the renderer asks the host to act and
   // never chooses a feed, URL, path, or installer flag.
   getUpdateSnapshot?: () => Promise<DesktopUpdateSnapshot>;

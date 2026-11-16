@@ -183,7 +183,8 @@ for (const resetRuntime of [false, true]) test(`${Store.name} reset route purges
   await writePlatformPreferences(config.chatStatePath, { lastProductSurface: 'work', startAtLogin: false,
     openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'full',
     assistantResponseLanguage: 'zh-TW', uiLanguagePreference: 'zh-TW', codePreviewServersEnabled: true,
-    claudeInChromeEnabled: true, desktopControlEnabled: true, desktopControlConversations: ['channel-old'] });
+    claudeInChromeEnabled: true, desktopControlEnabled: true, desktopControlConversations: ['channel-old'],
+    dictationLanguage: 'zh-TW' });
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
   if (Store === DatabaseChatStore) {
@@ -197,11 +198,13 @@ for (const resetRuntime of [false, true]) test(`${Store.name} reset route purges
   if (resetRuntime) assert.deepEqual(JSON.parse(await readFile(journal, 'utf8')),
     { schemaVersion: 1, directories: [], runtimeReset: 'ready' });
   else await missing(journal);
-  // Only the Desktop startup and tray choices, which the host applies to the OS, survive.
+  // Only the Desktop preferences survive: startup and tray, which the host applies
+  // to the OS, and the dictation language (SPEC-145 FR-C5, SPEC-146 AC-03).
   assert.deepEqual(await readPlatformPreferences(config.chatStatePath), { lastProductSurface: null,
     startAtLogin: false, openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'reduced',
     assistantResponseLanguage: 'unspecified', uiLanguagePreference: 'auto', codePreviewServersEnabled: false,
-    claudeInChromeEnabled: false, desktopControlEnabled: false, desktopControlConversations: [] });
+    claudeInChromeEnabled: false, desktopControlEnabled: false, desktopControlConversations: [],
+    dictationLanguage: 'zh-TW' });
   assert.equal(relayStore.getProcessedUpdateCount(), 0);
   assert.deepEqual(await activity.list('cat-old'), []);
   assert.equal((await readdir(config.platformStateDir)).some(file => file.endsWith('.bak')), false);
@@ -307,7 +310,7 @@ test('every locale discloses every erased category and the retained ownership bo
       assert.ok(match, `reset target requires a disclosed category: ${target}`);
       assert.ok(copy.includes(match[locale === 'en' ? 1 : 2]), `${locale}: ${target}`);
     }
-    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', '已下載的選用功能', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作空間']) assert.ok(copy.includes(category), `${locale}: ${category}`);
+    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動、系統匣與聽寫語言偏好、組態與安裝識別', 'Apps／plugins 及其資料', '已下載的選用功能', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作空間']) assert.ok(copy.includes(category), `${locale}: ${category}`);
   }
 });
 
