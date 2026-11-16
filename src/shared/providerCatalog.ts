@@ -162,10 +162,32 @@ export interface ProviderAdvancedCatalogSupport {
   notes: string[];
 }
 
-/** What a catalog's list was captured against (Runtime SPEC-031 basis); display-only. */
+/** What a catalog's list was captured against (Runtime SPEC-031/SPEC-045 basis); display-only. */
 export interface ProviderCatalogBasis {
+  /** Names a basis among several; only a target's first basis may omit it (Runtime SPEC-045). */
+  id?: string;
   channel?: { id: string; label: string };
-  plan?: { label: string };
+  region?: { id: string; label: string };
+  plan?: { label: string; id?: string };
+}
+
+/** One captured list of a target with several (Runtime SPEC-045 FR-5), in data order. */
+export interface ProviderCatalogBasisOption {
+  /** Absent only for an id-less first basis, which a selection names by omitting basisId. */
+  id?: string;
+  label: string;
+  channel?: { id: string; label: string };
+  region?: { id: string; label: string };
+  plan?: { label: string; id?: string };
+  cliVersion?: string;
+  lastUpdated?: string;
+  /** The basis the CLI sign-in on the Runtime host matches; at most one is marked. */
+  detected: boolean;
+}
+
+export interface ProviderCatalogCapture {
+  cliVersion?: string;
+  lastUpdated?: string;
 }
 
 export interface ProviderAdvancedModelCatalog {
@@ -183,6 +205,11 @@ export interface ProviderAdvancedModelCatalog {
   defaultSelection: ProviderModelSelection | null;
   support: ProviderAdvancedCatalogSupport;
   basis?: ProviderCatalogBasis;
+  /** The basis this catalog is, when the target has two or more and this one has an id. */
+  basisId?: string;
+  /** Every captured basis of the target, present only for two or more (Runtime SPEC-045). */
+  bases?: ProviderCatalogBasisOption[];
+  capture?: ProviderCatalogCapture;
   warnings: string[];
 }
 
@@ -239,17 +266,62 @@ function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function readIdLabel(value: unknown): { id: string; label: string } | null {
+  const record = asRecord(value);
+  const id = readNullableString(record?.id);
+  const label = readNullableString(record?.label);
+  return id && label ? { id, label } : null;
+}
+
+function readBasisParts(record: Record<string, unknown> | null) {
+  const channel = readIdLabel(record?.channel);
+  const region = readIdLabel(record?.region);
+  const plan = asRecord(record?.plan);
+  const planLabel = readNullableString(plan?.label);
+  const planId = readNullableString(plan?.id);
+  return {
+    ...(channel ? { channel } : {}),
+    ...(region ? { region } : {}),
+    ...(planLabel ? { plan: { label: planLabel, ...(planId ? { id: planId } : {}) } } : {}),
+  };
+}
+
 function readCatalogBasis(value: unknown): ProviderCatalogBasis | null {
   const record = asRecord(value);
-  const channel = asRecord(record?.channel);
-  const channelId = readNullableString(channel?.id);
-  const channelLabel = readNullableString(channel?.label);
-  const planLabel = readNullableString(asRecord(record?.plan)?.label);
-  const basis: ProviderCatalogBasis = {
-    ...(channelId && channelLabel ? { channel: { id: channelId, label: channelLabel } } : {}),
-    ...(planLabel ? { plan: { label: planLabel } } : {}),
-  };
-  return basis.channel || basis.plan ? basis : null;
+  const id = readNullableString(record?.id);
+  const parts = readBasisParts(record);
+  if (!parts.channel && !parts.region && !parts.plan) return null;
+  return { ...(id ? { id } : {}), ...parts };
+}
+
+function readCatalogBases(value: unknown): ProviderCatalogBasisOption[] | null {
+  if (!Array.isArray(value)) return null;
+  const bases = value.flatMap((item): ProviderCatalogBasisOption[] => {
+    const record = asRecord(item);
+    const label = readNullableString(record?.label);
+    if (!record || !label) return [];
+    const id = readNullableString(record.id);
+    const cliVersion = readNullableString(record.cliVersion);
+    const lastUpdated = readNullableString(record.lastUpdated);
+    return [{
+      ...(id ? { id } : {}),
+      label,
+      ...readBasisParts(record),
+      ...(cliVersion ? { cliVersion } : {}),
+      ...(lastUpdated ? { lastUpdated } : {}),
+      detected: record.detected === true,
+    }];
+  });
+  // A list is only meaningful when every basis after the first can be named.
+  return bases.length > 1 && bases.slice(1).every(basis => basis.id) ? bases : null;
+}
+
+function readCatalogCapture(value: unknown): ProviderCatalogCapture | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const cliVersion = readNullableString(record.cliVersion);
+  const lastUpdated = readNullableString(record.lastUpdated);
+  return { ...(cliVersion ? { cliVersion } : {}), ...(lastUpdated ? { lastUpdated } : {}) };
 }
 
 function readCapabilitySupport(
@@ -778,6 +850,7 @@ export function normalizeProviderAdvancedModelCatalog(
             ? { entryId: readNullableString(defaultSelectionRecord.entryId)! }
             : {}),
           ...(readNullableString(defaultSelectionRecord.catalogRevision) ? { catalogRevision:readNullableString(defaultSelectionRecord.catalogRevision)! } : {}),
+          ...(readNullableString(defaultSelectionRecord.basisId) ? { basisId: readNullableString(defaultSelectionRecord.basisId)! } : {}),
           entryMode: readSelectionEntryMode(defaultSelectionRecord.entryMode),
           ...(readNullableString(defaultSelectionRecord.presetId)
             ? { presetId: readNullableString(defaultSelectionRecord.presetId)! }
@@ -797,8 +870,65 @@ export function normalizeProviderAdvancedModelCatalog(
       notes: readStringArray(supportRecord?.notes),
     },
     ...(readCatalogBasis(record.basis) ? { basis: readCatalogBasis(record.basis)! } : {}),
+    ...(readNullableString(record.basisId) ? { basisId: readNullableString(record.basisId)! } : {}),
+    ...(readCatalogBases(record.bases) ? { bases: readCatalogBases(record.bases)! } : {}),
+    ...(readCatalogCapture(record.capture) ? { capture: readCatalogCapture(record.capture)! } : {}),
     warnings: Array.isArray(record.warnings)
       ? record.warnings.filter((warning): warning is string => typeof warning === 'string')
       : [],
+  };
+}
+
+/** The basis id of one advanced catalog, or null for an id-less (first or only) basis. */
+export function advancedCatalogBasisId(catalog: ProviderAdvancedModelCatalog): string | null {
+  return catalog.basisId ?? catalog.basis?.id ?? null;
+}
+
+/** Whether this advanced catalog is its target's first basis, the one a selection without basisId means. */
+export function isFirstCatalogBasis(catalog: ProviderAdvancedModelCatalog): boolean {
+  if (!catalog.bases?.length) return true;
+  return (catalog.bases[0]!.id ?? null) === (catalog.basisId ?? null);
+}
+
+/**
+ * Platform names the first basis by omitting basisId, even when that basis has an id, so a
+ * selection made on it compares equal to one saved before bases existed.
+ */
+export function canonicalCatalogBasisId(
+  basisId: string | null | undefined,
+  catalog: ProviderAdvancedModelCatalog,
+): string | undefined {
+  if (!basisId) return undefined;
+  return catalog.bases?.length && catalog.bases[0]!.id === basisId ? undefined : basisId;
+}
+
+/** Whether a selection's basisId (absent = the first basis) names this advanced catalog's basis. */
+export function selectionTargetsCatalogBasis(
+  basisId: string | null | undefined,
+  catalog: ProviderAdvancedModelCatalog,
+): boolean {
+  if (!basisId) return isFirstCatalogBasis(catalog);
+  return basisId === advancedCatalogBasisId(catalog)
+    || (isFirstCatalogBasis(catalog) && catalog.bases?.[0]?.id === basisId);
+}
+
+/**
+ * The base model list for the advanced catalog's basis. Runtime's `/models` lists the first
+ * basis only (SPEC-045 FR-5), so a non-first basis takes its entries from its advanced catalog.
+ */
+export function catalogForBasis(
+  catalog: ProviderModelCatalog,
+  advancedCatalog: ProviderAdvancedModelCatalog | null | undefined,
+): ProviderModelCatalog {
+  if (!advancedCatalog || isFirstCatalogBasis(advancedCatalog)) return catalog;
+  return {
+    ...catalog,
+    defaultModel: advancedCatalog.defaultSelection?.entryId ?? advancedCatalog.defaultModel,
+    models: advancedCatalog.entries.map(entry => ({
+      id: entry.id,
+      label: entry.label,
+      ...(entry.default ? { default: true } : {}),
+      ...(entry.status ? { status: entry.status } : {}),
+    })),
   };
 }

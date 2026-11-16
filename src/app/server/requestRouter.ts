@@ -766,6 +766,7 @@ export async function routeRequest(
       },
       advancedProviderModelsMatch[0]!,
       url.searchParams.get('instance'),
+      url.searchParams.get('basis'),
     );
     return;
   }

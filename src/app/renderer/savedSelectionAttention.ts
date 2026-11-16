@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import type { GuideCatRecord } from '../../core/types.js';
 import { buildCatSettingsPath } from '../../shared/catsDirectoryPaths.js';
 import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../shared/i18n/index.js';
-import type {
-  ProductProviderRegistryReadModel,
-  ProviderAdvancedModelCatalog,
-  ProviderModelCatalog,
+import {
+  catalogForBasis,
+  type ProductProviderRegistryReadModel,
+  type ProviderAdvancedModelCatalog,
+  type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
   canClassifyCatalogSelection,
@@ -21,6 +22,7 @@ import {
   fetchProviderAdvancedCatalogFromClientCache,
   fetchProviderModelCatalogFromClientCache,
   getProviderCatalogRefreshVersion,
+  ProviderCatalogBasisUnknownError,
   subscribeProviderCatalogRefreshes,
 } from './providerCatalogClient.js';
 import { getProviderClientGeneration, onProviderClientInvalidation } from './providerClientInvalidation.js';
@@ -44,14 +46,14 @@ export interface UnmappableSavedSelection {
 export interface SavedSelectionCatalogReader {
   readRegistry: () => Promise<ProductProviderRegistryReadModel>;
   readModels: (provider: string, instance: string | null) => Promise<ProviderModelCatalog>;
-  readAdvanced: (provider: string, instance: string | null) => Promise<ProviderAdvancedModelCatalog>;
+  readAdvanced: (provider: string, instance: string | null, basisId?: string | null) => Promise<ProviderAdvancedModelCatalog>;
 }
 
 const clientCacheReader: SavedSelectionCatalogReader = {
   // Every opened picker re-reads the registry; badges reuse its last result.
   readRegistry: async () => peekProviderRegistryClientCache() ?? fetchProviderRegistryFromClientCache(),
   readModels: (provider, instance) => fetchProviderModelCatalogFromClientCache({ provider, instance }),
-  readAdvanced: (provider, instance) => fetchProviderAdvancedCatalogFromClientCache({ provider, instance }),
+  readAdvanced: (provider, instance, basisId) => fetchProviderAdvancedCatalogFromClientCache({ provider, instance, basisId }),
 };
 
 /**
@@ -74,15 +76,23 @@ export async function readUnmappableSavedSelection(
     return null;
   }
   const instance = resolveSelectedProviderInstance(descriptor, target.instance ?? '') || null;
+  // A selection is judged against its own basis (Runtime SPEC-045); one Runtime no longer has
+  // is read back as the first basis, which classifies it as an unmappable basis.
+  const basisId = selection.basisId ?? null;
   const [catalog, advancedCatalog] = await Promise.all([
     reader.readModels(provider, instance),
-    reader.readAdvanced(provider, instance),
+    reader.readAdvanced(provider, instance, basisId).catch((error: unknown) => {
+      if (!(error instanceof ProviderCatalogBasisUnknownError) || !basisId) throw error;
+      return reader.readAdvanced(provider, instance, null);
+    }),
   ]);
   if (!canClassifyCatalogSelection(catalog, advancedCatalog)) {
     return null;
   }
   const fit = classifyCatalogSelection({ selection, catalog, advancedCatalog });
-  return fit.status === 'unmappable' ? { mismatch: fit.mismatch, catalog, advancedCatalog } : null;
+  return fit.status === 'unmappable'
+    ? { mismatch: fit.mismatch, catalog: catalogForBasis(catalog, advancedCatalog), advancedCatalog }
+    : null;
 }
 
 type Translate = (key: MessageKey, values?: MessageInterpolationValues) => string;
@@ -95,6 +105,8 @@ export function describeUnmappableSavedSelection(
   const entryLabel = (entryId: string) =>
     catalog.models.find((option) => option.id === entryId)?.label ?? entryId;
   switch (mismatch.kind) {
+    case 'basis':
+      return t(messageKeys.sharedProviderModelAttentionBasisRemoved, { basis: mismatch.basisId ?? '' });
     case 'entry':
       return t(messageKeys.sharedProviderModelAttentionEntryRemoved, { model: mismatch.entryId });
     case 'control': {

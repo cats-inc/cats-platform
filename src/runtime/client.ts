@@ -12,6 +12,7 @@ export type {
 import { projectImageCapabilities, projectImageJob, readImageResponse,
   type RuntimeImageCapabilities, type RuntimeImageJob, type RuntimeImageRequest } from './images.js';
 import {
+  catalogForBasis,
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
   providerInstanceTarget,
@@ -20,6 +21,7 @@ import {
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
 import {
+  CATALOG_BASIS_UNKNOWN_CODE,
   CATALOG_SELECTION_UNMAPPABLE_CODE,
   classifyCatalogSelection,
   parseProviderModelResolution,
@@ -397,7 +399,7 @@ export interface RuntimeClient {
   getAdvancedProviderModels(
     provider: string,
     instance?: string | null,
-    options?: { forceRefresh?: boolean },
+    options?: { forceRefresh?: boolean; basisId?: string | null },
   ): Promise<ProviderAdvancedModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
   sendMessage(
@@ -526,6 +528,15 @@ export class RuntimeRequestError extends Error {
   }
 }
 
+/** A saved selection whose catalog basis this Runtime does not serve: the saved-choice attention path. */
+function unknownCatalogBasisError(provider: string, basisId: string | null): RuntimeRequestError {
+  return new RuntimeRequestError(
+    `The saved list basis "${basisId ?? 'first'}" is no longer offered for ${provider}. Choose the model again.`,
+    409,
+    CATALOG_SELECTION_UNMAPPABLE_CODE,
+  );
+}
+
 function describeUnmappableCatalogSelection(
   mismatch: CatalogSelectionMismatch,
   catalog: ProviderModelCatalog,
@@ -534,6 +545,9 @@ function describeUnmappableCatalogSelection(
   const entryLabel = (entryId: string) =>
     catalog.models.find((option) => option.id === entryId)?.label ?? entryId;
   switch (mismatch.kind) {
+    case 'basis':
+      return `The saved list basis "${mismatch.basisId ?? 'first'}" is no longer offered for ${catalog.provider}. `
+        + 'Choose the model again.';
     case 'entry':
       return `The saved model "${mismatch.entryId}" is no longer in the current ${catalog.provider} model list. `
         + 'Choose the model again.';
@@ -584,6 +598,7 @@ function readRuntimeSessionInfo(
 
 export class CatsRuntimeClient implements RuntimeClient {
   private readonly interactionSessions = new Set<string>();
+  private catalogBasesSupport: { value: boolean; readAt: number } | null = null;
 
   private async interactionRequest<T>(sessionId: string, suffix: string, body?: unknown, method?: 'DELETE'): Promise<T> {
     const response = await fetch(`${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}/${suffix}`, {
@@ -968,7 +983,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   async getAdvancedProviderModels(
     provider: string,
     instance?: string | null,
-    options: { forceRefresh?: boolean } = {},
+    options: { forceRefresh?: boolean; basisId?: string | null } = {},
   ): Promise<ProviderAdvancedModelCatalog> {
     const url = new URL(`${this.baseUrl}/providers/${encodeURIComponent(provider)}/models/advanced`);
     if (instance?.trim()) {
@@ -976,6 +991,10 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
     if (options.forceRefresh) {
       url.searchParams.set('refresh', '1');
+    }
+    // Runtime SPEC-045: a named basis; absent reads the target's first basis.
+    if (options.basisId?.trim()) {
+      url.searchParams.set('basis', options.basisId.trim());
     }
 
     const response = await fetch(url, {
@@ -1002,10 +1021,38 @@ export class CatsRuntimeClient implements RuntimeClient {
     return normalizeProviderAdvancedModelCatalog(await response.json(), provider);
   }
 
+  /**
+   * Whether this Runtime serves catalog bases (`catalogCapabilities.catalogBases`, Runtime
+   * SPEC-045). Null when the capability read failed; the answer is kept for a minute.
+   */
+  async readCatalogBasesSupport(): Promise<boolean | null> {
+    const cached = this.catalogBasesSupport;
+    if (cached && Date.now() - cached.readAt < 60_000) return cached.value;
+    try {
+      const response = await fetch(`${this.baseUrl}/providers/catalogs`, {
+        headers: { ...this.authHeaders(), Accept: 'application/json' },
+        signal: this.createTimeoutSignal(this.providerRegistryTimeoutMs),
+      });
+      if (!response.ok) return null;
+      const payload = await response.json() as { catalogBases?: unknown };
+      const value = payload.catalogBases === true;
+      this.catalogBasesSupport = { value, readAt: Date.now() };
+      return value;
+    } catch {
+      return null;
+    }
+  }
+
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
+    // Desktop sends a basisId only to a Runtime that serves bases. An older Runtime would ignore
+    // it and run the first basis, so the saved choice needs attention instead (Runtime SPEC-045).
+    if (input.modelSelection?.basisId && await this.readCatalogBasesSupport() === false) {
+      throw unknownCatalogBasisError(input.provider, input.modelSelection.basisId);
+    }
     try {
       return await this.postSession(input);
     } catch (error) {
+      await this.rejectUnknownCatalogBasis(input, error);
       const restampedInput = await this.restampStaleCatalogSelection(input, error);
       if (!restampedInput) {
         throw error;
@@ -1032,9 +1079,12 @@ export class CatsRuntimeClient implements RuntimeClient {
     try {
       [catalog, advancedCatalog] = await Promise.all([
         this.getProviderModels(input.provider, input.instance),
-        this.getAdvancedProviderModels(input.provider, input.instance),
+        this.getAdvancedProviderModels(input.provider, input.instance, { basisId: selection.basisId }),
       ]);
-    } catch {
+    } catch (readError) {
+      if (readError instanceof RuntimeRequestError && readError.code === CATALOG_BASIS_UNKNOWN_CODE) {
+        throw unknownCatalogBasisError(input.provider, selection.basisId ?? null);
+      }
       return null;
     }
     if (
@@ -1049,12 +1099,28 @@ export class CatsRuntimeClient implements RuntimeClient {
     const fit = classifyCatalogSelection({ selection, catalog, advancedCatalog });
     if (fit.status === 'unmappable') {
       throw new RuntimeRequestError(
-        describeUnmappableCatalogSelection(fit.mismatch, catalog, advancedCatalog),
+        describeUnmappableCatalogSelection(fit.mismatch, catalogForBasis(catalog, advancedCatalog), advancedCatalog),
         409,
         CATALOG_SELECTION_UNMAPPABLE_CODE,
       );
     }
     return fit.status === 'restampable' ? { ...input, modelSelection: fit.selection } : null;
+  }
+
+  // Runtime answers a session for a basis it no longer has with a plain 400 (no code), so the
+  // basis is read back: `catalog_basis_unknown` turns into the saved-choice attention path.
+  private async rejectUnknownCatalogBasis(input: RuntimeSessionCreateInput, error: unknown): Promise<void> {
+    const basisId = input.modelSelection?.basisId;
+    if (!basisId || !(error instanceof RuntimeRequestError) || error.status !== 400) return;
+    // A Runtime with PLAN-054 Phase 5 names the error; older ones need the basis read back.
+    if (error.code === CATALOG_BASIS_UNKNOWN_CODE) throw unknownCatalogBasisError(input.provider, basisId);
+    try {
+      await this.getAdvancedProviderModels(input.provider, input.instance, { basisId });
+    } catch (readError) {
+      if (readError instanceof RuntimeRequestError && readError.code === CATALOG_BASIS_UNKNOWN_CODE) {
+        throw unknownCatalogBasisError(input.provider, basisId);
+      }
+    }
   }
 
   private async postSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {

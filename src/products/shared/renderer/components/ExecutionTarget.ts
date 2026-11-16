@@ -37,8 +37,9 @@ function resolveExecutionTargetModelLabel(value: ExecutionTargetValue): string {
   }
 
   const normalizedModel = normalizeProductProviderModelId(value.provider, model) ?? model;
-  const catalogLabel = resolveLiveProviderModelLabel(value.provider, model, value.instance)
-    ?? resolveLiveProviderModelLabel(value.provider, normalizedModel, value.instance);
+  const basisId = value.modelSelection?.basisId;
+  const catalogLabel = resolveLiveProviderModelLabel(value.provider, model, value.instance, basisId)
+    ?? resolveLiveProviderModelLabel(value.provider, normalizedModel, value.instance, basisId);
   return stripExecutionTargetModelDecorations(catalogLabel ?? normalizedModel);
 }
 
