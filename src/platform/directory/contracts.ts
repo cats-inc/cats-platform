@@ -1,4 +1,11 @@
-import type { MembershipStatus } from '../../shared/platform-contract.js';
+import type {
+  CatteryMembershipStatus,
+  CatteryRole,
+  ClowderRole,
+  MembershipStatus,
+} from '../../shared/platform-contract.js';
+
+export type { CatteryMembershipStatus, CatteryRole, ClowderRole };
 
 /**
  * SPEC-103: Clowders (貓群) and Catteries (貓窩) group Cats. A group never owns a
@@ -9,11 +16,6 @@ import type { MembershipStatus } from '../../shared/platform-contract.js';
  * so a build that does not know it never opens the file and cannot drop it.
  */
 export const DIRECTORY_SCHEMA_VERSION = 1 as const;
-
-export type ClowderRole = 'lead' | 'member';
-export type CatteryRole = 'owner' | 'admin' | 'member';
-/** SPEC-103 FR-12: a Cattery membership is never `temp`. */
-export type CatteryMembershipStatus = Exclude<MembershipStatus, 'temp'>;
 
 export interface ClowderRecord {
   id: string;

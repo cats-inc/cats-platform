@@ -124,6 +124,58 @@ export interface PlatformLobbyCatSummary {
  * helpers that operate generically over both entity types.
  */
 export type MembershipStatus = 'formal' | 'temp' | 'external';
+export type ClowderRole = 'lead' | 'member';
+export type CatteryRole = 'owner' | 'admin' | 'member';
+/** SPEC-103 FR-12: a Cattery membership is never `temp`. */
+export type CatteryMembershipStatus = Exclude<MembershipStatus, 'temp'>;
+
+export interface PlatformClowderMemberView {
+  catId: string;
+  role: ClowderRole;
+  status: MembershipStatus;
+  /** Set only on a `temp` member. A passed date stays listed (SPEC-103 FR-23). */
+  expiresAt: string | null;
+  joinedAt: string;
+}
+
+export interface PlatformClowderView {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Null when the Clowder belongs to no Cattery. */
+  parentCatteryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  members: PlatformClowderMemberView[];
+}
+
+export interface PlatformCatteryMemberView {
+  catId: string;
+  role: CatteryRole;
+  status: CatteryMembershipStatus;
+  joinedAt: string;
+}
+
+export interface PlatformCatteryView {
+  id: string;
+  name: string;
+  description: string | null;
+  domain: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Direct members only; a Clowder's members are listed on the Clowder. */
+  members: PlatformCatteryMemberView[];
+}
+
+/**
+ * `GET /api/platform/directory` and every directory mutation's response.
+ * Groups are ordered by creation; a membership whose Cat no longer exists
+ * is left out.
+ */
+export interface PlatformDirectoryView {
+  clowders: PlatformClowderView[];
+  catteries: PlatformCatteryView[];
+}
 
 /**
  * A clowder summary as it appears in the Lobby sidebar / list. Phase
@@ -203,10 +255,10 @@ export interface PlatformLanguagePreferences {
 export interface PlatformLobbyState extends PlatformLobbyPreferences {
   cats: PlatformLobbyCatSummary[];
   /**
-   * PLAN-091 phase 6 widens the Lobby payload to carry Clowder /
-   * Cattery summaries alongside Cats. Until the storage layer ships,
-   * the server emits empty arrays; the renderer treats absence and
-   * `[]` identically (defensive default in `LobbySidebar`).
+   * Clowder / Cattery summaries from the Platform directory file
+   * (SPEC-103). Empty when the file cannot be read; the Directory canvas
+   * reports that failure. Constructed envelopes may omit them, and the
+   * renderer treats absence and `[]` identically.
    */
   clowders?: PlatformLobbyClowderSummary[];
   catteries?: PlatformLobbyCatterySummary[];
