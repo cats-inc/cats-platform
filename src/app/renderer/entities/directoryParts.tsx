@@ -12,6 +12,8 @@ import type { DirectoryRequestError, useDirectory } from './directoryApi.js';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** What a Directory canvas hands its parts: run a change, report it, report a failure. */
 export interface DirectoryCanvasActions {
   run: ReturnType<typeof useDirectory>['run'];
@@ -114,7 +116,8 @@ export function MembershipStatusChip({
   now?: Date;
 }) {
   const { t, locale } = useI18n();
-  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) < now.getTime() : false;
+  // The end date is a whole day: a Cat temporary until 12/31 is still a member on 12/31.
+  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) + DAY_MS <= now.getTime() : false;
   const label = status === 'temp' && expiresAt
     ? t(ended ? messageKeys.directoryStatusTempEnded : messageKeys.directoryStatusTempUntil, {
         date: formatDirectoryDate(expiresAt, locale),
@@ -263,5 +266,43 @@ export function AddCatPopover({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A temporary member's end date. Typing changes only a draft: a date input
+ * reports each partial entry, so saving on every change would send the wrong
+ * day. It saves on blur or Enter, and an incomplete date is dropped.
+ */
+export function EndDateField({ value, onCommit }: { value: string | null; onCommit: (next: string | null) => void }) {
+  const { t } = useI18n();
+  const stored = toDateInputValue(value);
+  const [draft, setDraft] = useState(stored);
+  useEffect(() => { setDraft(stored); }, [stored]);
+
+  function commit(input: HTMLInputElement) {
+    if (input.validity.badInput) {
+      setDraft(stored);
+      return;
+    }
+    if (draft !== stored) onCommit(draft || null);
+  }
+
+  return (
+    <label className="directoryMenuDate">
+      <span>{t(messageKeys.directoryMemberEndDate)}</span>
+      <input
+        type="date"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => commit(event.currentTarget)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit(event.currentTarget);
+          }
+        }}
+      />
+    </label>
   );
 }

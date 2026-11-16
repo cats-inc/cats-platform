@@ -36,8 +36,8 @@ import {
   DirectorySegmented,
   MembershipStatusChip,
   directoryErrorMessage,
+  EndDateField,
   groupClowders,
-  toDateInputValue,
   useCatLookup,
   useDismiss,
   type DirectoryCanvasActions,
@@ -419,15 +419,7 @@ function ClowderMemberRow({
             onChange={(status) => { void update({ status }); }}
           />
           {member.status === 'temp' ? (
-            <label className="directoryMenuDate">
-              <span>{t(messageKeys.directoryMemberEndDate)}</span>
-              <input
-                type="date"
-                value={toDateInputValue(member.expiresAt)}
-                disabled={actions.pending}
-                onChange={(event) => { void update({ expiresAt: event.target.value || null }); }}
-              />
-            </label>
+            <EndDateField value={member.expiresAt} onCommit={(expiresAt) => { void update({ expiresAt }); }} />
           ) : null}
           <div className="accountMenuDivider" role="separator" />
           <button type="button" role="menuitem" className="accountMenuItem directoryMenuItem" onClick={() => { setOpen(false); onMove('move'); }}>

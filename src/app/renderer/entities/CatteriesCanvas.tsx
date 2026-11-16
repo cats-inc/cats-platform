@@ -517,6 +517,9 @@ function OrgChart({
   const [drag, setDrag] = useState<{ catId: string; from: string | null } | null>(null);
   const [over, setOver] = useState<{ target: string | null; copy: boolean } | null>(null);
   const [dialog, setDialog] = useState<{ catId: string; from: string | null } | null>(null);
+  // The lifted look is applied after dragstart returns, so the browser's drag
+  // image is the card as it was, not its faded placeholder.
+  const [lifted, setLifted] = useState<string | null>(null);
   const clowders = directory.clowders.filter((clowder) => clowder.parentCatteryId === cattery.id);
   const inClowder = new Set(clowders.flatMap((clowder) => clowder.members.map((member) => member.catId)));
   const directStatus = new Map(cattery.members.map((member) => [member.catId, member.status]));
@@ -592,6 +595,7 @@ function OrgChart({
         const result = outcome(target, copyPressed(event));
         setDrag(null);
         setOver(null);
+        setLifted(null);
         if (current && result && result !== 'already') void apply(current, target, result);
       },
     };
@@ -611,13 +615,15 @@ function OrgChart({
         key={card.catId}
         className="directoryBoardCard"
         draggable={!actions.pending}
-        data-dragging={drag?.catId === card.catId && drag.from === from ? 'true' : undefined}
+        data-dragging={lifted === `${from ?? ''}:${card.catId}` ? 'true' : undefined}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'copyMove';
           event.dataTransfer.setData('text/plain', card.catId);
           setDrag({ catId: card.catId, from });
+          const key = `${from ?? ''}:${card.catId}`;
+          setTimeout(() => setLifted(key), 0);
         }}
-        onDragEnd={() => { setDrag(null); setOver(null); }}
+        onDragEnd={() => { setDrag(null); setOver(null); setLifted(null); }}
       >
         <DirectoryCatAvatar cat={card.cat} size="small" />
         <span className="directoryBoardCardName">{card.cat.name}</span>
