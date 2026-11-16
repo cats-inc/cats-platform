@@ -33,16 +33,20 @@ import type {
   FeaturePackStage,
 } from './featurePackContract.js';
 
-export type FeaturePackStatus =
-  | 'not_installed'
-  | 'downloading'
-  | 'paused'
-  | 'verifying'
-  | 'installed'
-  | 'update_available'
-  | 'update_required'
-  | 'damaged'
-  | 'unsupported';
+/** FR-B2. src/shared/featurePackBridge.ts repeats this list for the renderer. */
+export const FEATURE_PACK_STATUSES = [
+  'not_installed',
+  'downloading',
+  'paused',
+  'verifying',
+  'installed',
+  'update_available',
+  'update_required',
+  'damaged',
+  'unsupported',
+] as const;
+
+export type FeaturePackStatus = (typeof FEATURE_PACK_STATUSES)[number];
 
 export type FeaturePackPauseReason = 'owner' | 'network' | 'quit';
 

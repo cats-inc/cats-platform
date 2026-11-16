@@ -220,6 +220,19 @@ export const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 export const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 export const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 export const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+// SPEC-145 FR-C4 and FR-D1. The window passes this argument to preload when the
+// lock has a pack for this machine; preload then exposes the pack bridge and,
+// on Linux, the voice bridge.
+export const DESKTOP_FEATURE_PACKS_ARGUMENT = '--cats-feature-packs';
+export const DESKTOP_FEATURE_PACK_LIST_CHANNEL = 'cats-host:feature-pack-list';
+export const DESKTOP_FEATURE_PACK_GET_CHANNEL = 'cats-host:feature-pack-get';
+export const DESKTOP_FEATURE_PACK_DOWNLOAD_CHANNEL = 'cats-host:feature-pack-download';
+export const DESKTOP_FEATURE_PACK_PAUSE_CHANNEL = 'cats-host:feature-pack-pause';
+export const DESKTOP_FEATURE_PACK_RESUME_CHANNEL = 'cats-host:feature-pack-resume';
+export const DESKTOP_FEATURE_PACK_CANCEL_CHANNEL = 'cats-host:feature-pack-cancel';
+export const DESKTOP_FEATURE_PACK_CHECK_CHANNEL = 'cats-host:feature-pack-check';
+export const DESKTOP_FEATURE_PACK_REMOVE_CHANNEL = 'cats-host:feature-pack-remove';
+export const DESKTOP_FEATURE_PACK_EVENT_CHANNEL = 'cats-host:feature-pack-event';
 export const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
 // ADR-147: the macOS System Settings panes the host opens for a missing
 // permission; mirrors src/shared/desktopSystemSettings.ts.
@@ -270,6 +283,8 @@ export const VOICE_CAPTURE_ERROR_REASONS = [
   'cancelled',
   // Reserved for helper/OS aborts where the user did not request cancellation.
   'aborted',
+  // Linux: the linux-stt feature pack cannot dictate yet (SPEC-145 FR-C1).
+  'pack_required',
 ] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
@@ -310,6 +325,10 @@ export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KIN
 export type DesktopScreenshotCaptureSource = typeof DESKTOP_SCREENSHOT_CAPTURE_SOURCES[number];
 export type DesktopScreenshotCaptureOutcome = typeof DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES[number];
 export type DesktopScreenshotCancelReason = typeof DESKTOP_SCREENSHOT_CANCEL_REASONS[number];
+export type {
+  FeaturePackChange as DesktopFeaturePackChange,
+  FeaturePackSnapshot as DesktopFeaturePackSnapshot,
+} from './featurePacks/featurePackManager.js';
 export type VoiceCaptureSessionId = string;
 export type VoiceCaptureMode = typeof VOICE_CAPTURE_MODES[number];
 export type VoiceCaptureErrorReason = typeof VOICE_CAPTURE_ERROR_REASONS[number];
@@ -365,6 +384,16 @@ export type VoiceCaptureEvent =
     }
   | {
       type: 'end';
+      sessionId: VoiceCaptureSessionId;
+    }
+  // Host-only events for Linux sessions (SPEC-145 FR-D3); helpers never send them.
+  | {
+      type: 'limit_warning';
+      sessionId: VoiceCaptureSessionId;
+      secondsRemaining: number;
+    }
+  | {
+      type: 'processing';
       sessionId: VoiceCaptureSessionId;
     };
 

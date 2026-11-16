@@ -196,6 +196,8 @@ export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
   stopVoiceCapture?: VoiceCaptureBridge['stopVoiceCapture'];
   cancelVoiceCapture?: VoiceCaptureBridge['cancelVoiceCapture'];
   onVoiceCaptureEvent?: VoiceCaptureBridge['onVoiceCaptureEvent'];
+  // SPEC-145 FR-C4: present only when the lock has a pack for this machine.
+  featurePacks?: import('./featurePackBridge.js').FeaturePackBridge;
   // Update commands take no arguments: the renderer asks the host to act and
   // never chooses a feed, URL, path, or installer flag.
   getUpdateSnapshot?: () => Promise<DesktopUpdateSnapshot>;

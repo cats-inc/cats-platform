@@ -4,6 +4,8 @@ import type { DesktopGoogleAuthStartInput, DesktopGoogleAuthStatus,
   DesktopGoogleAuthAvailability } from './googleAuthContracts.js';
 
 import type {
+  DesktopFeaturePackChange,
+  DesktopFeaturePackSnapshot,
   DesktopScreenshotCaptureResult,
   DesktopUpdateSnapshot,
   VoiceCaptureEvent,
@@ -20,6 +22,17 @@ const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+// SPEC-145 FR-C4, FR-D1: mirrors contracts.ts DESKTOP_FEATURE_PACK*.
+const DESKTOP_FEATURE_PACKS_ARGUMENT = '--cats-feature-packs';
+const DESKTOP_FEATURE_PACK_LIST_CHANNEL = 'cats-host:feature-pack-list';
+const DESKTOP_FEATURE_PACK_GET_CHANNEL = 'cats-host:feature-pack-get';
+const DESKTOP_FEATURE_PACK_DOWNLOAD_CHANNEL = 'cats-host:feature-pack-download';
+const DESKTOP_FEATURE_PACK_PAUSE_CHANNEL = 'cats-host:feature-pack-pause';
+const DESKTOP_FEATURE_PACK_RESUME_CHANNEL = 'cats-host:feature-pack-resume';
+const DESKTOP_FEATURE_PACK_CANCEL_CHANNEL = 'cats-host:feature-pack-cancel';
+const DESKTOP_FEATURE_PACK_CHECK_CHANNEL = 'cats-host:feature-pack-check';
+const DESKTOP_FEATURE_PACK_REMOVE_CHANNEL = 'cats-host:feature-pack-remove';
+const DESKTOP_FEATURE_PACK_EVENT_CHANNEL = 'cats-host:feature-pack-event';
 const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
 const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
 const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
@@ -417,7 +430,70 @@ const bridge = {
   },
 };
 
-if (process.platform === 'darwin' || process.platform === 'win32') {
+// The host names this machine's pack ids in an argument, so preload reads no
+// files (SPEC-145 FR-D1).
+const FEATURE_PACK_IDS = new Set(
+  process.argv
+    .filter((argument) => argument.startsWith(`${DESKTOP_FEATURE_PACKS_ARGUMENT}=`))
+    .flatMap((argument) => argument.slice(DESKTOP_FEATURE_PACKS_ARGUMENT.length + 1).split(','))
+    .filter((id) => /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(id)),
+);
+
+function assertFeaturePackId(value: unknown): string {
+  if (typeof value !== 'string' || !FEATURE_PACK_IDS.has(value)) {
+    throw new Error('Invalid optional download id.');
+  }
+  return value;
+}
+
+if (FEATURE_PACK_IDS.size > 0) {
+  Object.assign(bridge, {
+    featurePacks: {
+      list(): Promise<DesktopFeaturePackSnapshot[]> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_LIST_CHANNEL);
+      },
+      get(id: string): Promise<DesktopFeaturePackSnapshot> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_GET_CHANNEL, assertFeaturePackId(id));
+      },
+      download(id: string): Promise<void> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_DOWNLOAD_CHANNEL, assertFeaturePackId(id));
+      },
+      pause(id: string): Promise<void> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_PAUSE_CHANNEL, assertFeaturePackId(id));
+      },
+      resume(id: string): Promise<void> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_RESUME_CHANNEL, assertFeaturePackId(id));
+      },
+      cancel(id: string): Promise<void> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_CANCEL_CHANNEL, assertFeaturePackId(id));
+      },
+      check(id: string): Promise<DesktopFeaturePackSnapshot> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_CHECK_CHANNEL, assertFeaturePackId(id));
+      },
+      remove(id: string): Promise<void> {
+        return ipcRenderer.invoke(DESKTOP_FEATURE_PACK_REMOVE_CHANNEL, assertFeaturePackId(id));
+      },
+      onChange(listener: (change: DesktopFeaturePackChange) => void): () => void {
+        const handler = (
+          _event: Electron.IpcRendererEvent,
+          payload: DesktopFeaturePackChange,
+        ) => {
+          listener(payload);
+        };
+        ipcRenderer.on(DESKTOP_FEATURE_PACK_EVENT_CHANNEL, handler);
+        return () => {
+          ipcRenderer.off(DESKTOP_FEATURE_PACK_EVENT_CHANNEL, handler);
+        };
+      },
+    },
+  });
+}
+
+if (
+  process.platform === 'darwin'
+  || process.platform === 'win32'
+  || (process.platform === 'linux' && FEATURE_PACK_IDS.has('linux-stt'))
+) {
   Object.assign(bridge, {
     startVoiceCapture(options: VoiceCaptureStartOptions): Promise<void> {
       return ipcRenderer.invoke(
