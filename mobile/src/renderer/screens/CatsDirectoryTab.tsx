@@ -77,6 +77,14 @@ export function CatsDirectoryTab() {
   }
 
   const handleCreateNew = (sectionKey: SectionKey) => {
+    if (sectionKey === 'clowders') {
+      router.push(mobileRoutes.newClowder());
+      return;
+    }
+    if (sectionKey === 'catteries') {
+      router.push(mobileRoutes.newCattery());
+      return;
+    }
     const desktopOnly = getMobileNewEntityDesktopOnlyAlertCopy(sectionKey, copy);
     if (!desktopOnly) {
       return;

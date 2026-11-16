@@ -53,10 +53,6 @@ export interface MobileCatsTabCopy {
   newCattery: string;
   newCatDesktopOnlyTitle: string;
   newCatDesktopOnlyBody: string;
-  newClowderDesktopOnlyTitle: string;
-  newClowderDesktopOnlyBody: string;
-  newCatteryDesktopOnlyTitle: string;
-  newCatteryDesktopOnlyBody: string;
   entityDetailEyebrow: string;
   entityDetailTitleCat: string;
   entityDetailTitleClowder: string;
@@ -216,12 +212,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCatDesktopOnlyTitle: 'New cat — desktop only',
     newCatDesktopOnlyBody:
       'Creating a new cat is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
-    newClowderDesktopOnlyTitle: 'New clowder — desktop only',
-    newClowderDesktopOnlyBody:
-      'Creating a new clowder is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
-    newCatteryDesktopOnlyTitle: 'New cattery — desktop only',
-    newCatteryDesktopOnlyBody:
-      'Creating a new cattery is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
     entityDetailEyebrow: 'Coming soon',
     entityDetailTitleCat: 'Cat home',
     entityDetailTitleClowder: 'Clowder home',
@@ -250,12 +240,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCatDesktopOnlyTitle: '新增貓咪僅限桌面版',
     newCatDesktopOnlyBody:
       '行動版尚未支援新增貓咪。請在桌面版新增，建立後會出現在這裡。',
-    newClowderDesktopOnlyTitle: '新增貓群僅限桌面版',
-    newClowderDesktopOnlyBody:
-      '行動版尚未支援新增貓群。請在桌面版新增，建立後會出現在這裡。',
-    newCatteryDesktopOnlyTitle: '新增貓窩僅限桌面版',
-    newCatteryDesktopOnlyBody:
-      '行動版尚未支援新增貓窩。請在桌面版新增，建立後會出現在這裡。',
     entityDetailEyebrow: '開發中',
     entityDetailTitleCat: '貓的主頁',
     entityDetailTitleClowder: '貓群主頁',

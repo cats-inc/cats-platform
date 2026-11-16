@@ -6,8 +6,7 @@ import type { MobileAppShellPayload, MobileDirectoryGroupSummary } from './contr
  * My Catteries) projected from the same `MobileAppShellPayload` the
  * sidebars consume. Web Lobby content (greeting, entity index cards)
  * is intentionally NOT mirrored here. Clowders and Catteries come from
- * the lobby summaries (SPEC-103); creating and editing them stays on
- * Desktop.
+ * the lobby summaries (SPEC-103); their homes read the full Directory.
  */
 
 export interface MobileCatsDirectoryCatSummary {

@@ -181,18 +181,7 @@ export function getMobileNewEntityDesktopOnlyAlertCopy(
       body: copy.newCatDesktopOnlyBody,
     };
   }
-  if (sectionKey === 'clowders') {
-    return {
-      title: copy.newClowderDesktopOnlyTitle,
-      body: copy.newClowderDesktopOnlyBody,
-    };
-  }
-  if (sectionKey === 'catteries') {
-    return {
-      title: copy.newCatteryDesktopOnlyTitle,
-      body: copy.newCatteryDesktopOnlyBody,
-    };
-  }
+  // Clowders and Catteries are created on the phone (SPEC-103 §Mobile).
   return null;
 }
 

@@ -32,7 +32,10 @@ export interface MobileDirectoryMemberRow {
   name: string;
   avatarColor: string | null;
   role: string;
+  /** The role as stored, for changing it. */
+  roleValue: 'lead' | 'member' | 'owner' | 'admin';
   status: MobileMembershipStatus;
+  expiresAt: string | null;
   /** Null for a formal member, which shows no status. */
   statusLabel: string | null;
   /** A temporary member whose end date has passed; still listed (FR-23). */
@@ -126,7 +129,9 @@ export function selectMobileClowderDetail(
         name: cat.name,
         avatarColor: cat.avatarColor,
         role: t(member.role === 'lead' ? messageKeys.directoryRoleLead : messageKeys.directoryRoleMember),
+        roleValue: member.role,
         status: member.status,
+        expiresAt: member.expiresAt,
         ...statusOf(t, locale, member.status, member.expiresAt, now),
       }];
     }),
@@ -160,7 +165,9 @@ export function selectMobileCatteryDetail(
         role: t(member.role === 'owner'
           ? messageKeys.directoryRoleOwner
           : member.role === 'admin' ? messageKeys.directoryRoleAdmin : messageKeys.directoryRoleMember),
+        roleValue: member.role,
         status: member.status,
+        expiresAt: null,
         ...statusOf(t, locale, member.status, null, now),
       }];
     }),
