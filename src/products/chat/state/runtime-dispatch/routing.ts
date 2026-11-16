@@ -486,6 +486,8 @@ export type ProviderAgentDecisionRequester = ((input: {
 interface RouteChannelMessageOptions {
   /** Set only by the authenticated owner message route (SPEC-139); never by transports. */
   ownerStarted?: OwnerStartedSurface | null;
+  /** SPEC-133 DC-05: set only by the channel route for a local owner request; never from a payload. */
+  desktopControlEntry?: 'local' | null;
   enableCollaborationReads?: boolean;
   enableCollaborationExecution?: boolean;
   transport?: RuntimeTransportContext;
@@ -626,13 +628,17 @@ function buildBaseUserMessageMetadata(input: {
   deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
   transportBindingId?: string | null;
   ownerStarted?: OwnerStartedSurface | null;
+  desktopControlEntry?: 'local' | null;
 }): Record<string, unknown> {
   // SPEC-139: a caller-supplied stamp never survives, on any route. Choice answers and
   // transport messages are not owner-started even when the owner sent them.
   const ownerStarted = input.ownerStarted && !input.payload.choiceResponse && !input.transportBindingId
     ? input.ownerStarted : null;
+  // SPEC-133 DC-05: the local-owner stamp, like ownerStarted, never comes from a payload on any route.
+  const { desktopControlEntry: _clientEntry, ...payloadMetadata } = withoutOwnerStarted(input.payload.messageMetadata);
   return {
-    ...withoutOwnerStarted(input.payload.messageMetadata),
+    ...payloadMetadata,
+    ...(input.desktopControlEntry === 'local' ? { desktopControlEntry: 'local' as const } : {}),
     ...(ownerStarted ? { [OWNER_STARTED_METADATA_KEY]: ownerStarted } : {}),
     ...buildDeterministicRoutingPlanMessageMetadata(
       input.deterministicRoutingPlan?.channelId === input.channelId
@@ -6540,6 +6546,7 @@ export async function beginChannelMessageDispatch(
         deterministicRoutingPlan,
         transportBindingId: options.transportBindingId,
         ownerStarted: options.ownerStarted,
+        desktopControlEntry: options.desktopControlEntry,
       }),
       ...buildProductIntentUserMessageMetadata({
         productIntentCommand,
@@ -6954,6 +6961,7 @@ export async function beginChannelMessageDispatch(
       deterministicRoutingPlan,
       transportBindingId: options.transportBindingId,
       ownerStarted: options.ownerStarted,
+      desktopControlEntry: options.desktopControlEntry,
     }),
     ...(followUpDirectSlashMode ? { directSlashMode: followUpDirectSlashMode } : {}),
     ...(followUpActiveAnchorState.activeAnchor

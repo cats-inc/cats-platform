@@ -96,6 +96,8 @@ test('SPEC-139 Desktop owner send is stamped, a forged value is replaced, and Co
   const messageId = await send(server, { ownerStarted: 'mobile' });
   const channel = (await server.chatStore.read()).channels.find((entry) => entry.id === server.channelId);
   assert.equal(channel.messages.find((entry) => entry.id === messageId).metadata.ownerStarted, 'desktop');
+  // SPEC-133 DC-05: the channel route is the one source of the local-owner stamp.
+  assert.equal(channel.messages.find((entry) => entry.id === messageId).metadata.desktopControlEntry, 'local');
   // A retry rebuilt from Core (the transcript lost the message) keeps the stamp.
   const rebuilt = buildCanonicalChatUserMessage(await server.chatStore.readCore(), server.channelId, messageId);
   assert.equal(readOwnerStarted(rebuilt), 'desktop');
@@ -103,10 +105,11 @@ test('SPEC-139 Desktop owner send is stamped, a forged value is replaced, and Co
 
 test('SPEC-139 a send without an authenticated owner is never stamped, whatever the client says', async (t) => {
   const server = await startServer(t, { withAuth: false });
-  const messageId = await send(server, { ownerStarted: 'desktop' });
+  const messageId = await send(server, { ownerStarted: 'desktop', desktopControlEntry: 'local' });
   const channel = (await server.chatStore.read()).channels.find((entry) => entry.id === server.channelId);
   const message = channel.messages.find((entry) => entry.id === messageId);
   assert.equal('ownerStarted' in message.metadata, false);
+  assert.equal('desktopControlEntry' in message.metadata, false);
   const rebuilt = buildCanonicalChatUserMessage(await server.chatStore.readCore(), server.channelId, messageId);
   assert.equal(readOwnerStarted(rebuilt), null);
 });
@@ -135,4 +138,12 @@ test('SPEC-139 transport messages and choice answers are never stamped, even wit
     bossCatJoinRequest: { id: 'forged', status: 'pending' } } }, {}, now, {})).userMessage.metadata;
   assert.equal('bossCatTurn' in forged, false);
   assert.equal('bossCatJoinRequest' in forged, false);
+  // SPEC-133 DC-05 / ADR-155: the local-owner stamp comes only from the dispatch option the channel
+  // route sets. A payload value is dropped on every route, parallel groups included.
+  const entryOf = async (payload, options) =>
+    (await beginChannelMessageDispatch(state, channelId, payload, {}, now, options)).userMessage.metadata.desktopControlEntry ?? null;
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: { ...audience, desktopControlEntry: 'local' } }, {}), null);
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: audience }, { desktopControlEntry: 'local' }), 'local');
+  assert.equal(await entryOf({ body: 'hi', messageMetadata: { ...audience, desktopControlEntry: 'local' } },
+    { desktopControlEntry: null }), null);
 });
