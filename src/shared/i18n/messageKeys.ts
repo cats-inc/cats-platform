@@ -4558,6 +4558,7 @@ export const messageKeys = {
   providerControlsGrantStopping: "providerControls.GrantStopping",
   providerControlsGrantStopFailed: "providerControls.GrantStopFailed",
   providerControlsGrantStopHint: "providerControls.GrantStopHint",
+  providerControlsGrantsUnconfirmed: "providerControls.GrantsUnconfirmed",
   providerControlsSessionTools: "providerControls.SessionTools",
   providerControlsDisconnected: "providerControls.Disconnected",
   providerControlsOwnerRequired: "providerControls.OwnerRequired",

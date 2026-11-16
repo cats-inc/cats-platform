@@ -4523,6 +4523,7 @@ export const enCatalog: MessageCatalog = {
   "providerControls.GrantStopping": "Stopping…",
   "providerControls.GrantStopFailed": "Stop was not confirmed, so these may still be allowed. Press Stop again.",
   "providerControls.GrantStopHint": "Stop also cancels the current reply.",
+  "providerControls.GrantsUnconfirmed": "Cats could not read every session just now, so this list may be incomplete. Stop still ends them all.",
   "providerControls.SessionTools": "Session access and tools",
   "providerControls.Disconnected": "Provider controls are disconnected. Reconnecting; pending forms will return when their live state is confirmed.",
   "providerControls.OwnerRequired": "Provider controls are unavailable. Sign in as the owner in the local app, then refresh.",

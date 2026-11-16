@@ -156,7 +156,8 @@ test('ADR-155: only a send from the local owner may use standing grants', async 
   assert.equal(owner.sends.at(-1).standingGrants, true, 'a send from the local owner');
   const { standingGrantSends } = await import('../build/server/platform/runtime/standingGrantSends.js');
   const stored = (await owner.chatStore.read()).channels.find((entry) => entry.id === owner.channelId).messages.find((entry) => entry.id === messageId);
-  assert.equal(standingGrantSends.allows(stored), false, 'released once its dispatch ended');
+  // The mark is released in the dispatch's finally, which can run just after the reply is stored.
+  await waitForCondition(async () => !standingGrantSends.allows(stored), { timeoutMs: 5_000 });
   const anonymous = await startServer(t, { withAuth: false });
   await send(anonymous, { ownerStarted: 'desktop', desktopControlEntry: 'local' });
   assert.equal('standingGrants' in anonymous.sends.at(-1), false, 'no owner, whatever the client says');

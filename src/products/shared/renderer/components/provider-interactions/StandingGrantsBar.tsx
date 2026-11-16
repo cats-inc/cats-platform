@@ -13,11 +13,17 @@ const CATEGORY_KEYS: Record<GrantCategory, MessageKey> = {
  * ADR-155: what each cat may do without asking, for how long, and a Stop that ends every grant in the
  * conversation and cancels its reply. A Stop Runtime did not confirm says so and stays in view.
  */
-export function StandingGrantsBar({ grants, onStop }: { grants: BoundStandingGrants[]; onStop(): Promise<void> }) {
+export function StandingGrantsBar({ grants, unconfirmed = false, failed = false, onStop }: {
+  grants: BoundStandingGrants[];
+  /** The last read could not see every session; these may not be all, or may already be gone. */
+  unconfirmed?: boolean;
+  /** Runtime did not confirm the last Stop. */
+  failed?: boolean;
+  onStop(): Promise<void>;
+}) {
   const { t } = useI18n();
   const [now, setNow] = useState(Date.now());
   const [stopping, setStopping] = useState(false);
-  const [failed, setFailed] = useState(false);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 15_000); return () => clearInterval(timer); }, []);
   const lines = grants.map(({ binding, standingGrants }) => {
     const parts = standingGrants.map((grant) => {
@@ -31,11 +37,12 @@ export function StandingGrantsBar({ grants, onStop }: { grants: BoundStandingGra
   return <section className="native-provider-grants" role="status" aria-label={t(messageKeys.providerControlsGrantsActive)}>
     <strong>{t(messageKeys.providerControlsGrantsActive)}</strong>
     {lines.map((line) => <p key={line.key}>{line.text}</p>)}
+    {unconfirmed && <p>{t(messageKeys.providerControlsGrantsUnconfirmed)}</p>}
     {failed && <p role="alert">{t(messageKeys.providerControlsGrantStopFailed)}</p>}
     <div className="native-provider-actions">
       <button type="button" disabled={stopping} onClick={() => {
-        setStopping(true); setFailed(false);
-        void onStop().catch(() => setFailed(true)).finally(() => setStopping(false));
+        setStopping(true);
+        void onStop().finally(() => setStopping(false));
       }}>{t(stopping ? messageKeys.providerControlsGrantStopping : messageKeys.providerControlsGrantStop)}</button>
       <small>{t(messageKeys.providerControlsGrantStopHint)}</small>
     </div>

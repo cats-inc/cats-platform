@@ -4426,6 +4426,7 @@ export const zhTWCatalog: MessageCatalog = {
   "providerControls.GrantStopping": "停止中…",
   "providerControls.GrantStopFailed": "停止沒有得到確認，這些可能仍然有效。請再按一次停止。",
   "providerControls.GrantStopHint": "停止也會取消目前的回覆。",
+  "providerControls.GrantsUnconfirmed": "剛才無法讀到所有工作階段，這份清單可能不完整。按停止仍會全部結束。",
   "providerControls.SessionTools": "工作階段權限與工具",
   "providerControls.Disconnected": "供應商控制已斷線，正在重新連線；確認即時狀態後會恢復待回覆表單。",
   "providerControls.OwnerRequired": "供應商控制無法使用。請在本機應用程式以擁有者身分登入後重新整理。",

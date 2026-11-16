@@ -1,10 +1,11 @@
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { STANDING_GRANT_REASON, type ProviderConversationSnapshot } from '../../../../../shared/providerInteractions.js';
+import { STANDING_GRANT_REASON, type BoundStandingGrants, type ProviderConversationSnapshot } from '../../../../../shared/providerInteractions.js';
 import { cancelChatChannel } from '../../api/chat.js';
 import { readProviderConversation, respondProviderRequest, openProviderUrl, stopProviderGrants } from './api.js';
 import { StandingGrantsBar } from './StandingGrantsBar.js';
+import { nextVisibleGrants } from './standingGrantsView.js';
 import { ProviderInteractionCard } from './ProviderInteractionCard.js';
 import { ProviderCapabilities } from './ProviderCapabilities.js';
 import './providerInteractions.css';
@@ -19,6 +20,12 @@ export function ProviderConversationControls({ conversationId, channelId, initia
   const [unavailable, setUnavailable] = useState(false);
   const [details, setDetails] = useState(initiallyOpen);
   const [sessionId, setSessionId] = useState('');
+  // ADR-155: grants stay in view until a full read shows none. A failed or partial read keeps them,
+  // marked unconfirmed, and a Stop Runtime did not confirm keeps the bar.
+  const [grants, setGrants] = useState<BoundStandingGrants[]>([]);
+  const [grantsUnknown, setGrantsUnknown] = useState(false);
+  const [stopFailed, setStopFailed] = useState(false);
+  const grantsRef = useRef<BoundStandingGrants[]>([]);
   const generation = useRef(0);
   const inFlight = useRef<Promise<void> | null>(null);
   const dirty = useRef(false);
@@ -33,8 +40,12 @@ export function ProviderConversationControls({ conversationId, channelId, initia
           const value = await readProviderConversation(conversationId);
           if (current !== generation.current) return;
           setSnapshot(value); setUnavailable(false);
+          const next = nextVisibleGrants(grantsRef.current, value);
+          grantsRef.current = next.grants;
+          setGrants(next.grants); setGrantsUnknown(next.unknown);
+          if (!next.unknown && !next.grants.length) setStopFailed(false);
           setSessionId(old => value.sessions.some(s => s.sessionId === old) ? old : value.sessions[0]?.sessionId ?? '');
-        } catch { if (current === generation.current) { setUnavailable(true); setSnapshot(null); } }
+        } catch { if (current === generation.current) { setUnavailable(true); setSnapshot(null); setGrantsUnknown(true); } }
       } while (dirty.current && current === generation.current);
     })()
       .finally(() => { if (inFlight.current === pending) inFlight.current = null; });
@@ -43,6 +54,7 @@ export function ProviderConversationControls({ conversationId, channelId, initia
   }, [conversationId]);
   useEffect(() => {
     generation.current++; inFlight.current = null; dirty.current = false; setSnapshot(null); setUnavailable(false); setDetails(initiallyOpen); setSessionId('');
+    grantsRef.current = []; setGrants([]); setGrantsUnknown(false); setStopFailed(false);
     void refresh(); const timer = setInterval(() => void refresh(), 2000);
     return () => { generation.current++; clearInterval(timer); };
   }, [refresh, initiallyOpen]);
@@ -54,12 +66,13 @@ export function ProviderConversationControls({ conversationId, channelId, initia
   return <aside className="native-provider-controls" aria-label={t(messageKeys.providerControlsControls)}>
     <div className="native-provider-toolbar"><span role="status">{active.length ? t(messageKeys.providerControlsWaiting, { count: active.length }) : ''}</span>
       <button type="button" onClick={() => setDetails(v => !v)} aria-expanded={details}>{t(messageKeys.providerControlsSessionTools)}</button></div>
-    {visible?.standingGrants?.length ? <StandingGrantsBar grants={visible.standingGrants} onStop={async () => {
+    {grants.length || stopFailed ? <StandingGrantsBar grants={grants} unconfirmed={grantsUnknown} failed={stopFailed} onStop={async () => {
+      setStopFailed(false);
       // Stop the grants and the running turn at the same time, so nothing more is approved meanwhile.
       const [revoked] = await Promise.allSettled([stopProviderGrants(conversationId),
         ...(channelId ? [cancelChatChannel(channelId)] : [])]);
+      if (revoked.status === 'rejected') setStopFailed(true);
       await refresh();
-      if (revoked.status === 'rejected') throw revoked.reason;
     }} /> : null}
     {unavailable && <p role="status">{t(messageKeys.providerControlsDisconnected)}</p>}
     {details && <div>
