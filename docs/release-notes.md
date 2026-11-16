@@ -2,6 +2,155 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-16 — Desktop 0.17.2 standard preview: Kimi Code, allow once and Stop
+
+Selected distribution: Desktop **0.17.2 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**, optional preview **Agency 0.1.0** installer.
+
+- **Kimi Code (ADR-153).** Moonshot AI's Kimi Code CLI sits after Pi and
+  before Kiro in setup and every provider list. Packaged helpers install,
+  detect, upgrade and remove it on Windows, macOS and Linux, and keep
+  `~/.kimi-code`. Its default target is print mode (`kimi -p`), which never
+  asks. **Print mode runs every plugin installed in Kimi without asking,
+  including Kimi's computer-use plugin (`kimi-cu-win`).** An owner who installed
+  that plugin and wants each desktop action approved uses the asking target
+  below. (cats-platform#469)
+- **Kimi that asks before acting (ADR-155).** Settings › AI tools offers "Also
+  offer Kimi that asks before acting" once Kimi is chosen. It adds Runtime's
+  hosted `kimi acp` target, which asks before each computer-use, shell and file
+  action through the conversation's approval cards.
+  - Pickers name the targets "Never asks (default)" and "Asks before acting
+    (provider configuration, full machine access, network)".
+  - The asking target runs only in a conversation created with "Use provider
+    configuration within a limit", "Full machine access" and "Network access".
+    That policy applies to the whole conversation. Such a conversation has no
+    desktop control and cannot run print-mode Kimi.
+  - Without that policy it fails before the turn, never in print mode, and the
+    policy editor says so. (cats-platform#479)
+- **Allow once, with Stop always in reach (ADR-155, Runtime ADR-055).**
+  - A card tagged with a grant category (computer use, commands, file changes)
+    offers "Allow for this conversation" and "Allow for 30 minutes". Only the
+    owner may grant.
+  - Only messages the owner sends from a local Desktop window, while that
+    request dispatches them, use a grant. These never do:
+    - Telegram, heartbeats and schedules
+    - Work and collaboration loops
+    - Boss Cat decisions
+    - mobile and remote ingress
+    - Catlas and relay
+    - choice answers, parallel-group fan-out and other cats' follow-on turns
+  - A computer-use card warns that the grant is as broad as the owner at the
+    keyboard, Cats itself included.
+  - The conversation shows each cat's grants and the time left, with Stop.
+  - On every platform, while any grant exists, Desktop also offers Stop from:
+    - a topmost notice that takes no focus;
+    - the first tray item;
+    - the global hotkey `CommandOrControl+Alt+Shift+D`.
+  - Stop revokes in Runtime and cancels the running turns at the same time.
+    Unless Runtime confirms, Stop stays in view and says the stop was not
+    confirmed. (cats-platform#480, cats-platform#481)
+- **Desktop control.** A client could plant the local-owner stamp through a
+  parallel-group route; the server now drops it on every route.
+  (cats-platform#478)
+- **Working folders.** Chat names its folder Filespace (檔案空間), Code
+  Codespace (程式空間) and Work Workspace (工作空間). (cats-platform#468)
+- **Source selection:** cats-runtime@7c7e9e102933fab7326bc278e7279b07d287444e; main@7c7e9e102933fab7326bc278e7279b07d287444e.
+- **Exact source and modules.**
+  - Platform main at selection is `6cd53857deb89884d9f239eab8b1fd88f430bf74`.
+    Freeze the completed bump commit in `release/v0.17.2`; the workflow records
+    that exact Desktop source without a self-reference in this file.
+  - Runtime **0.6.2** moves from 0.17.1's `512c0747` to `7c7e9e10`, Runtime
+    main at selection, with nothing left out. It adds:
+    - Kimi Code with native sessions and the hosted `kimi acp` target
+      (cats-runtime#224–#227);
+    - catalog refreshes and a Muse probe fallback (cats-runtime#228,
+      cats-runtime#229);
+    - standing grants (cats-runtime#230);
+    - a catalog-maintenance skill fix that does not reach the package
+      (cats-runtime#231);
+    - the asking-Kimi selection template and the grants listing the host reads
+      (cats-runtime#232).
+  - Shared conversation UI **0.1.0** keeps content digest
+    `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680` and
+    tarball SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+    `packages/platform-ui-web` is unchanged since 0.17.1.
+  - The nine shared-tool pins retain cats-one
+    `f8b0d8a6e566b44d788ffc77912665ef46b738d3`, also its main at selection.
+  - Catlas/orchestrator knowledge stays at revision `2026-11-13.1` for `0.17.x`.
+- **Bundled inputs.**
+  - Usage **0.5.4** remains pinned to
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - Apps main at selection is `015448936e3685091b09f7d9966104cdd952e68c`,
+    unchanged since 0.17.1.
+  - Agency **0.1.0** keeps SHA-256
+    `26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5`.
+  - Plugins main at selection is `6db03c75c2b4bd14f150329344e6650e8e12b8f0`;
+    its changes since 0.17.1 are documentation only.
+  - Exact App/Plugin artifacts and their installation/compatibility gates are
+    retained.
+- **Compatibility, backup and recovery.** This is a compatible patch on
+  0.17.x, with no data migration and no chat-state, App SDK or persisted
+  Platform format change. Grants live only in Runtime memory.
+  - **Returning to 0.17.1 or 0.17.0.** Choosing Kimi writes a `kimi` provider
+    to Runtime's `providers.yaml`, and the asking option adds a `kimi` instance
+    with `protocol: hosted`. Runtime `512c0747`, which 0.17.1 and 0.17.0 are
+    built with, does not know `kimi`. It refuses the whole file, so every
+    provider stops loading. First unchoose Kimi in Settings › AI tools, or,
+    with Desktop stopped, remove `kimi` under `backends.cli.providers` in
+    `~/.cats/runtime/config/providers.yaml` (or the configured Runtime root).
+    If 0.17.1 already reports that file as invalid, do the same, or save the AI
+    tools again: that replaces the file, keeps the old one as
+    `providers.yaml.invalid-*.bak`, and drops its other custom settings.
+  - **Before installation.** Stop processes using the data roots and back up
+    `~/.cats`, configured overrides and workspace attachment directories.
+  - **If startup or installation fails.** Preserve those roots, then reinstall
+    0.17.2, or return to 0.17.1 as above with processes stopped.
+- **Signing and publication.**
+  - Run exact-source ci.yaml on `release/v0.17.2`. Then dispatch
+    desktop-release.yml from that same SHA with `tag=v0.17.2`, the Runtime SHA
+    above and `unsigned=false`.
+  - Windows x64/arm64 ship NSIS installers, macOS ships a universal x64/arm64
+    DMG and updater ZIP, and Linux ships amd64/arm64 DEBs.
+  - Standard expected trust is macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Per-platform receipts and
+    native signing/notarization checks establish actual trust.
+  - Same-team signed macOS, Windows NSIS and Linux DEB keep their update paths.
+- **Known limits.**
+  - A grant covers the asking cat's session in that conversation.
+  - Stop from the notice, tray or hotkey cancels turns through Platform. When
+    Platform does not answer, Runtime cancels them, and they show as failed
+    rather than stopped.
+  - A grant follows the owner's local sign-in, not keystrokes: a local program
+    holding it, or Kimi under a computer-use grant, also qualifies.
+  - The hotkey is not registered when another app holds the chord; the notice
+    and tray then omit it.
+  - Kimi's own failure text is shown in English.
+- **Validation boundary.**
+  - Each change passed its PR's full CI. cats-platform#478–#481 also had
+    independent reviews, whose follow-ups their commits record. Release gates
+    enforce full CI for the exact frozen bump source, packaged
+    identity/startup, source receipts, updater metadata, checksums and signing.
+  - Before selection, an isolated Runtime at the selected commit saved both Kimi
+    targets. Platform's client then created a session on the asking target with
+    the interaction host and the provider policy. It reported three approval
+    kinds and a verified policy, the grants listing and revoke answered, and the
+    session was deleted.
+  - Earlier, on Windows, a real Kimi 2.6.0 ran through a source Runtime: after
+    a 30-minute grant the next owner turn had no card, an unmarked turn still
+    got one, and revoking brought the cards back.
+  - The grant buttons, conversation bar, notice, tray item and hotkey were
+    checked by component and host tests, not on a running Desktop.
+  - Installed upgrade/rollback on every OS and credentialed provider execution
+    in an installed Desktop are not claimed. Kimi's helpers ran against the
+    real installer only on Windows; macOS and Linux were checked by tests only.
+  - Platform npm, Runtime npm, Apps, Plugins and cats-one remain separate
+    publication targets.
+
+Publication results: the `v0.17.2` GitHub Standard Preview, its source/build
+receipts, checksums, provenance and Actions run.
+
 ## 2026-11-14 — Desktop 0.17.1 standard preview: toasts, transcript times and direct messages
 
 Selected distribution: Desktop **0.17.1 standard-profile preview**, App SDK
