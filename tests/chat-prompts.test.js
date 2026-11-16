@@ -283,7 +283,7 @@ test('default chat bootstrap instructions include only earlier conversational co
   assert.match(instructions, /\[user:Kenny\] First turn/u);
   assert.match(instructions, /\[agent:Orchestrator\] First reply/u);
   assert.ok(!instructions.includes('Runtime'));
-  assert.ok(!instructions.includes('AGENTS.md'));
+  assert.ok(!instructions.includes('AGENTS.md')); // docs-boundary-ignore: prompt text
   assert.ok(!instructions.includes('Telegram'));
   assert.ok(!instructions.includes('Respond in English'));
 });

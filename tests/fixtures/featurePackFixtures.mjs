@@ -87,19 +87,23 @@ function sha256(bytes) {
 }
 
 /** A compressible stand-in for the model, so the deflated variant really shrinks. */
-function fixtureModelBytes() {
-  const bytes = new Uint8Array(64 * 1024);
+function fixtureModelBytes(size = 64 * 1024) {
+  const bytes = new Uint8Array(size);
   for (let index = 0; index < bytes.length; index += 1) {
     bytes[index] = index % 251;
   }
   return bytes;
 }
 
-/** The pack's files other than the manifest, keyed by path. */
-export function fixturePackFiles() {
+/**
+ * The pack's files other than the manifest, keyed by path.
+ *
+ * @param {{ modelSize?: number }} [options]
+ */
+export function fixturePackFiles(options = {}) {
   return {
     [FIXTURE_PACK_ENTRY]: { bytes: encoder.encode(FIXTURE_HELPER_SOURCE), executable: true },
-    [FIXTURE_MODEL_PATH]: { bytes: fixtureModelBytes(), executable: false },
+    [FIXTURE_MODEL_PATH]: { bytes: fixtureModelBytes(options.modelSize), executable: false },
     'licenses/helper.txt': { bytes: encoder.encode('MIT License (fixture)\n'), executable: false },
     'licenses/models.txt': {
       bytes: encoder.encode('MIT License (model fixture)\n'),
@@ -201,6 +205,7 @@ function zipStreaming(zippable) {
  * @property {'x64' | 'arm64'} [arch]
  * @property {'stored' | 'deflated'} [compression]
  * @property {'sync' | 'streaming'} [writer]
+ * @property {number} [modelSize] The stand-in model's bytes; 64 KiB by default.
  * @property {(manifest: Record<string, any>) => Record<string, any>} [editManifest]
  * @property {Record<string, Uint8Array>} [extraFiles]
  * @property {string[]} [omitFiles]
@@ -254,6 +259,7 @@ export async function buildFixturePack(directory, options = {}) {
     arch = 'x64',
     compression = 'stored',
     writer = 'sync',
+    modelSize,
     editManifest = (manifest) => manifest,
     extraFiles = {},
     omitFiles = [],
@@ -261,7 +267,7 @@ export async function buildFixturePack(directory, options = {}) {
     patchArchive = (bytes) => bytes,
     editLockEntry = (entry) => entry,
   } = options;
-  const files = fixturePackFiles();
+  const files = fixturePackFiles({ modelSize });
   const manifest = editManifest(fixtureManifest(files, { id, version, arch }));
   const manifestBytes = encoder.encode(`${JSON.stringify(manifest, null, 2)}\n`);
 
@@ -305,4 +311,106 @@ export async function buildFixturePack(directory, options = {}) {
 
 export function fixtureLock(packs) {
   return { schemaVersion: 1, packs };
+}
+
+/**
+ * Streams `bytes` in chunks, as a transport body (SPEC-145 FR-B3). It yields
+ * to the event loop between chunks, stops when `signal` aborts, can drop the
+ * connection after `failAfter` bytes, and calls `onChunk` once the consumer
+ * has taken each chunk. With `endOnAbort`, an abort ends the body quietly, as
+ * some transports do, instead of throwing.
+ *
+ * @param {Uint8Array} bytes
+ * @param {AbortSignal | undefined} signal
+ * @param {{ chunkSize?: number, failAfter?: number, endOnAbort?: boolean,
+ *   onChunk?: (sent: number) => void }} [options]
+ */
+export async function* fixtureBody(bytes, signal, options = {}) {
+  const { chunkSize = 16 * 1024, failAfter, endOnAbort = false, onChunk } = options;
+  let sent = 0;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    await new Promise((resolve) => setImmediate(resolve));
+    if (signal?.aborted && endOnAbort) {
+      return;
+    }
+    signal?.throwIfAborted();
+    if (failAfter !== undefined && sent >= failAfter) {
+      throw new Error('fixture connection reset');
+    }
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    sent += chunk.length;
+    yield chunk;
+    onChunk?.(sent);
+  }
+}
+
+/**
+ * Answers like a release asset host: 206 for `Range: bytes=N-`, 200 otherwise,
+ * or 200 for both with `ignoreRange`.
+ *
+ * @param {Uint8Array | undefined} bytes
+ * @param {Record<string, string>} headers
+ * @param {AbortSignal | undefined} signal
+ * @param {{ ignoreRange?: boolean, chunkSize?: number, failAfter?: number,
+ *   endOnAbort?: boolean, onChunk?: (sent: number) => void }} [options]
+ */
+export function serveArchive(bytes, headers, signal, options = {}) {
+  if (!bytes) {
+    return { status: 404, headers: {}, body: fixtureBody(new Uint8Array(0), signal) };
+  }
+  const match = /^bytes=(\d+)-$/u.exec(headers.range ?? '');
+  if (match && !options.ignoreRange) {
+    const start = Number(match[1]);
+    return {
+      status: 206,
+      headers: {
+        'content-range': `bytes ${start}-${bytes.length - 1}/${bytes.length}`,
+        'content-length': String(bytes.length - start),
+      },
+      body: fixtureBody(bytes.subarray(start), signal, options),
+    };
+  }
+  return {
+    status: 200,
+    headers: { 'content-length': String(bytes.length) },
+    body: fixtureBody(bytes, signal, options),
+  };
+}
+
+/**
+ * @typedef {object} FixtureTransportRequest
+ * @property {string} url
+ * @property {Record<string, string>} headers
+ * @property {AbortSignal} signal
+ */
+
+/**
+ * An in-memory pack transport. It serves `archives` by URL through
+ * `serveArchive`, records every request, and answers the next request with a
+ * handler queued by `respondOnce`. Like the product transport, it never follows
+ * redirects.
+ *
+ * @param {Map<string, Uint8Array>} archives
+ */
+export function createFixtureTransport(archives) {
+  /** @type {Array<{ url: string, headers: Record<string, string> }>} */
+  const requests = [];
+  /** @type {Array<(request: FixtureTransportRequest) => any>} */
+  const queued = [];
+  return {
+    requests,
+    /** @param {(request: FixtureTransportRequest) => any} handler */
+    respondOnce(handler) {
+      queued.push(handler);
+    },
+    /** @param {FixtureTransportRequest} request */
+    async request(request) {
+      requests.push({ url: request.url, headers: { ...request.headers } });
+      const handler = queued.shift();
+      if (handler) {
+        return handler(request);
+      }
+      return serveArchive(archives.get(request.url), request.headers, request.signal);
+    },
+  };
 }

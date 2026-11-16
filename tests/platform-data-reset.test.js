@@ -48,7 +48,10 @@ test('reset erases its explicit owned set and all state backups, logs it, and to
   await seed(path.join(attachment, 'secret.txt'));
   const retained = ['platform/config/platform-preferences.json', 'platform/apps/data/data.json',
     'platform/plugins/registry.json', 'runtime/data/native.json', 'desktop/preferences.json',
-    '.claude/login.json', 'external/.cats-attachments/secret.txt', 'platform/project/source.ts', 'unrelated.txt'];
+    '.claude/login.json', 'external/.cats-attachments/secret.txt', 'platform/project/source.ts', 'unrelated.txt',
+    // SPEC-145 AC-03: downloaded feature packs survive a Platform data reset.
+    'platform/feature-packs/linux-stt/active.json', 'platform/feature-packs/linux-stt/1.0.0-linux-x64/cats-stt-linux',
+    'platform/feature-packs/.staging/linux-stt-1.1.0-linux-x64.catspack.part'];
   for (const file of retained) await seed(path.join(home, file), 'retained');
   const lines = [];
   const options = { report: line => lines.push(line), attachmentDirectories: [attachment, path.join(home, 'external/.cats-attachments')] };
@@ -304,7 +307,7 @@ test('every locale discloses every erased category and the retained ownership bo
       assert.ok(match, `reset target requires a disclosed category: ${target}`);
       assert.ok(copy.includes(match[locale === 'en' ? 1 : 2]), `${locale}: ${target}`);
     }
-    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作空間']) assert.ok(copy.includes(category), `${locale}: ${category}`);
+    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', '已下載的選用功能', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作空間']) assert.ok(copy.includes(category), `${locale}: ${category}`);
   }
 });
 
