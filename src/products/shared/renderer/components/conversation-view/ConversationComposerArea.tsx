@@ -133,6 +133,8 @@ export function ConversationComposerArea({
   const {
     supported: voiceInputSupported,
     listening: voiceInputListening,
+    processing: voiceInputProcessing,
+    limitWarningSeconds: voiceInputLimitWarningSeconds,
     toggle: toggleVoiceInput,
     textareaRef,
     toasts: voiceInputToasts,
@@ -165,7 +167,9 @@ export function ConversationComposerArea({
     : hasConversationStarted
       ? t(messageKeys.chatComposerAreaPlaceholderReply)
       : t(messageKeys.chatNewChatDraftComposerPlaceholder);
-  const voiceInputLabel = voiceInputListening
+  const voiceInputLabel = voiceInputProcessing
+    ? t(messageKeys.sharedVoiceInputTranscribing)
+    : voiceInputListening
     ? t(
       messageKeys.chatNewChatDraftStopVoiceInputAria,
       { privacyMessageSuffix: voiceInputPrivacyMessage ?? '' },
@@ -356,12 +360,20 @@ export function ConversationComposerArea({
               onSetActiveAudienceKeys={onSetActiveAudienceKeys}
             />
           )}
+          {voiceInputSupported && voiceInputLimitWarningSeconds !== null ? (
+            <span className="composerVoiceLimitChip" role="status">
+              {t(messageKeys.sharedVoiceInputLimitWarning, {
+                seconds: voiceInputLimitWarningSeconds,
+              })}
+            </span>
+          ) : null}
           {voiceInputSupported ? (
             <button
-              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
+              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}${voiceInputProcessing ? ' composerVoiceButtonBusy' : ''}`}
               type="button"
               aria-label={voiceInputLabel}
               aria-pressed={voiceInputListening}
+              aria-busy={voiceInputProcessing || undefined}
               data-tooltip={voiceInputPrivacyMessage ?? voiceInputLabel}
               disabled={composerBusy}
               onClick={toggleVoiceInput}

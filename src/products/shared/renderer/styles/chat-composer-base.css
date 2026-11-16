@@ -66,6 +66,40 @@
   50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
 }
 
+/* SPEC-145 FR-D5: recording stopped; the transcript is on its way. */
+.composerVoiceButtonBusy,
+.composerVoiceButtonBusy:hover {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.composerVoiceButtonBusy svg {
+  animation: composerVoiceBusy 1s ease-in-out infinite alternate;
+}
+
+@keyframes composerVoiceBusy {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composerVoiceButtonBusy svg {
+    animation: none;
+  }
+}
+
+/* SPEC-145 FR-D5: "Recording stops in 5 s" beside the mic. */
+.composerVoiceLimitChip {
+  align-self: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 .composerBottomRow {
   display: flex;
   align-items: center;

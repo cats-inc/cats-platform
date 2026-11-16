@@ -577,6 +577,8 @@ export function NewConversationDraft({
     toggle: toggleVoiceInput,
     textareaRef,
     toasts: voiceInputToasts,
+    processing: voiceInputProcessing,
+    limitWarningSeconds: voiceInputLimitWarningSeconds,
     privacyMessage: voiceInputPrivacyMessage,
   } = useVoiceInputComposer({
     value: composerDraft,
@@ -1154,12 +1156,21 @@ export function NewConversationDraft({
               }
             />
           ) : null}
+          {voiceInputSupported && voiceInputLimitWarningSeconds !== null ? (
+            <span className="composerVoiceLimitChip" role="status">
+              {t(messageKeys.sharedVoiceInputLimitWarning, {
+                seconds: voiceInputLimitWarningSeconds,
+              })}
+            </span>
+          ) : null}
           {voiceInputSupported ? (
             <button
-              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
+              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}${voiceInputProcessing ? ' composerVoiceButtonBusy' : ''}`}
               type="button"
               aria-label={
-                voiceInputListening
+                voiceInputProcessing
+                  ? t(messageKeys.sharedVoiceInputTranscribing)
+                  : voiceInputListening
                   ? t(messageKeys.chatNewChatDraftStopVoiceInputAria, {
                     privacyMessageSuffix: voiceInputPrivacyMessage
                       ? `. ${voiceInputPrivacyMessage}`
@@ -1168,7 +1179,10 @@ export function NewConversationDraft({
                   : t(messageKeys.chatNewChatDraftStartVoiceInputAria)
               }
               aria-pressed={voiceInputListening}
-              data-tooltip={voiceInputPrivacyMessage ?? (voiceInputListening
+              aria-busy={voiceInputProcessing || undefined}
+              data-tooltip={voiceInputPrivacyMessage ?? (voiceInputProcessing
+                ? t(messageKeys.sharedVoiceInputTranscribing)
+                : voiceInputListening
                 ? t(messageKeys.chatNewChatDraftStopVoiceInputAria, { privacyMessageSuffix: '' })
                 : t(messageKeys.chatNewChatDraftStartVoiceInputAria))}
               disabled={isSubmittingFirstTurn}
