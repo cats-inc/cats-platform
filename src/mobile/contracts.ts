@@ -95,11 +95,25 @@ export interface MobileChatShellState {
  * `PlatformOwnerContext` slice the web Settings → General Profile
  * card consumes (`src/shared/platform-contract.ts`).
  */
+/** A Clowder or Cattery as the mobile Cats tab lists it (SPEC-103): a subset of the lobby summary. */
+export interface MobileDirectoryGroupSummary {
+  id: string;
+  name: string;
+  catCount: number;
+}
+
+export interface MobileLobbyDirectory {
+  clowders?: MobileDirectoryGroupSummary[];
+  catteries?: MobileDirectoryGroupSummary[];
+}
+
 export interface MobileAppShellPayload {
   chat: MobileChatShellState;
   ownerDisplayName: string;
   ownerAvatarUrl: string | null;
   ownerAvatarColor: string | null;
+  /** The lobby's Clowder and Cattery summaries; older servers omit them. */
+  lobby?: MobileLobbyDirectory;
 }
 
 export type MobileChatMessageSenderKind =
