@@ -7,6 +7,8 @@ import type {
   PlatformDesktopPreferences,
   PlatformLanguagePreferences,
   PlatformLobbyCatSummary,
+  PlatformLobbyCatterySummary,
+  PlatformLobbyClowderSummary,
   PlatformLobbyPreferences,
   PlatformProductDescriptor,
   PlatformSurfaceId,
@@ -80,6 +82,10 @@ export function createAppShell(
     desktop?: PlatformDesktopPreferencesInput;
     language?: PlatformLanguagePreferences;
     lobby?: PlatformLobbyPreferences;
+    lobbyDirectory?: {
+      clowders: PlatformLobbyClowderSummary[];
+      catteries: PlatformLobbyCatterySummary[];
+    };
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
     assistantPresets?: AssistantPresetRecord[];
@@ -117,6 +123,8 @@ export function createAppShell(
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
       cats: buildLobbyCats(summary.cats),
+      clowders: structuredClone(setup?.lobbyDirectory?.clowders ?? []),
+      catteries: structuredClone(setup?.lobbyDirectory?.catteries ?? []),
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
     },
     language: {
