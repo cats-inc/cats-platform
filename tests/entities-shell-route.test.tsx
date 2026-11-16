@@ -13,7 +13,7 @@ import { CatsCanvasPage } from '../src/app/renderer/entities/CatsCanvasPage.tsx'
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
 import { ClowdersCanvasPage } from '../src/app/renderer/entities/ClowdersCanvas.tsx';
-import { CatteriesCanvasPage } from '../src/app/renderer/entities/EntityCanvasPages.tsx';
+import { CatteriesCanvasPage } from '../src/app/renderer/entities/CatteriesCanvas.tsx';
 import { EntitiesIndexPage } from '../src/app/renderer/entities/EntitiesIndexPage.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { EntitiesShell } from '../src/app/renderer/entities-shell/EntitiesShell.tsx';
@@ -590,13 +590,5 @@ test('Drilled-down /entities/clowders and /entities/catteries canvas routes both
 
   const catteriesMarkup = renderApp('/entities/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
-  assert.match(catteriesMarkup, /class="entityCanvas entityCanvas--catteries"/u);
-  assert.match(catteriesMarkup, /href="\/entities\/catteries\/acme"/u);
-  assert.match(catteriesMarkup, />Beta Co\.</u);
-  assert.match(catteriesMarkup, />Formal Clowder</u);
-  assert.match(catteriesMarkup, /href="\/entities\/clowders\/clw-dev"/u);
-  assert.match(catteriesMarkup, />My Catteries</u);
-  const acmeCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Acme Co.');
-  const betaCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Beta Co.');
-  assert.ok(acmeCatteryIndex < betaCatteryIndex);
+  assert.match(catteriesMarkup, /class="catsCanvasPageBoot"/u);
 });

@@ -1,15 +1,40 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import { messageKeys, type MessageLocale } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
   MembershipStatus,
+  PlatformDirectoryView,
   PlatformLobbyCatSummary,
 } from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
-import type { DirectoryRequestError } from './directoryApi.js';
+import type { DirectoryRequestError, useDirectory } from './directoryApi.js';
 
 type Translate = ReturnType<typeof useI18n>['t'];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** What a Directory canvas hands its parts: run a change, report it, report a failure. */
+export interface DirectoryCanvasActions {
+  run: ReturnType<typeof useDirectory>['run'];
+  toast: (message: string) => void;
+  fail: (error: DirectoryRequestError) => void;
+  pending: boolean;
+}
+
+/** Clowders under each Cattery in creation order, then the ones without a Cattery. */
+export function groupClowders(directory: PlatformDirectoryView, crossUnitLabel: string) {
+  const groups = directory.catteries
+    .map((cattery) => ({
+      key: cattery.id,
+      label: cattery.name,
+      clowders: directory.clowders.filter((clowder) => clowder.parentCatteryId === cattery.id),
+    }))
+    .filter((group) => group.clowders.length > 0);
+  const loose = directory.clowders.filter((clowder) => clowder.parentCatteryId === null);
+  if (loose.length > 0) groups.push({ key: 'none', label: crossUnitLabel, clowders: loose });
+  return groups;
+}
 
 export function useCatLookup(cats: readonly PlatformLobbyCatSummary[]): Map<string, PlatformLobbyCatSummary> {
   const lookup = new Map<string, PlatformLobbyCatSummary>();
@@ -81,21 +106,30 @@ export function membershipStatusLabel(t: Translate, status: MembershipStatus): s
 export function MembershipStatusChip({
   status,
   expiresAt,
+  compact = false,
   now = new Date(),
 }: {
   status: MembershipStatus;
   expiresAt?: string | null;
+  /** Just the status, with the end date in the tooltip, for narrow org-chart cards. */
+  compact?: boolean;
   now?: Date;
 }) {
   const { t, locale } = useI18n();
-  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) < now.getTime() : false;
+  // The end date is a whole day: a Cat temporary until 12/31 is still a member on 12/31.
+  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) + DAY_MS <= now.getTime() : false;
   const label = status === 'temp' && expiresAt
     ? t(ended ? messageKeys.directoryStatusTempEnded : messageKeys.directoryStatusTempUntil, {
         date: formatDirectoryDate(expiresAt, locale),
       })
     : membershipStatusLabel(t, status);
   return (
-    <span className={`directoryStatusChip directoryStatusChip--${ended ? 'ended' : status}`}>{label}</span>
+    <span
+      className={`directoryStatusChip directoryStatusChip--${ended ? 'ended' : status}`}
+      title={compact && label !== membershipStatusLabel(t, status) ? label : undefined}
+    >
+      {compact ? membershipStatusLabel(t, status) : label}
+    </span>
   );
 }
 
@@ -103,6 +137,7 @@ export function directoryErrorMessage(t: Translate, error: DirectoryRequestError
   if (error.code === 'directory_unreadable') return t(messageKeys.directoryErrorUnreadable);
   if (error.code === 'directory_newer') return t(messageKeys.directoryErrorNewer);
   if (error.code === 'directory_name_required') return t(messageKeys.directoryErrorNameRequired);
+  if (error.code === 'cattery_domain_invalid') return t(messageKeys.directoryErrorDomainInvalid);
   return t(messageKeys.directoryErrorSaveFailed, { message: error.message });
 }
 
@@ -176,5 +211,98 @@ export function DirectorySegmented<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+/** "Add a cat": the Cats not yet in the group, each added with one click. */
+export function AddCatPopover({
+  memberIds,
+  cats,
+  pending,
+  onAdd,
+}: {
+  memberIds: ReadonlySet<string>;
+  cats: readonly PlatformLobbyCatSummary[];
+  pending: boolean;
+  onAdd: (cat: PlatformLobbyCatSummary) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(ref, open, () => setOpen(false));
+  const candidates = cats.filter((cat) => !memberIds.has(cat.id));
+
+  return (
+    <div className="directoryPopoverAnchor" ref={ref}>
+      <button
+        type="button"
+        className="secondaryButton directorySmallButton"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        disabled={pending}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t(messageKeys.directoryAddCatAction)}
+      </button>
+      {open ? (
+        <div className="accountMenu accountMenu--below accountMenu--alignEnd directoryMenu" role="menu">
+          <p className="directoryMenuCaption">{t(messageKeys.directoryAddCatHint)}</p>
+          {cats.length === 0 ? <p className="directoryMenuEmpty">{t(messageKeys.directoryNoCats)}</p> : null}
+          {cats.length > 0 && candidates.length === 0 ? (
+            <p className="directoryMenuEmpty">{t(messageKeys.directoryAddCatNone)}</p>
+          ) : null}
+          {candidates.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              role="menuitem"
+              className="accountMenuItem directoryMenuItem"
+              onClick={() => { setOpen(false); onAdd(cat); }}
+            >
+              <DirectoryCatAvatar cat={cat} size="small" />
+              <span>{cat.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A temporary member's end date. Typing changes only a draft: a date input
+ * reports each partial entry, so saving on every change would send the wrong
+ * day. It saves on blur or Enter, and an incomplete date is dropped.
+ */
+export function EndDateField({ value, onCommit }: { value: string | null; onCommit: (next: string | null) => void }) {
+  const { t } = useI18n();
+  const stored = toDateInputValue(value);
+  const [draft, setDraft] = useState(stored);
+  useEffect(() => { setDraft(stored); }, [stored]);
+
+  function commit(input: HTMLInputElement) {
+    if (input.validity.badInput) {
+      setDraft(stored);
+      return;
+    }
+    if (draft !== stored) onCommit(draft || null);
+  }
+
+  return (
+    <label className="directoryMenuDate">
+      <span>{t(messageKeys.directoryMemberEndDate)}</span>
+      <input
+        type="date"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => commit(event.currentTarget)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit(event.currentTarget);
+          }
+        }}
+      />
+    </label>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
@@ -29,42 +29,24 @@ import '../../../products/shared/renderer/styles/settings.css';
 import { useI18n } from '../i18n/index.js';
 import { directoryApi, useDirectory, type DirectoryRequestError } from './directoryApi.js';
 import {
+  AddCatPopover,
   DirectoryCatAvatar,
   DirectoryGroupAvatar,
   DirectoryLoadError,
   DirectorySegmented,
   MembershipStatusChip,
   directoryErrorMessage,
-  toDateInputValue,
+  EndDateField,
+  groupClowders,
   useCatLookup,
   useDismiss,
+  type DirectoryCanvasActions,
 } from './directoryParts.js';
+import { MoveMemberDialog } from './MoveMemberDialog.js';
 import './directory.css';
 
-type Run = ReturnType<typeof useDirectory>['run'];
-type ShowToast = (message: string) => void;
 type StatusFilter = 'all' | MembershipStatus;
-
-interface CanvasActions {
-  run: Run;
-  toast: ShowToast;
-  fail: (error: DirectoryRequestError) => void;
-  pending: boolean;
-}
-
-/** Strip groups: Clowders under each Cattery in creation order, then the ones without a Cattery. */
-function groupClowders(directory: PlatformDirectoryView, crossUnitLabel: string) {
-  const groups = directory.catteries
-    .map((cattery) => ({
-      key: cattery.id,
-      label: cattery.name,
-      clowders: directory.clowders.filter((clowder) => clowder.parentCatteryId === cattery.id),
-    }))
-    .filter((group) => group.clowders.length > 0);
-  const loose = directory.clowders.filter((clowder) => clowder.parentCatteryId === null);
-  if (loose.length > 0) groups.push({ key: 'none', label: crossUnitLabel, clowders: loose });
-  return groups;
-}
+type CanvasActions = DirectoryCanvasActions;
 
 function ClowderStrip({
   directory,
@@ -353,63 +335,6 @@ function ClowderIdentityCard({
   );
 }
 
-function AddCatPopover({
-  clowder,
-  cats,
-  actions,
-}: {
-  clowder: PlatformClowderView;
-  cats: readonly PlatformLobbyCatSummary[];
-  actions: CanvasActions;
-}) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, open, () => setOpen(false));
-  const memberIds = new Set(clowder.members.map((member) => member.catId));
-  const candidates = cats.filter((cat) => !memberIds.has(cat.id));
-
-  async function add(cat: PlatformLobbyCatSummary) {
-    setOpen(false);
-    try {
-      await actions.run(() => directoryApi.addClowderMember(clowder.id, { catId: cat.id }));
-      actions.toast(t(messageKeys.directoryToastAdded, { cat: cat.name, group: clowder.name }));
-    } catch (error) {
-      actions.fail(error as DirectoryRequestError);
-    }
-  }
-
-  return (
-    <div className="directoryPopoverAnchor" ref={ref}>
-      <button
-        type="button"
-        className="secondaryButton directorySmallButton"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        disabled={actions.pending}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {t(messageKeys.directoryAddCatAction)}
-      </button>
-      {open ? (
-        <div className="accountMenu accountMenu--below accountMenu--alignEnd directoryMenu" role="menu">
-          <p className="directoryMenuCaption">{t(messageKeys.directoryAddCatHint)}</p>
-          {cats.length === 0 ? <p className="directoryMenuEmpty">{t(messageKeys.directoryNoCats)}</p> : null}
-          {cats.length > 0 && candidates.length === 0 ? (
-            <p className="directoryMenuEmpty">{t(messageKeys.directoryAddCatNone)}</p>
-          ) : null}
-          {candidates.map((cat) => (
-            <button key={cat.id} type="button" role="menuitem" className="accountMenuItem directoryMenuItem" onClick={() => { void add(cat); }}>
-              <DirectoryCatAvatar cat={cat} size="small" />
-              <span>{cat.name}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function ClowderMemberRow({
   clowder,
   member,
@@ -455,7 +380,7 @@ function ClowderMemberRow({
           {member.role === 'lead' ? t(messageKeys.directoryRoleLead) : t(messageKeys.directoryRoleMember)}
         </span>
       </span>
-      <MembershipStatusChip status={member.status} expiresAt={member.expiresAt} />
+      {member.status !== 'formal' ? <MembershipStatusChip status={member.status} expiresAt={member.expiresAt} /> : null}
       <button
         type="button"
         className="directoryMoreButton"
@@ -494,15 +419,7 @@ function ClowderMemberRow({
             onChange={(status) => { void update({ status }); }}
           />
           {member.status === 'temp' ? (
-            <label className="directoryMenuDate">
-              <span>{t(messageKeys.directoryMemberEndDate)}</span>
-              <input
-                type="date"
-                value={toDateInputValue(member.expiresAt)}
-                disabled={actions.pending}
-                onChange={(event) => { void update({ expiresAt: event.target.value || null }); }}
-              />
-            </label>
+            <EndDateField value={member.expiresAt} onCommit={(expiresAt) => { void update({ expiresAt }); }} />
           ) : null}
           <div className="accountMenuDivider" role="separator" />
           <button type="button" role="menuitem" className="accountMenuItem directoryMenuItem" onClick={() => { setOpen(false); onMove('move'); }}>
@@ -542,6 +459,15 @@ function ClowderMembersCard({
 }) {
   const { t } = useI18n();
   const [filter, setFilter] = useState<StatusFilter>('all');
+
+  async function addCat(cat: PlatformLobbyCatSummary) {
+    try {
+      await actions.run(() => directoryApi.addClowderMember(clowder.id, { catId: cat.id }));
+      actions.toast(t(messageKeys.directoryToastAdded, { cat: cat.name, group: clowder.name }));
+    } catch (error) {
+      actions.fail(error as DirectoryRequestError);
+    }
+  }
   const members = clowder.members.filter((member) => catLookup.has(member.catId));
   const count = (status: StatusFilter) => members.filter((member) => status === 'all' || member.status === status).length;
   const shown = members.filter((member) => filter === 'all' || member.status === filter);
@@ -558,7 +484,12 @@ function ClowderMembersCard({
         <h3 className="directorySubHeading">
           {t(messageKeys.directoryMembersHeading)} <span className="directoryCount">{members.length}</span>
         </h3>
-        <AddCatPopover clowder={clowder} cats={cats} actions={actions} />
+        <AddCatPopover
+          memberIds={new Set(clowder.members.map((member) => member.catId))}
+          cats={cats}
+          pending={actions.pending}
+          onAdd={(cat) => { void addCat(cat); }}
+        />
       </div>
       {members.length > 0 ? (
         <div className="directoryFilters" role="group" aria-label={t(messageKeys.directoryFilterAria)}>
@@ -594,142 +525,6 @@ function ClowderMembersCard({
         </ul>
       )}
     </SettingsSubSection>
-  );
-}
-
-function MoveMemberDialog({
-  directory,
-  clowder,
-  cat,
-  initialMode,
-  actions,
-  onClose,
-}: {
-  directory: PlatformDirectoryView;
-  clowder: PlatformClowderView;
-  cat: PlatformLobbyCatSummary;
-  initialMode: 'move' | 'add';
-  actions: CanvasActions;
-  onClose: () => void;
-}) {
-  const { t } = useI18n();
-  const [mode, setMode] = useState(initialMode);
-  const targets = directory.clowders.filter((candidate) => candidate.id !== clowder.id);
-  const isMember = (target: PlatformClowderView) => target.members.some((member) => member.catId === cat.id);
-  const [targetId, setTargetId] = useState<string | null>(targets.find((target) => !isMember(target))?.id ?? null);
-  const target = targets.find((candidate) => candidate.id === targetId) ?? null;
-  const groups = groupClowders({ ...directory, clowders: targets }, t(messageKeys.clowderHomeChipCrossUnit));
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', handleKey);
-    dialogRef.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus();
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
-  async function confirm() {
-    if (!target) return;
-    const membership = clowder.members.find((member) => member.catId === cat.id);
-    try {
-      if (mode === 'move') {
-        await actions.run(() => directoryApi.moveClowderMember(clowder.id, cat.id, target.id));
-        actions.toast(t(messageKeys.clowdersCanvasToastMoved, { cat: cat.name, group: target.name }));
-      } else {
-        await actions.run(() => directoryApi.addClowderMember(target.id, {
-          catId: cat.id,
-          status: membership?.status ?? 'formal',
-          expiresAt: membership?.status === 'temp' ? membership.expiresAt : null,
-        }));
-        actions.toast(t(messageKeys.directoryToastAdded, { cat: cat.name, group: target.name }));
-      }
-      onClose();
-    } catch (error) {
-      actions.fail(error as DirectoryRequestError);
-    }
-  }
-
-  return (
-    <div className="confirmOverlay" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        className="confirmDialog directoryMoveDialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t(messageKeys.clowdersCanvasMoveTitle, { name: cat.name })}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="directoryMoveHeader">
-          <DirectoryCatAvatar cat={cat} />
-          <div>
-            <p className="confirmTitle">{t(messageKeys.clowdersCanvasMoveTitle, { name: cat.name })}</p>
-            <p className="directoryHint">{t(messageKeys.clowdersCanvasMoveCurrent, { group: clowder.name })}</p>
-          </div>
-        </div>
-        <DirectorySegmented<'move' | 'add'>
-          label={t(messageKeys.clowdersCanvasMoveModeAria)}
-          value={mode}
-          options={[
-            { value: 'move', label: t(messageKeys.clowdersCanvasMoveModeMove) },
-            { value: 'add', label: t(messageKeys.clowdersCanvasMoveModeAdd) },
-          ]}
-          onChange={setMode}
-        />
-        <p className="directoryHint">
-          {t(mode === 'move' ? messageKeys.clowdersCanvasMoveModeMoveHint : messageKeys.clowdersCanvasMoveModeAddHint, {
-            name: cat.name,
-            group: clowder.name,
-          })}
-        </p>
-        <div className="directoryMoveTargets" role="radiogroup" aria-label={t(messageKeys.clowdersCanvasMoveChoose)}>
-          {targets.length === 0 ? <p className="directoryHint">{t(messageKeys.clowdersCanvasMoveNoTargets)}</p> : null}
-          {groups.map((group) => (
-            <div key={group.key} className="directoryMoveGroup">
-              <span className="directoryStripCaption">{group.label}</span>
-              {group.clowders.map((candidate) => {
-                const already = isMember(candidate);
-                return (
-                  <button
-                    key={candidate.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={candidate.id === targetId}
-                    className="directoryMoveTarget"
-                    disabled={already}
-                    onClick={() => setTargetId(candidate.id)}
-                  >
-                    <DirectoryGroupAvatar name={candidate.name} kind="clowder" size="small" />
-                    <span className="directoryOptionName">{candidate.name}</span>
-                    <span className="directoryHint">
-                      {already
-                        ? t(messageKeys.clowdersCanvasMoveAlreadyIn)
-                        : t(messageKeys.clowdersCanvasMoveMemberCount, { count: String(candidate.members.length) })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        <div className="confirmActions">
-          <button type="button" className="confirmCancelButton" onClick={onClose}>
-            {t(messageKeys.sharedCatsCreateCancel)}
-          </button>
-          <button
-            type="button"
-            className="confirmPrimaryButton"
-            disabled={!target || actions.pending}
-            onClick={() => { void confirm(); }}
-          >
-            {target
-              ? t(mode === 'move' ? messageKeys.clowdersCanvasMoveConfirmMove : messageKeys.clowdersCanvasMoveConfirmAdd, { group: target.name })
-              : t(messageKeys.clowdersCanvasMoveModeMove)}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -801,7 +596,7 @@ function ClowderDetailCard({
       {moving && movingCat ? (
         <MoveMemberDialog
           directory={directory}
-          clowder={clowder}
+          source={clowder}
           cat={movingCat}
           initialMode={moving.mode}
           actions={actions}
