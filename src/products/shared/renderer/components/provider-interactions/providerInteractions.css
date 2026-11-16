@@ -15,3 +15,9 @@
 .native-provider-policy label { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; }
 .native-provider-policy input[type=checkbox] { width: auto; }
 .native-provider-policy select { font: inherit; max-width: 100%; }
+/* ADR-155: grants in force are always visible, with Stop; a computer-use grant carries its warning. */
+.native-provider-grants { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: 10px; background: var(--panel); overflow-wrap: anywhere; }
+.native-provider-grants p { margin: 4px 0; }
+.native-provider-grants .native-provider-actions { align-items: center; margin-top: 8px; }
+.native-provider-grants small { opacity: .75; }
+.native-provider-warning { color: var(--danger); }

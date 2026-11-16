@@ -1281,7 +1281,7 @@ export function ConversationView({
         <p>{t(archive.busy === 'archive' ? messageKeys.conversationArchiving : archive.busy === 'restore' ? messageKeys.conversationRestoring
           : archive.needsRefresh ? messageKeys.conversationArchiveRefreshFailed : messageKeys.conversationArchiveReadOnly)}</p>
       </div> : <>
-      <ProviderConversationControls key={selectedChannel.id} conversationId={buildChatConversationId(selectedChannel.id)} />
+      <ProviderConversationControls key={selectedChannel.id} conversationId={buildChatConversationId(selectedChannel.id)} channelId={selectedChannel.id} />
       <DesktopControlConversation key={`desktop-${selectedChannel.id}`} channelId={selectedChannel.id} />
       <ConversationComposerArea
         hasConversationStarted={hasConversationStarted}

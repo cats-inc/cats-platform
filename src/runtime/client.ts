@@ -295,6 +295,8 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   skills?: RuntimeSkillManifest<string | RuntimeRequestedSkillRef>;
   /** Replaces the session's MCP servers when present; `[]` clears them. */
   mcpServers?: RuntimeSessionMcpServer[];
+  /** ADR-155 / Runtime ADR-055: only for a turn the local owner sent; lets Runtime use standing grants. */
+  standingGrants?: true;
 }
 
 export interface RuntimeSessionResumeInput {
@@ -361,6 +363,8 @@ export interface RuntimeDeleteSessionResult {
 
 export interface RuntimeClient {
   getSessionInteractions?(sessionId: string): Promise<InteractionSnapshot>;
+  /** Runtime ADR-055: ends the session's standing grants and returns its snapshot. */
+  revokeStandingGrants?(sessionId: string): Promise<InteractionSnapshot>;
   respondSessionInteraction?(sessionId: string, interactionId: string, response: InteractionResponse): Promise<ProviderInteraction>;
   getSessionCapabilities?(sessionId: string, refresh?: boolean): Promise<SessionCapabilitiesSnapshot>;
   getImageCapabilities?(): Promise<RuntimeImageCapabilities>;
@@ -581,10 +585,11 @@ function readRuntimeSessionInfo(
 export class CatsRuntimeClient implements RuntimeClient {
   private readonly interactionSessions = new Set<string>();
 
-  private async interactionRequest<T>(sessionId: string, suffix: string, body?: unknown): Promise<T> {
+  private async interactionRequest<T>(sessionId: string, suffix: string, body?: unknown, method?: 'DELETE'): Promise<T> {
     const response = await fetch(`${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}/${suffix}`, {
       headers: { ...this.authHeaders(), ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+      ...(method ? { method } : {}),
       signal: this.createTimeoutSignal(12_000), cache: 'no-store',
     });
     // Provider answers/errors never enter diagnostic logs or error text.
@@ -599,6 +604,9 @@ export class CatsRuntimeClient implements RuntimeClient {
     return JSON.parse(text + decoder.decode()) as T;
   }
   getSessionInteractions(sessionId: string) { return this.interactionRequest<InteractionSnapshot>(sessionId, 'interactions'); }
+  revokeStandingGrants(sessionId: string) {
+    return this.interactionRequest<InteractionSnapshot>(sessionId, 'interactions/grants', undefined, 'DELETE');
+  }
   respondSessionInteraction(sessionId: string, interactionId: string, response: InteractionResponse) {
     if (new TextEncoder().encode(JSON.stringify(response)).byteLength > 36 * 1024) throw new Error('Provider response exceeds limit.');
     return this.interactionRequest<ProviderInteraction>(sessionId, `interactions/${encodeURIComponent(interactionId)}/responses`, response);
@@ -1187,6 +1195,9 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input?.mcpServers) {
       payload.mcpServers = input.mcpServers;
     }
+    if (input?.standingGrants === true) {
+      payload.standingGrants = true;
+    }
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const idleTimeout = this.createIdleTimeoutController(this.messageIdleTimeoutMs);
@@ -1198,7 +1209,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       if (checking) return;
       checking = true;
       void this.getSessionInteractions(sessionId).then(snapshot => {
-        if (!finished && snapshot.interactions.some(i => ['pending', 'responding'].includes(i.status) && Date.parse(i.expiresAt) > Date.now())) idleTimeout.reset();
+        if (!finished && snapshot.interactions.some(i => ['pending', 'responding'].includes(i.status) && i.reason !== 'standing_grant' && Date.parse(i.expiresAt) > Date.now())) idleTimeout.reset();
       }).catch(() => {}).finally(() => { checking = false; });
     }, Math.max(50, Math.min(10_000, this.messageIdleTimeoutMs / 3))) : null;
     (humanWait as ReturnType<typeof setInterval> & { unref?: () => void } | null)?.unref?.();

@@ -17,7 +17,7 @@ export function ProviderSessionSettings({ payload }: { payload: AppShellPayload 
     <label>{t(messageKeys.providerControlsConversation)} <select value={selected?.id ?? ''} onChange={e => setChosen(e.target.value)}>
       {channels.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
     </select></label>
-    {selected ? <ProviderConversationControls key={selected.id} conversationId={buildChatConversationId(selected.id)} initiallyOpen />
+    {selected ? <ProviderConversationControls key={selected.id} conversationId={buildChatConversationId(selected.id)} channelId={selected.id} initiallyOpen />
       : <p>{t(messageKeys.providerControlsStartConversation)}</p>}
   </section>;
 }

@@ -118,8 +118,10 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
    `desktopControlEntry === 'local'`.
    - **Who strips the stamp.** Every route that accepts client message metadata, including
      parallel groups, strips `desktopControlEntry`. Only the channel route adds it back.
-   - **Retries.** A retry carries the flag only when the retry request itself passes the same
-     local-owner check.
+   - **Only while the owner's own request dispatches it.** The channel route marks the message
+     for the life of that request's dispatch, in Platform memory. A retry is marked only when the
+     retry request itself passes the same local-owner check and comes from the owner role. A
+     dispatch that starts later from a queue, or after a Platform restart, asks instead.
    - **Several cats.** One owner message addressed to several cats flags each cat's dispatch.
    - **What the flag proves.** Loopback plus the owner's cookie, not keystrokes. A local
      program holding the owner's cookie, or Kimi itself under a computer-use grant, also

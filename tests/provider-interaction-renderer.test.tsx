@@ -241,3 +241,27 @@ test('workspace reconciliation preserves the requested provider policy and disab
     });
   } finally { globalThis.fetch = fetchBefore; }
 });
+
+test('ADR-155: a categorized card offers the two grants with the first choice; the computer-use card warns', async () => {
+  const interaction = { kind: 'tool_approval', status: 'pending', interactionId: 'i', sessionId: 's', workerGeneration: 'w', executionId: 'e',
+    revision: 2, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    binding: { conversationId: 'c', sessionId: 's', label: 'Kimi Cat', participantId: 'cat', laneId: null, turnId: 'turn', runId: null, provider: 'kimi' },
+    prompt: { kind: 'tool_approval', title: 'js', grantCategory: 'computer_use',
+      choices: [{ id: 'approve_once', label: 'Approve once' }] } } as BoundProviderInteraction;
+  await domTest(async (document, render) => {
+    const answers: BoundInteractionResponse[] = [];
+    await render(<ProviderInteractionCard interaction={interaction} refresh={async () => {}} openUrl={async () => {}}
+      respond={async (_i, body) => { answers.push(body); }} />);
+    assert.match(document.body.textContent!, /as broad as you at the keyboard/);
+    const button = (label: RegExp) => [...document.querySelectorAll('button')].find(b => label.test(b.textContent ?? ''))!;
+    act(() => { button(/Allow for 30 minutes/).click(); });
+    await settle();
+    assert.deepEqual(answers[0]!.answer, { action: 'accept', choice: 'approve_once', standingGrant: { until: 'time', durationMs: 30 * 60_000 } });
+  });
+  // No category: no grant buttons and no warning.
+  await domTest(async (document, render) => {
+    await render(<ProviderInteractionCard interaction={{ ...interaction, prompt: { ...interaction.prompt!, grantCategory: undefined } }}
+      refresh={async () => {}} openUrl={async () => {}} respond={async () => {}} />);
+    assert.doesNotMatch(document.body.textContent!, /Allow for this conversation|as broad as you/);
+  });
+});

@@ -7,6 +7,20 @@ export type InteractionKind = typeof INTERACTION_KINDS[number];
 export type InteractionStatus = 'pending' | 'responding' | 'resolved' | 'expired'
   | 'cancelled' | 'interrupted' | 'unsupported';
 
+/** Runtime ADR-055 standing grants: one kind of request, approved once (Platform ADR-155). */
+export const GRANT_CATEGORIES = ['computer_use', 'command', 'file'] as const;
+export type GrantCategory = typeof GRANT_CATEGORIES[number];
+export interface StandingGrant {
+  category: GrantCategory;
+  until: 'session' | 'time';
+  grantedAt: string;
+  expiresAt?: string;
+}
+/** ADR-155: how long "Allow for 30 minutes" lasts. */
+export const STANDING_GRANT_MINUTES = 30;
+/** A request Runtime answered from a standing grant: never a card, never waiting for the owner. */
+export const STANDING_GRANT_REASON = 'standing_grant';
+
 export interface InteractionHost {
   version: 1;
   kinds: InteractionKind[];
@@ -47,6 +61,8 @@ export interface InteractionPrompt {
   /** Provider-normalized permission units. Granting one never grants another unit. */
   permissions?: InteractionOption[];
   scopes?: ('turn' | 'session')[];
+  /** Runtime ADR-055: the owner may approve this kind of request once, for longer. */
+  grantCategory?: GrantCategory;
 }
 
 export interface ProviderInteraction {
@@ -72,6 +88,8 @@ export interface InteractionAnswer {
   values?: Record<string, string | number | boolean | string[]>;
   grants?: string[];
   scope?: 'turn' | 'session';
+  /** Runtime ADR-055: only with accept and the prompt's first choice, on a prompt with a grantCategory. */
+  standingGrant?: { until: 'session' } | { until: 'time'; durationMs: number };
 }
 
 export interface InteractionResponse {
@@ -86,6 +104,8 @@ export interface InteractionSnapshot {
   workerGeneration: string | null;
   revision: number;
   interactions: ProviderInteraction[];
+  /** Runtime ADR-055: grants this session holds now. */
+  standingGrants?: StandingGrant[];
 }
 
 export const EXECUTION_ACCESS = ['read-only', 'workspace-write', 'full-access'] as const;
@@ -163,8 +183,11 @@ export interface ProviderInteractionBinding {
   provider?: string | null;
 }
 export interface BoundProviderInteraction extends ProviderInteraction { binding: ProviderInteractionBinding }
+/** ADR-155: a conversation session's standing grants, labelled like its cards. */
+export interface BoundStandingGrants { binding: ProviderInteractionBinding; standingGrants: StandingGrant[] }
 export interface ProviderConversationSnapshot { version: 1; conversationId: string; supported: boolean;
-  reason?: string; interactions: BoundProviderInteraction[]; sessions: ProviderInteractionBinding[] }
+  reason?: string; interactions: BoundProviderInteraction[]; sessions: ProviderInteractionBinding[];
+  standingGrants?: BoundStandingGrants[] }
 export interface BoundInteractionResponse extends InteractionResponse {
   binding: ProviderInteractionBinding;
   workerGeneration: string;

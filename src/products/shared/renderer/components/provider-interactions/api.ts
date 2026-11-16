@@ -24,3 +24,5 @@ export async function openProviderUrl(i: BoundProviderInteraction): Promise<void
   if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Unsupported URL');
   window.open(parsed.href, '_blank', 'noopener,noreferrer');
 }
+/** ADR-155: ends every standing grant in the conversation; resolves only when Runtime confirmed. */
+export const stopProviderGrants = (id: string) => request<ProviderConversationSnapshot>(`${conversationControlPath(id)}/grants/stop`, {});

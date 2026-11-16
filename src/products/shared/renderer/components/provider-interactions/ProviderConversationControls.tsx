@@ -1,13 +1,19 @@
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ProviderConversationSnapshot } from '../../../../../shared/providerInteractions.js';
-import { readProviderConversation, respondProviderRequest, openProviderUrl } from './api.js';
+import { STANDING_GRANT_REASON, type ProviderConversationSnapshot } from '../../../../../shared/providerInteractions.js';
+import { cancelChatChannel } from '../../api/chat.js';
+import { readProviderConversation, respondProviderRequest, openProviderUrl, stopProviderGrants } from './api.js';
+import { StandingGrantsBar } from './StandingGrantsBar.js';
 import { ProviderInteractionCard } from './ProviderInteractionCard.js';
 import { ProviderCapabilities } from './ProviderCapabilities.js';
 import './providerInteractions.css';
 
-export function ProviderConversationControls({ conversationId, initiallyOpen = false }: { conversationId: string; initiallyOpen?: boolean }) {
+export function ProviderConversationControls({ conversationId, channelId, initiallyOpen = false }: {
+  conversationId: string; initiallyOpen?: boolean;
+  /** ADR-155: the chat channel whose running turn Stop cancels with the grants. */
+  channelId?: string;
+}) {
   const { t } = useI18n();
   const [snapshot, setSnapshot] = useState<ProviderConversationSnapshot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -41,12 +47,20 @@ export function ProviderConversationControls({ conversationId, initiallyOpen = f
     return () => { generation.current++; clearInterval(timer); };
   }, [refresh, initiallyOpen]);
   const visible = snapshot?.conversationId === conversationId ? snapshot : null;
-  const active = visible?.interactions.filter(i => ['pending', 'responding'].includes(i.status)) ?? [];
+  // ADR-155: a request Runtime answered from a standing grant is never a card and never waits.
+  const active = visible?.interactions.filter(i => ['pending', 'responding'].includes(i.status) && i.reason !== STANDING_GRANT_REASON) ?? [];
   const activeIds = active.map(i => `${i.sessionId}:${i.interactionId}`).join(',');
   useEffect(() => { if (activeIds) anchor.current?.scrollIntoView({ block: 'nearest' }); }, [activeIds]);
   return <aside className="native-provider-controls" aria-label={t(messageKeys.providerControlsControls)}>
     <div className="native-provider-toolbar"><span role="status">{active.length ? t(messageKeys.providerControlsWaiting, { count: active.length }) : ''}</span>
       <button type="button" onClick={() => setDetails(v => !v)} aria-expanded={details}>{t(messageKeys.providerControlsSessionTools)}</button></div>
+    {visible?.standingGrants?.length ? <StandingGrantsBar grants={visible.standingGrants} onStop={async () => {
+      // Stop the grants and the running turn at the same time, so nothing more is approved meanwhile.
+      const [revoked] = await Promise.allSettled([stopProviderGrants(conversationId),
+        ...(channelId ? [cancelChatChannel(channelId)] : [])]);
+      await refresh();
+      if (revoked.status === 'rejected') throw revoked.reason;
+    }} /> : null}
     {unavailable && <p role="status">{t(messageKeys.providerControlsDisconnected)}</p>}
     {details && <div>
       {unavailable ? <p>{t(messageKeys.providerControlsOwnerRequired)}</p>
@@ -59,7 +73,7 @@ export function ProviderConversationControls({ conversationId, initiallyOpen = f
     </div>}
     <div ref={anchor} className="native-provider-active">{active.map(i => <ProviderInteractionCard key={`${i.workerGeneration}:${i.interactionId}`} interaction={i}
       refresh={async () => { await refresh(); }} respond={respondProviderRequest} openUrl={openProviderUrl} />)}</div>
-    {details && visible?.interactions.filter(i => !['pending', 'responding'].includes(i.status)).slice(-4).map(i =>
+    {details && visible?.interactions.filter(i => !['pending', 'responding'].includes(i.status) && i.reason !== STANDING_GRANT_REASON).slice(-4).map(i =>
       <ProviderInteractionCard key={`${i.workerGeneration}:${i.interactionId}`} interaction={i} refresh={refresh} respond={respondProviderRequest} openUrl={openProviderUrl} />)}
   </aside>;
 }
