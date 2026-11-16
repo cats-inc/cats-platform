@@ -211,3 +211,23 @@ test('a temporary member is still in on their end date and ends the day after', 
   assert.equal(chip('2026-12-31T20:00:00.000Z'), 'Temporary until 12/31/2026');
   assert.equal(chip('2027-01-01T00:00:00.000Z'), 'Temporary, ended 12/31/2026');
 });
+
+test('a date picked and left by closing the menu is saved once, by an outside press or Escape', async (t) => {
+  const api = installFakeApi(t);
+  const view = renderCanvas(t, '/entities/clowders/dev/settings');
+  fireEvent.click(await waitFor(() => view.getByRole('button', { name: 'More actions for Tiger' })));
+  // A calendar pick changes the value without blurring the field.
+  fireEvent.change(view.getByLabelText('End date'), { target: { value: '2027-01-15' } });
+  fireEvent.mouseDown(document.body);
+  await waitFor(() => assert.equal(api.writes().length, 1));
+  assert.equal(view.queryByLabelText('End date'), null);
+
+  fireEvent.click(view.getByRole('button', { name: 'More actions for Tiger' }));
+  const field = await waitFor(() => view.getByLabelText('End date') as HTMLInputElement);
+  fireEvent.change(field, { target: { value: '2027-02-01' } });
+  fireEvent.blur(field);
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => assert.equal(api.writes().length, 2));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(api.writes().map((write) => write.body), [{ expiresAt: '2027-01-15' }, { expiresAt: '2027-02-01' }]);
+});

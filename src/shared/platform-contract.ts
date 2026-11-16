@@ -178,12 +178,10 @@ export interface PlatformDirectoryView {
 }
 
 /**
- * A clowder summary as it appears in the Lobby sidebar / list. Phase
- * 6 of PLAN-091 ships the full ClowderRecord (with members, cat list,
- * createdBy, etc.); the sidebar only needs identification + a
- * couple of counts to size the row. `createdAt` is still carried in
- * the summary so Lobby list/card surfaces can sort deterministically
- * until the full record lands.
+ * A clowder summary as it appears in the Lobby sidebar / list: identity, its
+ * Cattery and a couple of counts. The full Clowder with its members is
+ * `PlatformClowderView`. `createdAt` lets list and card surfaces sort the way
+ * the Directory does. Groups have no image yet, so `avatarUrl` is null.
  */
 export interface PlatformLobbyClowderSummary {
   id: string;
@@ -197,14 +195,14 @@ export interface PlatformLobbyClowderSummary {
 }
 
 /**
- * A cattery summary as it appears in the Lobby sidebar / list. Same
- * scope-shrinking comment as PlatformLobbyClowderSummary applies.
+ * A cattery summary as it appears in the Lobby sidebar / list; the full
+ * Cattery is `PlatformCatteryView`.
  */
 export interface PlatformLobbyCatterySummary {
   id: string;
   name: string;
   avatarUrl: string | null;
-  /** Required by phase-6 list/card stubs for stable display ordering. */
+  /** Lets list and card surfaces sort the way the Directory does. */
   createdAt: string;
   memberCount: number;
   /** Count of Clowders with `parentCatteryId === this.id`. */
