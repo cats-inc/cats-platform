@@ -5,7 +5,9 @@
 Proposed — 2026-11-16, at the owner's request. Documentation only: no code,
 package, artifact, release or version change is authorized by this record.
 Linux dictation is the proposed pilot. The owner delegated D1–D6 the same day;
-see [Resolved decisions](#resolved-decisions).
+see [Resolved decisions](#resolved-decisions). §4's Desktop consent flow was
+amended the same day and is specified by
+[SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md).
 
 ## Context
 
@@ -172,8 +174,13 @@ A feature pack's bytes are private to one product and pinned by that product.
 - **Delivery.** On demand (D6). This reverses ADR-085's ready-to-use
   preference, so Linux users who never dictate do not carry the model.
 - **Desktop.** The Linux composer exposes the native voice bridge instead of
-  the Web Speech fallback. Delivered on demand, clicking the button without the
-  pack opens the consent prompt, and dictation starts after installation.
+  the Web Speech fallback.
+  - Amended 2026-11-16 at the owner's direction: the download and its consent
+    live in Settings, and the download is resumable.
+  - Clicking the button without the pack shows a prompt that offers to open
+    Settings. The composer never waits for a download, and dictation does not
+    start by itself afterwards
+    ([SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md) §C).
 - **Bot.** Bot adopts the same pack, lock entry and protocol through its own ADR,
   which amends Bot ADR-018 point 3. Shipping Bot's Linux dictation must not wait
   for `@cats-inc/platform-host`.

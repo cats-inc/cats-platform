@@ -1,5 +1,14 @@
 # Feature Specifications
 
+- [SPEC-145: Feature packs and Linux dictation (`linux-stt`)](SPEC-145-feature-packs-and-linux-dictation.md)
+  — draft, 2026-11-16; not implemented. Specifies ADR-154's first pack: the lock entry,
+  `.catspack` archive, manifest and helper protocol 1 shared with cats-plugins; Desktop's
+  Node-only pack manager with a resumable (HTTP Range) download, verification, activation and
+  removal, kept by data reset; Settings > Desktop "Optional downloads" as the only download and
+  consent surface, reached from a composer toast; and Linux voice input with the host-owned
+  30-second cap and OpenCC script conversion per locale. Replaces cancelled SPEC-087's helper and
+  host requirements, with its changes listed. Q1–Q5 resolved under owner delegation.
+
 - [SPEC-144: Desktop conversation database](SPEC-144-desktop-conversation-database.md)
   — authorized scope, 2026-11-12; in progress. ADR-152 measurements, SQLite conversation
   store, indexed paging/search, coordinated JSON metadata, safe migration/restore, maintenance
