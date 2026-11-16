@@ -36,6 +36,12 @@ export interface PlatformPreferences {
   desktopControlEnabled: boolean;
   /** Chat channels the owner enabled desktop control for (SPEC-133 DC-03). */
   desktopControlConversations: string[];
+  /**
+   * Settings > Desktop > Voice input (SPEC-146 FR-1): `"auto"` or a BCP 47 tag.
+   * The Desktop host writes it and checks it against the platform's options;
+   * here only its shape is checked, so every writer of this file keeps it.
+   */
+  dictationLanguage: string;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -50,7 +56,17 @@ const DEFAULTS: PlatformPreferences = {
   claudeInChromeEnabled: false,
   desktopControlEnabled: false,
   desktopControlConversations: [],
+  dictationLanguage: 'auto',
 };
+
+// Shape only: a language, then up to four subtags (`zh`, `zh-TW`, `zh-Hant-TW`).
+const DICTATION_LANGUAGE_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8}){0,4}$/u;
+
+export function normalizeDictationLanguagePreference(value: unknown): string {
+  return typeof value === 'string' && value.length <= 35 && DICTATION_LANGUAGE_TAG.test(value)
+    ? value
+    : 'auto';
+}
 
 export function parsePlatformLobbyAnimationMode(
   value: unknown,
@@ -109,6 +125,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
       ? [...new Set(record.desktopControlConversations.filter((id): id is string =>
         typeof id === 'string' && id.length > 0 && id.length <= 300))].slice(0, 500)
       : [],
+    dictationLanguage: normalizeDictationLanguagePreference(record.dictationLanguage),
   };
 }
 
@@ -148,7 +165,8 @@ export async function writePlatformPreferences(
 
 /**
  * Reset Platform data returns every preference to its default except the
- * Desktop startup and system tray choices, which the host applies to the OS.
+ * Desktop preferences: the startup and system tray choices, which the host
+ * applies to the OS, and the dictation language (SPEC-145 FR-C5).
  */
 export function platformPreferencesAfterDataReset(current: PlatformPreferences): PlatformPreferences {
   return {
@@ -156,6 +174,7 @@ export function platformPreferencesAfterDataReset(current: PlatformPreferences):
     startAtLogin: current.startAtLogin,
     openWindowOnStartup: current.openWindowOnStartup,
     systemTrayEnabled: current.systemTrayEnabled,
+    dictationLanguage: current.dictationLanguage,
   };
 }
 

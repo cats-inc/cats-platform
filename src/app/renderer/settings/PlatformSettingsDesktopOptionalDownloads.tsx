@@ -20,6 +20,11 @@ import {
   OPTIONAL_DOWNLOADS_SECTION_ID,
   resolveFeaturePackFailureMessage,
 } from '../../../shared/featurePackLabels.js';
+import {
+  scrollToSettingsSection,
+  VOICE_INPUT_LANGUAGE_SELECT_ID,
+  VOICE_INPUT_SECTION_ID,
+} from '../../../shared/dictationLanguageLabels.js';
 import type { MessageKey } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
 
@@ -283,6 +288,22 @@ export function PlatformSettingsDesktopOptionalDownloads({
                   ? (
                     <span className="settingsOptionalDownloadLine">
                       {t('settingsDesktopOptionalDownloadsLicenses', { licenses })}
+                    </span>
+                  )
+                  : null}
+                {/* SPEC-146 D2: the language is chosen in Voice input, above. */}
+                {snapshot.id === LINUX_STT_PACK_ID && snapshot.usable
+                  ? (
+                    <span className="settingsOptionalDownloadLine">
+                      <button
+                        type="button"
+                        className="secondaryButton settingsInlineLink"
+                        onClick={() => {
+                          scrollToSettingsSection(VOICE_INPUT_SECTION_ID, VOICE_INPUT_LANGUAGE_SELECT_ID);
+                        }}
+                      >
+                        {t('settingsDesktopOptionalDownloadsVoiceInputLink')}
+                      </button>
                     </span>
                   )
                   : null}

@@ -36,6 +36,13 @@ import {
 
 import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
 import {
+  DesktopDictationLanguage,
+  listHelperLanguages,
+  readDesktopDictationLanguage,
+  registerDictationLanguageIpc,
+  updateDesktopDictationLanguage,
+} from './dictationLanguage.js';
+import {
   createElectronFeaturePackTransport,
   featurePackPreloadArguments,
   hasLinuxVoicePack,
@@ -2886,12 +2893,43 @@ async function main(): Promise<void> {
     },
   });
   const linuxVoicePacks = hasLinuxVoicePack(featurePacks, process.platform) ? featurePacks : null;
+  // SPEC-146: one dictation language, wherever preload exposes the voice bridge.
+  const voiceHostConfig = hostConfig;
+  const dictationLanguage = new DesktopDictationLanguage({
+    platform: process.platform,
+    read: () => readDesktopDictationLanguage(voiceHostConfig.paths.appStatePath),
+    write: (value) => updateDesktopDictationLanguage(voiceHostConfig.paths.appStatePath, value),
+    listLanguages: async () => {
+      const helperPath = resolveVoiceCaptureHelperPath({
+        config: voiceHostConfig,
+        resourcesPath: nodeProcess.resourcesPath,
+      });
+      return helperPath && existsSync(helperPath) ? await listHelperLanguages(helperPath) : null;
+    },
+    ...(linuxVoicePacks
+      ? {
+        packLanguages: async () => {
+          await linuxVoicePacks.ready;
+          const snapshot = await linuxVoicePacks.manager.get(LINUX_STT_PACK_ID);
+          return snapshot.usable ? snapshot.languages : [];
+        },
+      }
+      : {}),
+  });
+  if (process.platform === 'darwin' || process.platform === 'win32' || linuxVoicePacks) {
+    registerDictationLanguageIpc({
+      ipcMain,
+      service: dictationLanguage,
+      mainWindow: () => mainWindow,
+    });
+  }
   voiceCaptureController = new DesktopVoiceCaptureController({
     config: hostConfig,
     resourcesPath: nodeProcess.resourcesPath,
     sendEvent: (event) => {
       sendMainWindowEvent(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, event);
     },
+    dictationLanguage: () => dictationLanguage.saved(),
     ...(linuxVoicePacks
       ? {
         featurePack: {

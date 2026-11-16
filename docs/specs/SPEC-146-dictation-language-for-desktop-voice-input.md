@@ -67,6 +67,10 @@ the host turns the setting into each helper's `--locale`.
 - The host validates a new value against the platform's current options before
   saving.
 - A missing or invalid stored value means `"auto"`.
+- **Shared storage.** The server rewrites the preferences file from its own
+  normalized fields, so `dictationLanguage` is one of them. The server checks
+  only its shape (a language subtag and up to four more) and never changes it.
+  Platform data reset keeps it with the other Desktop preferences.
 
 **FR-2 — What Automatic means (host).**
 
@@ -92,6 +96,10 @@ the host turns the setting into each helper's `--locale`.
     platform cannot list without one, it prints an empty `languages`.
   - The host kills a listing after 5 seconds, and treats a timeout, a non-zero
     exit or malformed output as "no list".
+  - Malformed means anything but one such line: no line or a second one,
+    invalid JSON, another `type`, or a non-string entry. A string tag outside
+    the host's tag shape is dropped, and the rest of the list stays.
+  - Today's helpers reject the flag and exit 2, so they offer Automatic only.
 
 **FR-4 — Fetching the options (host).**
 
@@ -122,6 +130,10 @@ the host turns the setting into each helper's `--locale`.
     from Settings.
   - It also resolves SPEC-084's open question about a locale picker.
 - **Timing.** A change applies to the next recording, not to one in progress.
+  - The host reads the setting before it starts the helper. A stop or cancel
+    that arrives meanwhile ends the session without one, as SPEC-145's pack
+    check does.
+  - A setting that cannot be read means Automatic.
 
 **FR-6 — Settings (renderer).**
 
@@ -134,11 +146,15 @@ the host turns the setting into each helper's `--locale`.
     - on Linux, "Automatic (detect from speech)";
     - on macOS and Windows, "Follow system". When the list reports `system`,
       the label adds its native name, for example "Follow system (中文（台灣）)".
-  - The other options follow, each labelled with its own native name from
-    `Intl.DisplayNames` in that language, such as "中文（台灣）" and
-    "English (United States)".
+  - The other options follow in tag order, each labelled with its own native
+    name from `Intl.DisplayNames` in that language, such as "中文（台灣）" and
+    "English (United States)". A tag the runtime cannot name shows as the tag.
+  - A saved tag that is no longer among the options stays selected, labelled
+    "<name> (not available)", and cannot be chosen again.
 - **Linux before the pack.** The select is disabled until `linux-stt` allows
-  dictation. A line points to Optional downloads.
+  dictation (its `usable`, not its status). A line points to Optional
+  downloads, with a button that scrolls there. The options reload when the
+  pack starts or stops allowing dictation.
 - **Help text.**
   - **Linux:** SPEC-145 FR-C5's text, that short phrases may be detected
     wrongly and Chinese may come out in Simplified characters.
@@ -151,6 +167,7 @@ the host turns the setting into each helper's `--locale`.
 
 - The host bridge gains `getDictationLanguageOptions()`. It returns:
   - `{ automatic: "detect" | "system", system?: string, options: string[], value: string }`.
+  - `value` is the saved value, which may no longer be among `options`.
 - It also gains `setDictationLanguage(value)`.
 - Both accept the Platform window's main frame only. `value` is validated per
   FR-1.
