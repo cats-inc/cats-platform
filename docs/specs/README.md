@@ -6,8 +6,9 @@
   Node-only pack manager with a resumable (HTTP Range) download, verification, activation and
   removal, kept by data reset; Settings > Desktop "Optional downloads" as the only download and
   consent surface, reached from a composer toast; and Linux voice input with the host-owned
-  30-second cap and OpenCC script conversion per locale. Replaces cancelled SPEC-087's helper and
-  host requirements, with its changes listed. Q1–Q5 resolved under owner delegation.
+  30-second cap and a Settings dictation language (Automatic or a model language), with no
+  Traditional/Simplified conversion. Replaces cancelled SPEC-087's helper and host requirements,
+  with its changes listed. Q1–Q5 resolved (Q1 by the owner).
 
 - [SPEC-144: Desktop conversation database](SPEC-144-desktop-conversation-database.md)
   — authorized scope, 2026-11-12; in progress. ADR-152 measurements, SQLite conversation
