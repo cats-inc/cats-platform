@@ -1,6 +1,7 @@
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { PlatformSettingsDesktopMobilePairing } from './PlatformSettingsDesktopMobilePairing.js';
+import { PlatformSettingsDesktopOptionalDownloads } from './PlatformSettingsDesktopOptionalDownloads.js';
 import { PlatformSettingsDesktopStartupBehavior } from './PlatformSettingsDesktopStartupBehavior.js';
 import { PlatformSettingsDesktopUpdates } from './PlatformSettingsDesktopUpdates.js';
 
@@ -30,7 +31,8 @@ export function PlatformSettingsDesktop({
     <>
       {/* SPEC-111 section 4 fixes this order: App updates first, with the
           existing relative order of Mobile pairing before Startup behavior
-          preserved. */}
+          preserved. SPEC-145 FR-C2 puts Optional downloads last; SPEC-146's
+          Voice input will sit between Startup behavior and it. */}
       <PlatformSettingsDesktopUpdates showToast={showToast} />
       <PlatformSettingsDesktopMobilePairing
         payload={payload}
@@ -41,6 +43,7 @@ export function PlatformSettingsDesktop({
         onPayloadUpdate={onPayloadUpdate}
         showToast={showToast}
       />
+      <PlatformSettingsDesktopOptionalDownloads showToast={showToast} />
 
       <ToastContainer toasts={toasts} />
     </>

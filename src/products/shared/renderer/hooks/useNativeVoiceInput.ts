@@ -14,7 +14,8 @@ const SILENT_NATIVE_ERROR_REASONS = new Set<VoiceCaptureErrorReason>([
   'aborted',
 ]);
 
-type NativeVoiceStatus = 'idle' | 'starting' | 'ready';
+// `processing`: the Linux host stopped recording and is transcribing (SPEC-145 FR-D5).
+type NativeVoiceStatus = 'idle' | 'starting' | 'ready' | 'processing';
 
 function resolveVoiceCaptureBridge(): VoiceCaptureBridge | null {
   const bridge = resolveDesktopHostBridge();
@@ -49,6 +50,10 @@ export interface UseNativeVoiceInputResult {
   supported: boolean;
   active: boolean;
   listening: boolean;
+  /** Recording has stopped and the transcript is on its way. */
+  processing: boolean;
+  /** Seconds left before the host stops recording, once it warns. */
+  limitWarningSeconds: number | null;
   privacyMode: VoiceCaptureMode | null;
   start: () => void;
   stop: () => void;
@@ -63,6 +68,7 @@ export function useNativeVoiceInput({
   const bridge = useMemo(() => resolveVoiceCaptureBridge(), []);
   const [status, setStatus] = useState<NativeVoiceStatus>('idle');
   const [privacyMode, setPrivacyMode] = useState<VoiceCaptureMode | null>(null);
+  const [limitWarningSeconds, setLimitWarningSeconds] = useState<number | null>(null);
   const activeSessionIdRef = useRef<VoiceCaptureSessionId | null>(null);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
@@ -74,6 +80,7 @@ export function useNativeVoiceInput({
     activeSessionIdRef.current = null;
     setStatus('idle');
     setPrivacyMode(null);
+    setLimitWarningSeconds(null);
   }, []);
 
   useEffect(() => {
@@ -86,6 +93,13 @@ export function useNativeVoiceInput({
           setPrivacyMode(event.mode);
           break;
         case 'partial':
+          break;
+        case 'limit_warning':
+          setLimitWarningSeconds(event.secondsRemaining);
+          break;
+        case 'processing':
+          setStatus('processing');
+          setLimitWarningSeconds(null);
           break;
         case 'final':
           onTranscriptRef.current(event.text);
@@ -111,6 +125,7 @@ export function useNativeVoiceInput({
       if (updateState) {
         setStatus('idle');
         setPrivacyMode(null);
+        setLimitWarningSeconds(null);
       }
       void bridge.cancelVoiceCapture(sessionId).catch(() => {
         // Cleanup is best-effort after renderer cancellation.
@@ -125,6 +140,7 @@ export function useNativeVoiceInput({
     activeSessionIdRef.current = sessionId;
     setStatus('starting');
     setPrivacyMode(null);
+    setLimitWarningSeconds(null);
     void bridge.startVoiceCapture({ sessionId, locale: lang }).catch(() => {
       if (activeSessionIdRef.current !== sessionId) return;
       activeSessionIdRef.current = null;
@@ -160,6 +176,8 @@ export function useNativeVoiceInput({
     supported: bridge !== null,
     active: status !== 'idle',
     listening: status === 'ready',
+    processing: status === 'processing',
+    limitWarningSeconds,
     privacyMode,
     start,
     stop,

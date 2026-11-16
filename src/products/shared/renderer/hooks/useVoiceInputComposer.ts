@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 
 import { useToast } from '../../../../design/components/Toast.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
@@ -13,6 +13,17 @@ import {
   openDesktopSystemSettings,
   type DesktopSystemSettingsPane,
 } from '../../../../shared/desktopSystemSettings.js';
+import {
+  isDesktopEnvironment,
+  resolveDesktopHostBridge,
+} from '../../../../shared/desktopRecoveryBridge.js';
+import type { FeaturePackSnapshot } from '../../../../shared/featurePackBridge.js';
+import {
+  LINUX_STT_PACK_ID,
+  OPTIONAL_DOWNLOADS_SETTINGS_PATH,
+  resolveFeaturePackRequiredMessage,
+} from '../../../../shared/featurePackLabels.js';
+import { requestRendererNavigation } from '../../../../app/renderer/rendererNavigation.js';
 import { useNativeVoiceInput } from './useNativeVoiceInput.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
 
@@ -27,6 +38,10 @@ export interface UseVoiceInputComposerOptions {
 export interface UseVoiceInputComposerResult {
   supported: boolean;
   listening: boolean;
+  /** SPEC-145 FR-D5: recording stopped; the button is busy until the transcript lands. */
+  processing: boolean;
+  /** SPEC-145 FR-D5: the "Recording stops in N s" chip, or null. */
+  limitWarningSeconds: number | null;
   toggle: () => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   toasts: ReturnType<typeof useToast>['toasts'];
@@ -173,8 +188,29 @@ export function useVoiceInputComposer({
   );
 
   const { toasts, showToast } = useToast();
+  // SPEC-145 FR-C1: the toast names the pack's state and points to Settings. It
+  // never starts a download, and the composer never waits for one.
+  const showPackRequiredToast = useCallback(async () => {
+    let snapshot: FeaturePackSnapshot | null = null;
+    try {
+      snapshot = await resolveDesktopHostBridge()?.featurePacks?.get(LINUX_STT_PACK_ID) ?? null;
+    } catch {
+      snapshot = null;
+    }
+    const message = resolveFeaturePackRequiredMessage(snapshot, t);
+    showToast(message.text, message.openSettings
+      ? { action: {
+          label: t(messageKeys.sharedOpenSettings),
+          onSelect: () => { requestRendererNavigation(OPTIONAL_DOWNLOADS_SETTINGS_PATH); },
+        } }
+      : undefined);
+  }, [showToast, t]);
   const handleRecognitionError = useCallback(
     (kind: string) => {
+      if (kind === 'pack_required') {
+        void showPackRequiredToast();
+        return;
+      }
       const pane = resolveVoiceErrorSystemSettingsPane(kind);
       // On macOS the toast opens the pane; elsewhere the message stands alone.
       showToast(resolveVoiceErrorMessage(kind, t), pane && canOpenDesktopSystemSettings()
@@ -184,7 +220,7 @@ export function useVoiceInputComposer({
           } }
         : undefined);
     },
-    [showToast, t],
+    [showPackRequiredToast, showToast, t],
   );
 
   const nativeVoiceInput = useNativeVoiceInput({
@@ -197,32 +233,42 @@ export function useVoiceInputComposer({
     onError: handleRecognitionError,
     lang,
   });
-  const voiceInput = nativeVoiceInput.supported ? nativeVoiceInput : webSpeechInput;
-  const voiceInputActive = nativeVoiceInput.supported
+  // SPEC-145 FR-D1: the Desktop renderer never falls back to Web Speech, which
+  // cannot transcribe in Electron. Without a native bridge it shows no button.
+  // The Web deployment keeps Web Speech.
+  const desktopRenderer = useMemo(() => isDesktopEnvironment(), []);
+  const nativeChosen = nativeVoiceInput.supported || desktopRenderer;
+  const voiceInput = nativeChosen ? nativeVoiceInput : webSpeechInput;
+  const voiceInputActive = nativeChosen
     ? nativeVoiceInput.active
     : webSpeechInput.listening;
   const { supported, listening, start, stop, cancel } = voiceInput;
+  const processing = nativeChosen && nativeVoiceInput.processing;
 
   const toggle = useCallback(() => {
+    // While transcribing, the button is busy; Escape cancels instead.
+    if (processing) return;
     if (voiceInputActive) stop();
     else start();
-  }, [voiceInputActive, start, stop]);
+  }, [processing, voiceInputActive, start, stop]);
 
   useEffect(() => {
     if (disabled && voiceInputActive) cancel();
   }, [disabled, voiceInputActive, cancel]);
 
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
+    const doc = textareaRef.current?.ownerDocument;
+    if (!doc || !voiceInputActive) return;
+    // The whole document listens: clicking the mic to stop moves focus to the
+    // button, and Escape must still cancel while transcribing (FR-D5).
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !voiceInputActive) return;
       event.preventDefault();
       cancel();
     };
-    el.addEventListener('keydown', handleKeyDown);
+    doc.addEventListener('keydown', handleKeyDown);
     return () => {
-      el.removeEventListener('keydown', handleKeyDown);
+      doc.removeEventListener('keydown', handleKeyDown);
     };
   }, [voiceInputActive, cancel]);
 
@@ -235,6 +281,8 @@ export function useVoiceInputComposer({
     toggle,
     textareaRef,
     toasts,
+    processing,
+    limitWarningSeconds: nativeChosen ? nativeVoiceInput.limitWarningSeconds : null,
     privacyMode,
     privacyMessage,
   };

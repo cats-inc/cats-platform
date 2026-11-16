@@ -385,3 +385,30 @@
   justify-items: start;
   padding-top: var(--space-2);
 }
+
+/* SPEC-145 FR-C2: Settings > Desktop > Optional downloads. */
+.settingsOptionalDownloadLine {
+  display: block;
+}
+
+.settingsOptionalDownloadState {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.settingsOptionalDownloadState progress {
+  width: min(320px, 100%);
+}
+
+.settingsVisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

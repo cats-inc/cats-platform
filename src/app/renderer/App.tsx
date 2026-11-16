@@ -71,6 +71,7 @@ import { loadInformationalProviderLabels, prefetchProviderCatalogsForRegistryFro
 import { providerModelLabelVersion, subscribeProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
 import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
+import { useRendererNavigationRequests } from './rendererNavigation.js';
 import { recordEntitiesRouteTransition } from './entities-shell/entitiesExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
 import { isSettingsPath } from '../../shared/settingsRoute.js';
@@ -252,6 +253,7 @@ export default function PlatformApp() {
   useSyncExternalStore(subscribeProviderModelLabels, providerModelLabelVersion, providerModelLabelVersion);
   const location = useLocation();
   const navigate = useNavigate();
+  useRendererNavigationRequests();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   useDesktopHostPlatformShellSync(state.status === 'ready' ? state.envelope : null);
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
