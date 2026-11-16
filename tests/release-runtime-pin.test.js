@@ -242,22 +242,46 @@ test('a frozen selection cannot be absent, ambiguous, abbreviated or floating', 
 test('release CI accepts only exact same-repository main push or manual release-branch evidence', async () => {
   const sourceCommit = 'a'.repeat(40), tag = 'v1.2.3';
   const options = { owner: 'cats-inc', repo: 'cats-platform', sourceCommit, tag, sourceRef: `refs/heads/release/${tag}` };
-  const passed = { head_sha: sourceCommit, head_branch: `release/${tag}`, event: 'workflow_dispatch', status: 'completed', conclusion: 'success', head_repository: { full_name: 'cats-inc/cats-platform' } };
+  const passed = { id: 7, head_sha: sourceCommit, head_branch: `release/${tag}`, event: 'workflow_dispatch', status: 'completed', conclusion: 'success', head_repository: { full_name: 'cats-inc/cats-platform' } };
   let runs = [passed];
-  const github = { rest: { actions: { listWorkflowRuns: async query => {
-    assert.equal(query.workflow_id, 'ci.yaml'); assert.equal(query.head_sha, sourceCommit);
-    return { data: { workflow_runs: runs } };
-  } } } };
+  // The nodejs job's skip steps, keyed by run id; a missing entry fails the lookup.
+  const job = (docs, tested, test) => ({ name: 'nodejs (24)', steps: [
+    { name: 'Documentation-only change', conclusion: docs }, { name: 'Already tested', conclusion: tested }, { name: 'Test', conclusion: test }] });
+  let jobs = {};
+  const jobLookups = [];
+  const github = { rest: { actions: {
+    listWorkflowRuns: async query => {
+      assert.equal(query.workflow_id, 'ci.yaml'); assert.equal(query.head_sha, sourceCommit);
+      return { data: { workflow_runs: runs } };
+    },
+    listJobsForWorkflowRun: async query => {
+      assert.equal(query.owner, 'cats-inc'); assert.equal(query.repo, 'cats-platform'); jobLookups.push(query.run_id);
+      if (!jobs[query.run_id]) throw Object.assign(new Error('jobs lookup failed'), { status: 502 });
+      return { data: { jobs: [{ name: 'changes', steps: [] }, jobs[query.run_id], { name: 'validate' }] } };
+    },
+  } } };
   const check = overrides => requireTestedReleaseSource({ github, ...options, ...overrides });
   await check();
+  assert.deepEqual(jobLookups, [], 'a release-branch dispatch always runs the tests');
   for (const override of [{ head_sha: 'b'.repeat(40) }, { head_branch: 'release/v9.9.9' }, { event: 'pull_request' }, { status: 'in_progress' }, { conclusion: 'failure' }, { head_repository: { full_name: 'fork/cats-platform' } }]) {
     runs = [{ ...passed, ...override }]; await assert.rejects(check(), /CI has not passed/u);
   }
   runs = [passed];
   await assert.rejects(check({ sourceRef: 'refs/heads/fix/feature' }), /ordinary feature branches/u);
-  runs = [{ ...passed, event: 'push', head_branch: 'main' }];
+  const mainPush = { ...passed, id: 8, event: 'push', head_branch: 'main' };
+  runs = [mainPush];
+  jobs = { 8: job('skipped', 'skipped', 'success') };
   await check({ sourceRef: 'refs/heads/main' });
   await check({ sourceRef: `refs/tags/${tag}` });
+  jobs = { 8: job('skipped', 'success', 'skipped') };
+  await check({ sourceRef: 'refs/heads/main' }); // The same code already passed CI elsewhere.
+  jobs = { 8: job('success', 'skipped', 'skipped') };
+  await assert.rejects(check({ sourceRef: 'refs/heads/main' }), /changed only documentation, so the tests were skipped/u);
+  runs = [mainPush, passed];
+  await check(); // A release-branch dispatch on the same commit still qualifies.
+  runs = [mainPush];
+  jobs = {};
+  await assert.rejects(check({ sourceRef: 'refs/heads/main' }), /jobs lookup failed/u);
 });
 
 test('Desktop preview rejects an existing tag even without a release and never treats lookup failures as absence', async () => {

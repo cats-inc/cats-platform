@@ -325,19 +325,31 @@ and startup integration; the renderer fixture above proves the width behavior.
 
 ### Docs-only changes in CI
 
-The CI workflow first checks whether every changed file is under `docs/`. If so,
-the required `nodejs (24)` job still runs, so branch protection sees a passing check
-with a stable name, but it skips install, typecheck and tests. `validate` runs as
-usual. Any other path, a manual run or a failed detection runs every step.
+The CI workflow first checks whether every changed file is documentation: a file
+under `docs/`, or one of the root agent instruction files (`AGENTS.md`, `CLAUDE.md`,
+`CODEX.md`, `GEMINI.md`) that the change adds or modifies. If so, the required
+`nodejs (24)` job still runs, so branch protection sees a passing check with a stable
+name, but it skips install, typecheck and tests. `validate` runs as usual. Deleting,
+renaming or retyping a root agent file (for example into a symlink) counts as code,
+because `validate` and the skill sync scripts require the root `AGENTS.md`; nested
+copies such as `sub/AGENTS.md` are code too. Any other path, a manual run or a failed
+detection runs every step, and the `nodejs (24)` job ignores the skip unless `changes`
+succeeded.
 
 The same job also skips code that already passed. `changes` fingerprints the mode, blob
 and path of every tracked file outside `docs/` (for a pull request, the merge result)
-and looks up the Actions cache key `ci-green-v1-<fingerprint>`, which a fully passing
-`nodejs (24)` run saves. When a pull request is rebased only because main gained
-documentation or release notes, its fingerprint is unchanged, so the rerun reuses the
-earlier green result instead of the full suite. Any change outside `docs/`, including
-the workflow, lockfile or `.nvmrc`, changes the fingerprint and runs everything. A
-missing or evicted cache entry, or a manual run, also runs everything.
+and looks up the Actions cache key `ci-green-v2-<fingerprint>`, which a fully passing
+`nodejs (24)` run saves. The root agent instruction files contribute their mode, type
+and path but a fixed placeholder instead of their blob, so editing one keeps the
+fingerprint while adding, removing or retyping one changes it. Paths are listed with
+`core.quotePath=false`, so a non-ASCII path under `docs/` stays out of the fingerprint
+too. The `v2` prefix marks that format,
+so a marker saved under the earlier `v1` format is never matched. When a pull request
+is rebased only because main gained documentation or release notes, its fingerprint is
+unchanged, so the rerun reuses the earlier green result instead of the full suite. Any
+other change outside `docs/`, including the workflow, lockfile or `.nvmrc`, changes the
+fingerprint and runs everything. A missing or evicted cache entry, or a manual run,
+also runs everything.
 
 Pull-request caches stay within that pull request's scope, so the push to main after a
 merge cannot find one. Instead, `changes` reuses the merged pull request's own run when
@@ -351,18 +363,30 @@ all of these hold:
 
 Main requires up-to-date branches, so an ordinary squash merge meets these. Any other
 push, or a failed lookup, runs everything. The reuse trusts the pull request's run as
-much as branch protection already does. `npm-publish.yml` likewise skips its test gate
-when CI passed on the dispatched commit on main, and runs it otherwise.
-`tests/ci-workflow.test.js` runs both steps against a local origin with a stubbed `gh`.
+much as branch protection already does. `tests/ci-workflow.test.js` runs both steps
+against a local origin with a stubbed `gh`, and runs the detection and fingerprint steps
+against local git fixtures.
+
+A documentation-only pass is not test evidence for publication. `npm-publish.yml` skips
+its test gate only when a passing CI run on the dispatched commit on main ran its `Test`
+step or its `Already tested` step (this exact code passed elsewhere) and did not take the
+`Documentation-only change` path; anything else, or a failed lookup, runs the gate. The
+Desktop release guard (`requireTestedReleaseSource` in
+`scripts/shared/source-selection.mjs`) likewise rejects a main push run whose
+`Documentation-only change` step succeeded, while accepting a skip of code that already
+passed and any manual `ci.yaml` run on the release branch. Both read these step names
+from the jobs API, so renaming them breaks the checks.
 
 A pull request can also reuse a green run from main when its code outside `docs/` equals
 main's, which means that exact code already passed there. The skip trusts everyone who can
 push to the branch: such a person could save a marker for untested code. Pull requests from
 forks cannot write to the base branch's cache scope.
 
-Tests, scripts and tools must therefore not read repository documentation; keep
-executable inputs under `tests/fixtures/`. `tests/docs-boundary.test.js` enforces the
-rule. A line that names a docs path without reading it carries
+Tests, scripts and tools must therefore not read repository documentation or the root
+agent instruction files; keep executable inputs under `tests/fixtures/`.
+`tests/docs-boundary.test.js` enforces the rule. Checking that a root agent file exists
+is allowed, as the skill sync script does for `AGENTS.md`. Any other line that names a
+docs path or a root agent file without reading it carries
 `// docs-boundary-ignore: <reason>`.
 
 ## Running Tests

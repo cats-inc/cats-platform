@@ -305,7 +305,8 @@ procedure.
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
 test gate and fresh prepack build before trusted publication. It skips the test gate
-when CI already passed on that commit on main, so dispatch after main's CI finishes.
+only when a passing CI run on that commit on main tested that code, so dispatch after
+main's CI finishes; a documentation-only main run does not count.
 Update the root manifest and lockfile version together and integrate remote main
 first:
 
@@ -338,7 +339,8 @@ and update their revision and `platformRange` to the selected host version.
 Freeze the completed bump SHA and all pins in `release/vX.Y.Z`. "Latest" means
 latest when those inputs were selected. Later Platform, Runtime or App PRs do
 not reopen this release. Run `ci.yaml` manually on that fixed branch and wait for
-success at its exact SHA; a successful main-push CI at the same SHA also qualifies.
+success at its exact SHA; a successful main-push CI at the same SHA also qualifies
+unless it skipped the tests as a documentation-only change.
 Keep review and any required main merge on a separate integration branch, so
 main's up-to-date PR rule cannot move the packaging source. Do not force-push or
 relax branch protection. Only an explicit owner addition or a concrete release
