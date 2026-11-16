@@ -58,7 +58,8 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
       its caller again.
   - **Desktop host.**
     - The supervisor starts and stops Platform and Runtime together.
-    - The host already holds Runtime's address and key.
+    - The host holds Runtime's address. Runtime requires a key only when the environment
+      sets `CATS_RUNTIME_API_KEY`; the host then reads the same variable.
     - SPEC-133's hold watcher, topmost notice and tray Stop exist only on Windows with the
       desktop-control helper, and they clear after two failed polls.
 
@@ -86,13 +87,14 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
    - A participant whose stored target is no longer configured, for example after the option
      was turned off, shows that target as unavailable. Pickers never present it as the default,
      so a later save cannot silently move the participant to print mode, and its turns fail
-     with Runtime's error.
+     before they start.
    - Turns that run in the conversation's sessions — heartbeats, Telegram, Boss Cat,
      collaboration loops and other cats' follow-on turns — show their cards and wait, up to the
      30-minute card deadline. They never use grants. This matches Cats Bot.
-   - Surfaces that create their own sessions without that policy fail before the turn with
-     Runtime's error and never fall back to print mode. These are Work runs, schedules, Catlas,
-     relay and agent decisions.
+   - Surfaces that create their own sessions without that policy fail before the turn and never
+     fall back to print mode. Work runs are verified to; delivery verifies the others it reaches
+     (schedules, Catlas, relay and agent decisions) and makes any that would instead wait fail
+     first.
 3. **Desktop control is unchanged.** It never runs in an asking-Kimi conversation, because the
    two policies exclude each other. It is not a grant category.
 4. **Grant buttons.**
@@ -147,7 +149,8 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
        and keeps Stop in view.
      - While Stop runs, no send carries the flag.
      - The host revokes through Runtime. It asks Platform to cancel the conversations' turns,
-       and if Platform does not answer, it cancels the sessions in Runtime.
+       and if Platform does not answer, it cancels the sessions in Runtime. A turn cancelled
+       that way shows as failed and can be retried, not as stopped.
    - Kimi Computer Use's physical Escape still interrupts its input.
 8. **Lifetime.** Grants live in Runtime memory. They end on Stop or expiry, on a Runtime
    restart, or when the session is replaced, for example when a participant's target changes.
@@ -155,11 +158,11 @@ implementation only. It does not authorize a release, a Runtime repin or a versi
    - **No new fields.** No channel, state or profile field is added. `execution.target.instance`
      and the conversation's policy hold the new values.
    - **Older Desktops reject the file.** Turning the option on writes a hosted Kimi instance to
-     Runtime's `providers.yaml`. A Runtime that predates ADR-054 decision 11 rejects that file
-     as a whole, as any Runtime before Kimi support rejects a `kimi` entry. Released Desktop
-     0.17.1, built with Runtime `512c0747`, is one such Runtime.
+     Runtime's `providers.yaml`. Runtime `512c0747`, which released Desktop 0.17.1 is built
+     with, rejects that file as a whole, so every provider stops loading, not only Kimi.
    - **Before downgrading.** Turn the option off, or remove
-     `backends.cli.providers.kimi.instances.hosted`. Tests cover turning it off.
+     `backends.cli.providers.kimi.instances.hosted`. Delivery includes tests that turning the
+     option off removes the instance.
    - **Release notes.** The release that ships this records the boundary in its compatibility
      notes. Until that release, which the owner must authorize, 0.17.1 has neither the asking
      target nor grants.
