@@ -445,8 +445,8 @@ cats-platform/mobile/
         _layout.tsx           ← Cats stack
         index.tsx             ← Cats Directory (My Cats / Clowders / Catteries)
         [id].tsx              ← Cat detail
-      clowders/[id].tsx       ← Clowder detail (href: null)
-      catteries/[id].tsx      ← Cattery detail (href: null)
+        clowder/[id].tsx      ← Clowder detail (SPEC-103)
+        cattery/[id].tsx      ← Cattery detail (SPEC-103)
       chat/
         _layout.tsx
         index.tsx             ← Chat sidebar (trimmed)

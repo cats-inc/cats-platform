@@ -79,17 +79,12 @@ export default function TabsLayout() {
         }}
       />
       {/*
-        Per PLAN-091 phase 5, the mobile Cats tab is the only entry
-        point for the platform entity routes (Cat / Clowder / Cattery
-        homes). Cat detail pushes within the Cats tab's own stack
-        (`cats/_layout.tsx`); Clowder / Cattery detail screens live in
-        sibling folders so their bottom tab bar stays mounted, but
-        they do not appear as tabs themselves — `href: null` hides
-        them from the tab bar while keeping the Stack-style push
-        reachable from Cats directory row taps.
+        The Cats tab is the only entry point for the platform entity
+        routes (PLAN-091 phase 5). Cat, Clowder and Cattery homes all
+        push within the Cats tab's own stack (`cats/_layout.tsx`), so
+        the back gesture returns to the directory and none of them
+        becomes a tab.
       */}
-      <Tabs.Screen name="clowders/[id]" options={{ href: null }} />
-      <Tabs.Screen name="catteries/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

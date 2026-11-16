@@ -116,6 +116,58 @@ export interface MobileAppShellPayload {
   lobby?: MobileLobbyDirectory;
 }
 
+/**
+ * The Directory as `/api/platform/directory` returns it (SPEC-103), a
+ * subset of `PlatformDirectoryView`. It lists active Cats' memberships
+ * only. `src/platform/directory/__mobileAlignment.ts` keeps it aligned.
+ */
+export type MobileMembershipStatus = 'formal' | 'temp' | 'external';
+
+export interface MobileClowderMemberView {
+  catId: string;
+  role: 'lead' | 'member';
+  status: MobileMembershipStatus;
+  /** An inclusive end date, only on a temporary member. */
+  expiresAt: string | null;
+  joinedAt: string;
+}
+
+export interface MobileClowderView {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Set at creation; cleared only when its Cattery is deleted. */
+  parentCatteryId: string | null;
+  createdAt: string;
+  members: MobileClowderMemberView[];
+}
+
+export interface MobileCatteryMemberView {
+  catId: string;
+  role: 'owner' | 'admin' | 'member';
+  status: 'formal' | 'external';
+  joinedAt: string;
+}
+
+export interface MobileCatteryView {
+  id: string;
+  name: string;
+  description: string | null;
+  domain: string | null;
+  createdAt: string;
+  members: MobileCatteryMemberView[];
+}
+
+export interface MobileDirectoryView {
+  clowders: MobileClowderView[];
+  catteries: MobileCatteryView[];
+}
+
+/** Every Directory read and change answers with the whole Directory. */
+export interface MobileDirectoryResponse {
+  directory: MobileDirectoryView;
+}
+
 export type MobileChatMessageSenderKind =
   | 'user'
   | 'agent'

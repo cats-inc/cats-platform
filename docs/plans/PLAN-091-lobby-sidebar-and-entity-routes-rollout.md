@@ -244,6 +244,12 @@ Out of scope (covered elsewhere or deferred):
       Clowders + Catteries this Cat is in
 - [x] Membership management UI initial pass: add member, change status,
       remove. Invites / role permissions deferred to a follow-up plan
+- [x] Mobile: Clowder and Cattery homes on the Cats tab's stack,
+      read only (SPEC-103 §Mobile)
+- [ ] Mobile: create, edit and delete Clowders and Catteries, and
+      manage their members
+- [ ] Mobile: create and edit Cats (core fields), with their Clowders
+      and Catteries on the Cat screen (amends SPEC-095 FR-17)
 - [ ] Audit trail: deferred until multi-user Catteries (SPEC-103
       §Non-Functional)
 - [x] Tests: list endpoints, dedup logic, statusFilter, expired-temp

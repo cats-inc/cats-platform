@@ -380,6 +380,41 @@ test('mobile auth google login rejects nonce mismatch', async (t) => {
   assert.equal(login.payload?.error?.code, 'E_UNAUTHENTICATED');
 });
 
+test('a mobile bearer reaches the Directory, Cat and provider routes, and changes need no CSRF token', async (t) => {
+  const fixture = await createAppFixture(t);
+  const login = await request(fixture.server, '/api/mobile/auth/login', {
+    method: 'POST',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const authorization = `Bearer ${login.payload?.token}`;
+
+  assert.equal((await request(fixture.server, '/api/platform/directory')).status, 401);
+  const read = await request(fixture.server, '/api/platform/directory', { authorization });
+  assert.equal(read.status, 200);
+  assert.deepEqual(read.payload?.directory, { clowders: [], catteries: [] });
+
+  const created = await request(fixture.server, '/api/platform/clowders', {
+    method: 'POST', authorization, body: { name: 'Dev' },
+  });
+  assert.equal(created.status, 201);
+  const clowderId = created.payload?.directory?.clowders?.[0]?.id;
+  const renamed = await request(fixture.server, `/api/platform/clowders/${clowderId}`, {
+    method: 'PATCH', authorization, body: { name: 'Developers' },
+  });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.payload?.directory?.clowders?.[0]?.name, 'Developers');
+
+  const cat = await request(fixture.server, '/api/cats', {
+    method: 'POST', authorization, body: { name: 'Mochi', provider: 'claude', model: 'claude-sonnet' },
+  });
+  assert.equal(cat.status, 201);
+
+  // The provider list answers for the bearer; the stub Runtime decides what it says.
+  const providers = await request(fixture.server, '/api/providers', { authorization });
+  assert.notEqual(providers.status, 401);
+  assert.notEqual(providers.status, 403);
+});
+
 test('request router serves mobile auth before mobile manifest pairing gate', async (t) => {
   const fixture = await createAppFixture(t, {
     CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'false',

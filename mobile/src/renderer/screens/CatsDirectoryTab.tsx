@@ -25,6 +25,7 @@ import {
   getMobileNewEntityDesktopOnlyAlertCopy,
   type MobileCatsDirectorySectionKey,
 } from '../../api/fixtures/productSidebar';
+import { GroupAvatar } from '../directory/DirectoryParts';
 import { MobileAuthPanel } from './MobileAuthPanel';
 import { colors, radii, spacing, typography } from '../theme';
 
@@ -92,6 +93,9 @@ export function CatsDirectoryTab() {
       data={state.data}
       copy={copy}
       onSelectCat={(catId) => router.push(mobileRoutes.catDetail(catId))}
+      onSelectGroup={(kind, groupId) => router.push(
+        kind === 'clowder' ? mobileRoutes.clowderDetail(groupId) : mobileRoutes.catteryDetail(groupId),
+      )}
       onCreateNew={handleCreateNew}
     />
   );
@@ -101,10 +105,11 @@ interface DirectoryBodyProps {
   data: MobileCatsDirectoryData;
   copy: MobileCatsTabCopy;
   onSelectCat: (catId: string) => void;
+  onSelectGroup: (kind: 'clowder' | 'cattery', groupId: string) => void;
   onCreateNew: (sectionKey: SectionKey) => void;
 }
 
-function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyProps) {
+function DirectoryBody({ data, copy, onSelectCat, onSelectGroup, onCreateNew }: DirectoryBodyProps) {
   const sections: SectionDescriptor[] = [
     {
       key: 'cats',
@@ -154,6 +159,7 @@ function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyPr
                   name={group.name}
                   detail={copy.groupCatCount.replace('{count}', String(group.catCount))}
                   tone={section.key === 'clowders' ? 'clowder' : 'cattery'}
+                  onPress={() => onSelectGroup(section.key === 'clowders' ? 'clowder' : 'cattery', group.id)}
                 />
               ))}
         </DirectorySection>
@@ -234,23 +240,32 @@ function CatRow({ cat, onPress }: CatRowProps) {
   );
 }
 
-/**
- * A Clowder or Cattery: a rounded-square initial (green for Clowders, blue for
- * Catteries, as on Desktop) and its Cat count. Groups are managed on Desktop.
- */
-function GroupRow({ name, detail, tone }: { name: string; detail: string; tone: 'clowder' | 'cattery' }) {
+/** A Clowder or Cattery with its Cat count; tapping it opens its home. */
+function GroupRow({
+  name,
+  detail,
+  tone,
+  onPress,
+}: {
+  name: string;
+  detail: string;
+  tone: 'clowder' | 'cattery';
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.catRow} accessible accessibilityLabel={`${name}, ${detail}`}>
-      <View style={[styles.groupAvatar, tone === 'clowder' ? styles.groupAvatarClowder : styles.groupAvatarCattery]}>
-        <Text style={[styles.groupInitial, tone === 'clowder' ? styles.groupInitialClowder : styles.groupInitialCattery]} numberOfLines={1}>
-          {name.trim().slice(0, 1)}
-        </Text>
-      </View>
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${name}, ${detail}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.catRow, pressed ? styles.catRowPressed : null]}
+    >
+      <GroupAvatar name={name} kind={tone} />
       <Text style={styles.catName} numberOfLines={1}>
         {name}
       </Text>
       <Text style={styles.groupDetail}>{detail}</Text>
-    </View>
+      <Text style={styles.catChevron}>›</Text>
+    </Pressable>
   );
 }
 
@@ -368,28 +383,6 @@ const styles = StyleSheet.create({
     color: colors.fg.muted,
     fontSize: 22,
     lineHeight: 22,
-  },
-  groupAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  groupAvatarClowder: {
-    backgroundColor: '#D7E7D9',
-  },
-  groupAvatarCattery: {
-    backgroundColor: '#DCE3F5',
-  },
-  groupInitial: {
-    ...typography.label,
-  },
-  groupInitialClowder: {
-    color: '#24583A',
-  },
-  groupInitialCattery: {
-    color: '#2F4A8C',
   },
   groupDetail: {
     color: colors.fg.muted,
