@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Accepted (2026-11-16) |
 | **Owner** | Claude |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-100](../decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) |
@@ -103,31 +103,37 @@ Two illustrative cases:
 
 4. A `Clowder` has fields:
    - `id: ClowderId`
-   - `name: string`
-   - `avatar: AvatarRef | null`
-   - `description: string | null`
+   - `name: string` (1–80 characters, trimmed)
+   - `description: string | null` (up to 500 characters)
    - `parentCatteryId: CatteryId | null`
-   - `members: ClowderMembership[]` (or kept normalized — see §Storage)
-   - `createdAt`, `createdBy`, `updatedAt`
+   - `createdAt`, `updatedAt`
+
+   Members are separate `ClowderMembership` records (§Storage). v1 has
+   no avatar: a Clowder shows the first character of its name. There is
+   no `createdBy` while the Platform has a single owner.
 5. `parentCatteryId === null` means the Clowder is a **cross-unit task
    force** with no formal home in any Cattery's org chart.
 6. `parentCatteryId !== null` means the Clowder is a formal unit within
    that Cattery's org chart. It appears under the Cattery's `Clowders`
    tab.
-7. A Clowder may have at most one parent Cattery; the parent is
-   immutable after creation. (Reparenting is a future affordance — out
-   of scope here. If needed, model as create-new + transfer-members.)
+7. A Clowder may have at most one parent Cattery. The parent is chosen
+   when the Clowder is created and is cleared only when that Cattery is
+   deleted (FR-24); no other change moves a Clowder between Catteries.
+   (Reparenting is a future affordance. If needed, model it as
+   create-new plus moving the members.)
 
 #### Cattery
 
 8. A `Cattery` has fields:
    - `id: CatteryId`
-   - `name: string`
-   - `avatar: AvatarRef | null`
-   - `description: string | null`
-   - `domain: string | null` (optional company domain like `acme.com`)
-   - `members: CatteryMembership[]`
-   - `createdAt`, `createdBy`, `updatedAt`
+   - `name: string` (1–80 characters, trimmed)
+   - `description: string | null` (up to 500 characters)
+   - `domain: string | null` (optional company domain like `acme.com`,
+     stored in lower case)
+   - `createdAt`, `updatedAt`
+
+   Members are separate `CatteryMembership` records. As for Clowders,
+   v1 has no avatar and no `createdBy`.
 9. A Cattery's "Clowders" tab lists all Clowders with `parentCatteryId
    === thisCattery.id`. The list is **derived**, not stored on the
    Cattery record.
@@ -151,11 +157,13 @@ Two illustrative cases:
     - `catId: CatId`
     - `role: ClowderRole` — `lead | member` (extensible)
     - `status: MembershipStatus` — `formal | temp | external`
-    - `joinedAt: timestamp`
-    - `addedBy: CatId`
-    - `expiresAt: timestamp | null` (only meaningful when `status ===
-      'temp'`; nullable so that "indefinite temp" is allowed)
-    - `note: string | null`
+    - `expiresAt: timestamp | null` (only a `temp` membership may carry
+      one; nullable so that "indefinite temp" is allowed; leaving `temp`
+      clears it)
+    - `joinedAt`, `updatedAt: timestamp`
+
+    `addedBy` and `note` are left out of v1: with a single owner every
+    change is the owner's, and no surface edits a note yet.
 12. A `CatteryMembership` record has:
     - `catteryId: CatteryId`
     - `catId: CatId`
@@ -163,16 +171,15 @@ Two illustrative cases:
     - `status: MembershipStatus` — `formal | external` (no `temp` at
       Cattery level — temp is a Clowder-level affordance per the user
       stories; revisit if temp Cattery membership becomes a real case)
-    - `joinedAt: timestamp`
-    - `addedBy: CatId`
-    - `note: string | null`
+    - `joinedAt`, `updatedAt: timestamp`
 13. `MembershipStatus = 'formal' | 'temp' | 'external'` is shared between
     Clowder and Cattery membership types, with the constraint above (no
     `temp` at Cattery level in v1).
 14. Each `(catId, clowderId)` pair shall have at most one
     `ClowderMembership` record. Same for `(catId, catteryId)` and
     `CatteryMembership`. Status changes update the existing record;
-    they do not create a new one.
+    they do not create a new one. Adding a Cat that is already a member
+    changes nothing.
 
 #### Cross-Cattery Participation
 
@@ -258,34 +265,62 @@ Two illustrative cases:
         because Cattery memberships cannot have that status.
 22. Removal is a separate operation from status transition. Removing a
     membership record deletes the row; it does not change status.
-23. `expiresAt` (only meaningful for `status === 'temp'`):
-    - When the timestamp passes, the membership shall be hidden from
-      default views but not auto-deleted (data is retained for audit;
-      explicit removal is a separate action).
-    - Expired-temp Cats are listed under "Past members" or an explicit
-      filter, not in the active member list.
+23. `expiresAt` (only meaningful for `status === 'temp'`): v1 never
+    hides or removes a membership on its own. A temp member whose end
+    date has passed stays listed and shows the date as passed; the owner
+    removes it. A "Past members" view is a follow-up.
+
+#### Deleting and Moving (accepted 2026-11-16)
+
+24. A group never owns a Cat, and no Cat or Clowder has to belong to a
+    group:
+    - Deleting a Clowder ends its memberships. Its Cats stay.
+    - Deleting a Cattery ends its direct memberships. Its Clowders stay
+      with all their members and no longer belong to a Cattery
+      (`parentCatteryId` becomes `null`). Its Cats stay.
+    - Deleting a Cat ends every membership it has. Archiving a Cat keeps
+      them.
+    - Clowders and Catteries have no archive state in v1; delete is the
+      only removal, behind a confirmation that says what stays.
+25. Moving a Cat from one Clowder to another is one operation: it
+    leaves the source and joins the target as a `member`, keeping its
+    status and end date. If it is already in the target, it only leaves
+    the source. "Also add" is FR-14's add and keeps the source.
 
 ### Non-Functional Requirements
 
 - **Identity stability**: deleting / renaming a Cattery shall not
   invalidate Cat IDs or Clowder IDs.
-- **Referential integrity**: `parentCatteryId` and all `catId` /
-  `clowderId` / `catteryId` foreign references shall be enforced. A
-  Clowder pointing at a deleted Cattery is invalid; the Cattery's
-  delete must reparent or remove its Clowders explicitly (out of scope
-  for v1, but the constraint must be in the schema).
-- **Auditability**: every membership change (add, status change,
-  remove) shall produce an audit record sufficient to answer "who added
-  Bob to Acme as external on what date?". Reuse existing Activity
-  record family if appropriate; otherwise add Membership-specific audit.
+- **Referential integrity**: `parentCatteryId`, `clowderId` and
+  `catteryId` references always resolve inside the directory file, and
+  a file where one does not is refused unchanged. A Cattery's delete
+  clears its Clowders' `parentCatteryId` (FR-24). A new membership must
+  name an existing Cat; Cat deletion ends the Cat's memberships, and a
+  list skips any membership whose Cat no longer exists.
+- **Auditability**: deferred. v1 records `joinedAt` and `updatedAt` on
+  each membership but writes no audit record. Every change is the single
+  owner's; an audit trail returns with multi-user Catteries.
 - **Naming clarity**: the platform contract terminology must use
   `clowder` / `cattery` consistently — never `team` / `org` / `group`
   in shared types unless the field name is product-specific copy.
 
 ## Storage / Contract Notes
 
-- Storage layer: TBD (Core records vs. dedicated tables). Out of scope
-  for this SPEC; covered by Core platform contract follow-up.
+- Storage layer (decided 2026-11-16): a Platform-owned file beside the
+  chat state, `<state name>.directory.json` (for the default profile,
+  `chat-state.local.directory.json`), with its own `schemaVersion`
+  (1). Not Core state: the database profile envelope requires every
+  Core collection, so new collections would need a profile version
+  upgrade, and an older build would otherwise drop data it does not
+  know. An older build never opens this file. The rules:
+  - A missing file is an empty directory. A file that is not valid
+    JSON, has a broken reference, or has a newer `schemaVersion` is
+    refused and left unchanged; nothing is written over it.
+  - Writes run one at a time in the process and replace the file
+    atomically. Every read goes to disk, so nothing is cached across a
+    Platform data reset, which removes the file.
+  - Like the memory and companion-box files, it is not part of the
+    conversation database's snapshots, restore or export.
 - Membership normalization: prefer storing memberships as separate
   records (`ClowderMembership[]` table) keyed by `(clowderId, catId)`
   rather than as an embedded array on the Clowder. Same for Cattery.
@@ -360,12 +395,11 @@ Two illustrative cases:
 - [ ] Cattery-level temp membership: the current decision is no
       `temp` status at Cattery level. If "30-day evaluation employee"
       becomes a real case, revisit.
-- [ ] Cattery archive vs delete semantics: archive preserves data
-      (read-only); delete is permanent. Both possible, both need
-      careful handling — out of scope for v1, raise when needed.
-- [ ] Clowder reparenting (changing `parentCatteryId`): explicitly out
-      of scope in v1. If future need, model as create-new + member
-      transfer rather than mutating the field.
+- [x] Cattery archive vs delete semantics: v1 has delete only, and it
+      never removes a Cat or another group's data (FR-24).
+- [ ] Clowder reparenting (changing `parentCatteryId` to another
+      Cattery): out of scope in v1 (FR-7). If future need, model as
+      create-new + moving the members.
 - [ ] Should `Cat` carry a "primary Cattery" affinity field (similar to
       a primary email)? Helpful for default routing / billing context.
       Tentative: no — defer until a concrete need.

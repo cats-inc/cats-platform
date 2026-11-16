@@ -31,6 +31,8 @@ import type {
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
+import { removeCatFromDirectory } from '../../../platform/directory/model.js';
+import { directoryStoreFor } from '../../../platform/directory/store.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { isAdminCat } from '../../shared/catGroups.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -1148,6 +1150,19 @@ export async function persistDeletedCat(
   const now = nowFrom(context.dependencies);
   await cleanupSessionsForProductDelete(context, collectCatSessionIds(currentState, catId));
   await updateChatState(context.dependencies.chatStore, (state) => deleteCat(state, catId, now));
+  // SPEC-103: a deleted Cat leaves every Clowder and Cattery it was in. The Cat is
+  // already gone, so a failure here is reported, not returned; lists skip a
+  // membership whose Cat no longer exists.
+  try {
+    await directoryStoreFor(context.dependencies.config.chatStatePath).update((snapshot) => ({
+      snapshot: removeCatFromDirectory(snapshot, catId, now),
+      result: null,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`[cats-platform-directory] delete_cat_memberships: ${message}
+`);
+  }
   await writeCoreWithUpdatedBindings(context, (bindings) =>
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
