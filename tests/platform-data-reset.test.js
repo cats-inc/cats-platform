@@ -285,6 +285,7 @@ test('every locale discloses every erased category and the retained ownership bo
   const categoriesForTargets = [
     [/chat-state\.local\.json$/, 'chats', '聊天'],
     [/memory/, 'memory', '記憶'], [/companion/, 'companion', '陪伴'],
+    [/directory/, 'Clowders and Catteries', '貓群與貓窩'],
     [/knowledge/, 'local knowledge', '本機知識'], [/evidence/, 'evidence', '證據'],
     [/telegram|line-relay|(?:^|\/)line$/, 'Telegram / LINE', 'Telegram／LINE'],
     [/work-delivery/, 'delivery', '交付'], [/scheduler/, 'schedules', '排程'],

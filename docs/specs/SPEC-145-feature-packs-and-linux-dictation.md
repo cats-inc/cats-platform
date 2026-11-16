@@ -111,6 +111,23 @@ Each requirement names who implements it:
   | `licenses` | `[{ "name", "component" }]`, shown in Settings |
 
 - Entries change only in a reviewed Desktop release.
+- **Formats.** The host rejects any value outside these:
+  - `id`: lowercase ASCII letters, digits and hyphens, starting and ending
+    with a letter or digit.
+  - `version` and `minUsableVersion`: `X.Y.Z` with no prerelease or build
+    suffix, compared numerically. `minUsableVersion` is not above `version`.
+  - `url`: HTTPS, with no user name or password.
+  - `size` and `unpackedSize`: positive integers.
+  - `sha256`: 64 lowercase hexadecimal characters.
+  - `helperProtocol`: a version this host implements (FR-A4).
+  - `minGlibc`: `X.Y`, such as `2.35`.
+  - `prerequisites`: distinct library file names, such as `libpulse.so.0`. The
+    list may be empty.
+  - `licenses`: at least one. Each `name` and `component` is non-empty text of
+    at most 200 characters.
+  - Unknown fields are ignored.
+- **One bad entry rejects the lock.** An invalid entry, or two entries for the
+  same `id`, `os` and `arch`, makes the whole lock invalid.
 - A missing, malformed or unknown-schema lock yields no entries. The host fails
   closed and logs it.
 - A machine with no entry for its OS and architecture has no pack (FR-D1).
@@ -125,6 +142,29 @@ Each requirement names who implements it:
 - `feature-pack.json` sits at the archive root.
 - File modes stored in the archive are ignored. The host sets modes from the
   manifest.
+- **The ZIP subset the host reads.** The host reads the central directory and
+  rejects anything outside this subset:
+  - **One disk, no ZIP64.** Every size and offset fits in 32 bits.
+  - **Regular files only.** No directory entries, and no entry whose stored
+    Unix mode is a symbolic link or any other non-regular type.
+  - **Sizes.** Sizes come from the central directory, so a data descriptor
+    (general-purpose bit 3) is allowed. Without one, the local header's sizes
+    must equal the central directory's.
+  - **Headers.** Each local header has the same name and method as its central
+    record. Entries do not overlap.
+  - **No encryption.** Entries are not encrypted.
+  - **Path rule.** This is the producer's `safePath` rule, shared with
+    ADR-001's tooling. A path is `/`-separated segments of ASCII letters,
+    digits, `.`, `_` and `-`. Each segment starts with a letter or digit, does
+    not end in `.`, and is not a Windows device name. The whole path is at most
+    240 characters.
+  - **Normalization.** Two paths collide when they are equal ignoring ASCII
+    case, or when one path is a directory of the other, such as `models` and
+    `models/x.bin`.
+  - **Sizes against the lock.** The sum of all entries' sizes, the manifest
+    included, is at most the lock's `unpackedSize`.
+  - **Limits.** At most 4096 entries, a central directory of at most 1 MiB, and
+    a manifest of at most 1 MiB.
 
 **FR-A3 — Manifest (producer, host).**
 
@@ -138,13 +178,24 @@ Each requirement names who implements it:
   - `licenses`: `[{ name, component, path }]`;
   - `languages`: the BCP 47 primary language subtags the model can be told to
     recognize, such as `["en", "zh", "ja"]` (FR-C5).
+- **Formats.** Fields shared with the lock follow FR-A1's formats. In
+  addition:
+  - `files` is non-empty. Each `path` follows FR-A2's path rule, each `size`
+    is a non-negative integer, and `executable` is `true` or `false`.
+  - `upstream` is non-empty. Each `commit` is 40 or 64 lowercase hexadecimal
+    characters.
+  - `model.path` is in `files`, with the same `sha256`.
+  - `licenses` is non-empty, and each `path` is in `files`.
+  - Text fields are non-empty and at most 200 characters.
+  - Unknown fields are ignored.
 - The host accepts the manifest only if all of the following hold:
-  - `id`, `version`, `os`, `arch`, `helperProtocol`, `minGlibc` and
-    `prerequisites` equal the lock entry;
+  - `id`, `version`, `os`, `arch`, `helperProtocol` and `minGlibc` equal the
+    lock entry, and `prerequisites` holds the same libraries in any order;
   - every archive entry except the manifest appears in `files` exactly once,
     and nothing else does;
   - `entry` is listed and marked executable;
-  - `languages` is a non-empty list of distinct, well-formed primary subtags.
+  - `languages` is a non-empty list of distinct primary language subtags,
+    each two or three lowercase ASCII letters, such as `en` or `yue`.
 - This is the manifest that ADR-002 §1 describes, plus `languages`. It also
   defines the helper protocol version that ADR-002 left open.
 
@@ -635,7 +686,10 @@ mic click (Linux Desktop)
 - **Range requests.** The release asset host must honor them. Without them,
   FR-B3 restarts from zero, which is still correct.
 - **Existing pieces.** Two existing pieces are reused:
-  - fflate's streaming unzip, already a dependency;
+  - `node:zlib`, behind the host's own central-directory reader. The manager
+    may import only `node:` built-ins, because Bot vendors it (FR-B9, Bot
+    SPEC-016 FR-A2), so fflate is not used there. Tests still build valid
+    fixture packs with fflate, an independent writer.
   - Electron `net`, for Desktop's transport.
 - **Cats Bot.** A Bot ADR that adopts §A and §D.
 

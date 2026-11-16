@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft |
+| Status | In progress; Phases 0–1 authorized by the owner and implemented, 2026-11-16 |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -56,36 +56,58 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
 ## Phase 0 — Preconditions
 
 - [ ] **Owner:** authorize implementation of SPEC-145 and SPEC-146.
-- [ ] Inventory the current voice paths and record them in the progress log:
+- [x] Inventory the current voice paths and record them in the progress log:
   - `desktop/host/voiceCapture.ts`, `desktop/host/preload.cts` and the voice
     IPC in `desktop/host/main.ts`;
   - `src/shared/voiceCaptureBridge.ts`;
   - the hooks `useNativeVoiceInput`, `useWebSpeechInput` and
     `useVoiceInputComposer`;
   - the helpers in `desktop/native/`.
-- [ ] Fix the pack manager's location as a Node-only directory under
+- [x] Fix the pack manager's location as a Node-only directory under
   `desktop/host/featurePacks/`. A boundary test fails on any Electron import, any
   relative value import, or any import other than `node:` built-ins and type-only
   imports (FR-B9 and Bot SPEC-016 FR-A2).
+  - `tests/desktop-feature-pack-boundary.test.js` parses each file with the
+    TypeScript compiler API. It also catches re-exports, dynamic `import()`,
+    `require` and `createRequire`.
+  - Only a clause-level `import type` from a sibling passes. An inline
+    `import { type X }` still loads its module once types are stripped, which
+    a probe under Node confirmed.
+  - The same test loads every file under Node's type stripping, which is the
+    only real check of erasable syntax. This was planned for Phase 2.
+  - Probes confirmed that it fails on a sibling value import and on an `enum`.
 
 ## Phase 1 — Contract and verifier (SPEC-145 FR-A1–FR-A4)
 
-- [ ] **Lock parser (FR-A1).**
+- [x] **Lock parser (FR-A1).**
   - It accepts schema 1 only and fails closed on a missing, malformed or
     unknown lock.
   - It selects the entry for the machine's OS and architecture.
-- [ ] **Manifest validator (FR-A3).** It covers every field, including
+  - One invalid entry rejects the whole lock, and an entry whose
+    `helperProtocol` this host does not implement is invalid.
+- [x] **Manifest validator (FR-A3).** It covers every field, including
   `languages`, and the equality checks against the lock.
-- [ ] **Streaming archive verifier (FR-A2).**
+- [x] **Streaming archive verifier (FR-A2).**
   - It rejects symbolic links, absolute paths, `..`, colliding paths and files
     outside the manifest.
   - It ignores the modes stored in the archive.
-- [ ] **Helper protocol (FR-A4).** The `helperProtocol` value is checked, and the
+  - It is a central-directory reader over `node:zlib`, because the closure
+    allows `node:` built-ins only. SPEC-145 FR-A2 now states the ZIP subset it
+    accepts, so the cats-plugins writer is built to the same rules.
+- [x] **Helper protocol (FR-A4).** The `helperProtocol` value is checked, and the
   event parser handles `ready.locale` set to `"auto"`.
-- [ ] **Fixture pack builder for tests.** It produces `.catspack` files around a
+  - The parser already accepted any `locale` string, so this needed a test, not
+    a code change. No renderer code passes `ready.locale` to `Intl`.
+- [x] **Fixture pack builder for tests.** It produces `.catspack` files around a
   scripted protocol-1 helper, plus malformed variants for each AC-01 case.
+  - It is `tests/fixtures/featurePackFixtures.mjs`, plain JavaScript, so the
+    `.test.js` host tests of later phases can import it.
+  - fflate writes the valid archives, so the reader is not only ever tested
+    against its own author's writer. Defects fflate cannot express are byte
+    patches.
 
-**Covers:** SPEC-145 AC-01.
+**Covers:** SPEC-145 AC-01, as rejection only. Phase 1 has no activation, so
+"nothing activated" is proven in Phase 2.
 
 ## Phase 2 — Pack manager (SPEC-145 FR-B1–FR-B10)
 
@@ -115,10 +137,16 @@ The SPEC-146 slice in Phase 5 can merge on its own before M1.
 - [ ] **Boundary and logging (FR-B9, FR-B10).**
   - The transport, directories and clock are injected.
   - Log lines carry the stage.
+  - The manager is its own file and takes the contract's types through
+    `import type`. The Desktop wiring passes in the contract's functions with
+    the transport, directories and clock.
+  - Code outside the contract file reads an error's `stage` and `code`, not
+    `instanceof FeaturePackError`.
 - [ ] **Guard Linux-only assertions** (file modes, the glibc report) by
   platform. A local `npm test` also runs on Windows and macOS.
-- [ ] Record the manager's file closure for Bot in the progress log, and prove
-  it runs under Node's type stripping, unchanged, in one test.
+- [ ] Record the manager's file closure for Bot in the progress log. The Phase 0
+  boundary test already loads every file in the directory under Node's type
+  stripping, so the manager is covered once it is added.
 
 **Covers:** SPEC-145 AC-02, AC-03.
 
@@ -293,6 +321,47 @@ Empty until Phase 6. One row per run set.
 | Date | Update |
 | --- | --- |
 | 2026-11-16 | Plan drafted; no phase started. |
+| 2026-11-16 | The owner authorized Phases 0–1. This does not authorize the rest of SPEC-145 or SPEC-146, so the first Phase 0 item stays open. |
+| 2026-11-16 | Phases 0–1 implemented. The Bot closure is `desktop/host/featurePacks/featurePackContract.ts`. SPEC-145 FR-A2 gained the ZIP subset, and its dependencies use `node:zlib` instead of fflate. |
+
+### Voice path inventory (Phase 0, 2026-11-16)
+
+- **`desktop/host/voiceCapture.ts`.**
+  - `DesktopVoiceCaptureController` runs one helper per session.
+    - Ready timeout 3 s, stop cleanup 5 s, cancel cleanup 1 s.
+  - `resolveVoiceCaptureHelperPath`.
+    - `CATS_VOICE_CAPTURE_HELPER` overrides everything.
+    - On macOS, `CATS_STT_MACOS_HELPER` overrides next, then the packaged or
+      source helper.
+  - `buildVoiceCaptureHelperArgs` adds `--locale` only when the renderer sends
+    one.
+  - `parseVoiceCaptureHelperEvent` accepts any `ready.locale` string.
+  - `shouldAllowDesktopRendererPermission` keeps the renderer denied for
+    `media`.
+- **`desktop/host/contracts.ts`.**
+  - The channels `cats-host:voice-start`, `-stop`, `-cancel` and `-event`.
+  - `VOICE_CAPTURE_MODES`, `VOICE_CAPTURE_ERROR_REASONS` and
+    `VoiceCaptureEvent` (`ready`, `partial`, `final`, `error`, `end`).
+- **`desktop/host/main.ts`.**
+  - One controller is created at startup.
+  - The three voice `ipcMain.handle` channels each check
+    `assertMainWindowVoiceCaptureIpcSender`.
+  - ADR-147's screen-capture access request reuses the voice helper path.
+- **`desktop/host/preload.cts`.**
+  - The voice bridge is exposed on `darwin` and `win32` only.
+  - The channel names are repeated there, which
+    `desktop-voice-capture-contract.test.js` checks against main.
+- **`src/shared/voiceCaptureBridge.ts`.** The renderer-facing voice types.
+- **Hooks.**
+  - `useVoiceInputComposer` uses `useNativeVoiceInput` when the bridge has
+    voice, and `useWebSpeechInput` otherwise. The Web Speech fallback is the
+    Electron path that never transcribes (FR-D1).
+  - `useNativeVoiceInput` sends the renderer's `lang` as `locale`. SPEC-146
+    FR-5 removes this.
+- **`desktop/native/`.**
+  - `macos-stt`: Swift, `Locale.current`, on-device recognition required.
+  - `windows-stt`: .NET `SpeechRecognizer` with the dictation topic.
+  - `windows-desktop-control` is not part of voice.
 
 ---
 
