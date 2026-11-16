@@ -273,20 +273,36 @@ export function AddCatPopover({
  * A temporary member's end date. Typing changes only a draft: a date input
  * reports each partial entry, so saving on every change would send the wrong
  * day. It saves on blur or Enter, and an incomplete date is dropped.
+ *
+ * The field lives in a menu that an outside press or Escape closes. That can
+ * unmount it before it ever blurs, as when a date is picked from the calendar
+ * and the owner clicks away, so a changed date is also saved on unmount.
  */
 export function EndDateField({ value, onCommit }: { value: string | null; onCommit: (next: string | null) => void }) {
   const { t } = useI18n();
   const stored = toDateInputValue(value);
   const [draft, setDraft] = useState(stored);
+  const latest = useRef({ draft: stored, stored, incomplete: false, sent: null as string | null, onCommit });
+  latest.current = { ...latest.current, draft, stored, onCommit };
   useEffect(() => { setDraft(stored); }, [stored]);
+
+  function send(next: string) {
+    if (next === latest.current.stored || next === latest.current.sent) return;
+    latest.current.sent = next;
+    latest.current.onCommit(next || null);
+  }
 
   function commit(input: HTMLInputElement) {
     if (input.validity.badInput) {
       setDraft(stored);
       return;
     }
-    if (draft !== stored) onCommit(draft || null);
+    send(draft);
   }
+
+  useEffect(() => () => {
+    if (!latest.current.incomplete) send(latest.current.draft);
+  }, []);
 
   return (
     <label className="directoryMenuDate">
@@ -294,7 +310,10 @@ export function EndDateField({ value, onCommit }: { value: string | null; onComm
       <input
         type="date"
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          latest.current.incomplete = event.target.validity.badInput;
+          setDraft(event.target.value);
+        }}
         onBlur={(event) => commit(event.currentTarget)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
