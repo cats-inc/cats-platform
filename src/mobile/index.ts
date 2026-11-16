@@ -36,3 +36,4 @@ export * from './messages.js';
 export * from './i18n.js';
 export * from './catsDirectory.js';
 export * from './audience.js';
+export * from './directory.js';

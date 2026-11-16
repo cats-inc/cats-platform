@@ -382,6 +382,23 @@ Two illustrative cases:
     Clowder Y).
   - `Settings`: cattery profile fields, transfer ownership, archive.
 
+### Mobile (Cats tab)
+
+- The Cats tab lists Clowders and Catteries with their Cat counts.
+  Tapping one opens its home on the Cats tab's own stack
+  (`cats/clowder/:id`, `cats/cattery/:id`), so back returns to the
+  directory.
+- A Clowder home shows its Cattery ("Part of …", which opens it) or
+  "Cross-unit task force", its description and its members, each with
+  role and any non-formal status (a passed end date shown, FR-23).
+- A Cattery home shows its domain, description, direct members and its
+  Clowders with their Cat counts.
+- Wording comes from the Desktop catalogs, and the end-date and FR-16
+  rules from `src/shared/directoryMembership.ts`, which both clients
+  read.
+- Mobile reads `/api/platform/directory` with its bearer session and
+  reads it again when the screen regains focus.
+
 ## Boundaries
 
 ### What this SPEC defines

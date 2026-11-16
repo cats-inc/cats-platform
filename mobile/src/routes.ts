@@ -25,6 +25,10 @@ export const mobileRoutes = {
   catsDirectory: (): Href => '/(tabs)/cats' as Href,
   catDetail: (catId: string): Href =>
     `/(tabs)/cats/${encodeURIComponent(catId)}` as Href,
+  clowderDetail: (clowderId: string): Href =>
+    `/(tabs)/cats/clowder/${encodeURIComponent(clowderId)}` as Href,
+  catteryDetail: (catteryId: string): Href =>
+    `/(tabs)/cats/cattery/${encodeURIComponent(catteryId)}` as Href,
   productSidebar: (product: MobileProductMode): Href =>
     `/(tabs)/${product}` as Href,
   productChannel: (product: MobileProductMode, channelId: string): Href =>

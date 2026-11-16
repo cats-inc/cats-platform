@@ -161,6 +161,9 @@ const ALLOWED_CONSUMER_PROJECT_DIRS = [
   'src/shared/platform-contract.ts',
   'src/shared/roomRouting.ts',
   'src/shared/channelPaths.ts',
+  // SPEC-103 membership rules (inclusive end date, a Cattery only by
+  // direct membership) that Desktop and mobile both read. No imports.
+  'src/shared/directoryMembership.ts',
 ];
 
 const IMPORT_REGEX =
