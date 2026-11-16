@@ -225,6 +225,44 @@ func resolveRecognizer(locale: String, emitter: JsonEmitter) -> SFSpeechRecogniz
   return recognizer
 }
 
+// SPEC-146 FR-3: the languages a session can use, listed without asking for
+// any permission. A session applies the same test in resolveRecognizer.
+func dictationLanguageTag(_ identifier: String) -> String {
+  // Drop keywords such as "@rg=twzzzz"; tags use hyphens, like `--locale`.
+  let base = identifier.split(separator: "@", maxSplits: 1).first.map(String.init) ?? ""
+  return base.replacingOccurrences(of: "_", with: "-")
+}
+
+func listDictationLanguages() -> [String] {
+  var tags = Set<String>()
+  for locale in SFSpeechRecognizer.supportedLocales() {
+    guard
+      let recognizer = SFSpeechRecognizer(locale: locale),
+      recognizer.isAvailable,
+      recognizer.supportsOnDeviceRecognition
+    else {
+      continue
+    }
+    tags.insert(dictationLanguageTag(locale.identifier))
+  }
+  return tags.sorted()
+}
+
+func languagesLine(system: String?, languages: [String]) -> String {
+  let payload: [String: Any] = [
+    "type": "languages",
+    "system": system.map { $0 as Any } ?? NSNull(),
+    "languages": languages,
+  ]
+  guard
+    let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
+    let line = String(data: data, encoding: .utf8)
+  else {
+    return "{\"languages\":[],\"system\":null,\"type\":\"languages\"}"
+  }
+  return line
+}
+
 func configureOnDevice(_ request: SFSpeechRecognitionRequest) {
   request.shouldReportPartialResults = true
   if #available(macOS 10.15, *) {
@@ -402,8 +440,16 @@ if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "--request-sc
   exit(0)
 }
 
+// SPEC-146 FR-3: one stdout line, no microphone and no permission request.
+if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "--list-languages" {
+  let system = dictationLanguageTag(Locale.current.identifier)
+  print(languagesLine(system: system.isEmpty ? nil : system, languages: listDictationLanguages()))
+  fflush(stdout)
+  exit(0)
+}
+
 guard let options = parseOptions(CommandLine.arguments) else {
-  fputs("Usage: cats-stt-macos --session-id <id> [--locale <bcp47>] [--input <wav>] | --request-screen-capture\n", stderr)
+  fputs("Usage: cats-stt-macos --session-id <id> [--locale <bcp47>] [--input <wav>] | --request-screen-capture | --list-languages\n", stderr)
   exit(2)
 }
 

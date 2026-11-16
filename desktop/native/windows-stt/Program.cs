@@ -17,11 +17,16 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--list-languages")
+        {
+            return ListLanguages();
+        }
+
         var options = ParseOptions(args);
         if (options is null)
         {
             Console.Error.WriteLine(
-                "Usage: cats-stt-windows --session-id <id> [--locale <bcp47>] [--input <wav>]");
+                "Usage: cats-stt-windows --session-id <id> [--locale <bcp47>] [--input <wav>] | --list-languages");
             return 2;
         }
 
@@ -122,6 +127,37 @@ internal static class Program
             emitter.End();
             return 0;
         }
+    }
+
+    // SPEC-146 FR-3: the languages the dictation topic constraint supports, as
+    // one stdout line. It opens no microphone and requests no permission.
+    private static int ListLanguages()
+    {
+        string? system = null;
+        var languages = new List<string>();
+        try
+        {
+            system = SpeechRecognizer.SystemSpeechLanguage?.LanguageTag;
+            foreach (var language in SpeechRecognizer.SupportedTopicLanguages)
+            {
+                languages.Add(language.LanguageTag);
+            }
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine(error);
+            languages.Clear();
+        }
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["type"] = "languages",
+            ["system"] = system,
+            ["languages"] = languages.Distinct(StringComparer.Ordinal).OrderBy(tag => tag, StringComparer.Ordinal).ToList(),
+        };
+        Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
+        Console.Out.Flush();
+        return 0;
     }
 
     private static CliOptions? ParseOptions(string[] args)
