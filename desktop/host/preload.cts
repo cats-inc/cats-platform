@@ -4,6 +4,7 @@ import type { DesktopGoogleAuthStartInput, DesktopGoogleAuthStatus,
   DesktopGoogleAuthAvailability } from './googleAuthContracts.js';
 
 import type {
+  DesktopDictationLanguageOptions,
   DesktopFeaturePackChange,
   DesktopFeaturePackSnapshot,
   DesktopScreenshotCaptureResult,
@@ -33,6 +34,9 @@ const DESKTOP_FEATURE_PACK_CANCEL_CHANNEL = 'cats-host:feature-pack-cancel';
 const DESKTOP_FEATURE_PACK_CHECK_CHANNEL = 'cats-host:feature-pack-check';
 const DESKTOP_FEATURE_PACK_REMOVE_CHANNEL = 'cats-host:feature-pack-remove';
 const DESKTOP_FEATURE_PACK_EVENT_CHANNEL = 'cats-host:feature-pack-event';
+// SPEC-146 FR-7: mirrors contracts.ts DESKTOP_DICTATION_LANGUAGE*.
+const DESKTOP_DICTATION_LANGUAGE_OPTIONS_CHANNEL = 'cats-host:dictation-language-options';
+const DESKTOP_DICTATION_LANGUAGE_SET_CHANNEL = 'cats-host:dictation-language-set';
 const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
 const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
 const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
@@ -521,6 +525,16 @@ if (
       return () => {
         ipcRenderer.off(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, handler);
       };
+    },
+    // SPEC-146 FR-7: the host checks the value against this machine's options.
+    getDictationLanguageOptions(): Promise<DesktopDictationLanguageOptions> {
+      return ipcRenderer.invoke(DESKTOP_DICTATION_LANGUAGE_OPTIONS_CHANNEL);
+    },
+    setDictationLanguage(value: string): Promise<void> {
+      if (typeof value !== 'string') {
+        return Promise.reject(new Error('Invalid dictation language.'));
+      }
+      return ipcRenderer.invoke(DESKTOP_DICTATION_LANGUAGE_SET_CHANNEL, value);
     },
   });
 }

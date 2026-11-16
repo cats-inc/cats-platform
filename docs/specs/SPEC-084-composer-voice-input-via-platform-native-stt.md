@@ -226,6 +226,10 @@ the end-to-end transcription goal has been met.
     `SpeechRecognizer.SystemSpeechLanguage` on Windows). The renderer may
     override via `options.locale` when explicitly chosen by the user; v1
     does not expose a UI for this.
+    - **Amended by [SPEC-146](SPEC-146-dictation-language-for-desktop-voice-input.md)
+      FR-5 (2026-11-16).** The host ignores `options.locale`. The choice is
+      the Desktop setting in Settings > Desktop > Voice input, which the host
+      reads at each session start.
 16. The host shall emit a `ready` event when the helper has acquired the
     microphone and recognition is active. The composer shall not show
     the active recording state to the user until `ready` arrives, so the
@@ -408,9 +412,12 @@ behind one interface. Renderer code never branches on `process.platform`.
 
 ## Open Questions
 
-- [ ] Should the renderer expose a locale picker in v1, or always use the
+- [x] Should the renderer expose a locale picker in v1, or always use the
       host default? Leaning toward host default for v1; locale picker can
-      arrive in a follow-up if users complain.
+      arrive in a follow-up if users complain. Resolved by
+      [SPEC-146](SPEC-146-dictation-language-for-desktop-voice-input.md):
+      no picker in the composer; one dictation language setting in
+      Settings > Desktop > Voice input.
 - [x] On Windows, should the helper be C# (.NET 8 self-contained) or
       C++ /WinRT? C# is faster to write and ship; C++ /WinRT avoids the
       .NET runtime size. Decision: ship the C# helper as self-contained so

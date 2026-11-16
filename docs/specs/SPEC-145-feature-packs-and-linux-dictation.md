@@ -477,8 +477,11 @@ appear in Settings > Desktop > Voice input on every platform.
   - Chinese text may come out in Simplified characters (FR-D7).
 - **Storage.**
   - The host saves the choice as `dictationLanguage` (`"auto"` or a subtag) in
-    the Desktop preferences file that Startup behavior already writes. Unknown
-    fields there are preserved, as today.
+    the Desktop preferences file that Startup behavior already writes.
+  - The server rewrites that file from its own normalized preferences, which
+    drops fields it does not know. So `dictationLanguage` is one of the shared
+    Platform preferences: the server checks only its shape and never changes
+    it, and the host checks it against the platform's options.
   - A missing or invalid value means `"auto"`, so the field needs no
     migration.
   - Platform data reset keeps it, as it keeps the other Desktop preferences.

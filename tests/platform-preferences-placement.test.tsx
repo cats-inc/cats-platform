@@ -32,6 +32,7 @@ function baselinePreferences(): PlatformPreferences {
     claudeInChromeEnabled: false,
     desktopControlEnabled: false,
     desktopControlConversations: [],
+    dictationLanguage: 'auto',
   };
 }
 

@@ -391,6 +391,31 @@ test('the pack helper dictates, ignores the renderer locale and reports processi
   ]);
 });
 
+test('a saved subtag reaches the pack helper, and one the pack lacks runs as Automatic', async (t) => {
+  // SPEC-145 FR-C5, SPEC-146 FR-5: the host reads the setting at each start and
+  // checks it against the leased version's manifest languages.
+  const { packs } = await packsFixture(t);
+  await packs.manager.download(ID);
+  let saved = 'zh';
+  const readyLocale = async (sessionId) => {
+    const events = [];
+    const controller = linuxController(events, packHelper(packs), {
+      dictationLanguage: async () => saved,
+    });
+    await controller.startVoiceCapture({ sessionId, locale: 'en-US' });
+    await waitFor(() => events.some((event) => event.type === 'ready'), 'ready');
+    await controller.cancelVoiceCapture(sessionId);
+    await waitFor(ended(events), 'end');
+    return events.find((event) => event.type === 'ready').locale;
+  };
+
+  assert.equal(await readyLocale('saved'), 'zh');
+  saved = 'de';
+  assert.equal(await readyLocale('unlisted'), 'auto', 'a subtag the manifest lacks detects instead');
+  saved = 'auto';
+  assert.equal(await readyLocale('automatic'), 'auto');
+});
+
 test('every FR-D6 helper outcome reaches the renderer through the host', async (t) => {
   const { packs } = await packsFixture(t);
   await packs.manager.download(ID);

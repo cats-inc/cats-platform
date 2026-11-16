@@ -17,6 +17,7 @@ import {
   type VoiceCaptureMode,
   type VoiceCaptureStartOptions,
 } from './contracts.js';
+import { DICTATION_LANGUAGE_AUTO, resolveDictationSessionLocale } from './dictationLanguage.js';
 import {
   assertMainWindowIpcSender,
   isMainWindowIpcSender,
@@ -65,6 +66,8 @@ interface ActiveVoiceCaptureSession {
 /** A started helper's hold on the installed pack version (SPEC-145 FR-B4, FR-B6). */
 export interface VoiceCaptureHelperLease {
   entryPath: string;
+  /** The leased version's manifest languages (SPEC-145 FR-C5). */
+  languages: readonly string[];
   release(): void;
 }
 
@@ -98,6 +101,11 @@ export interface DesktopVoiceCaptureControllerOptions {
   featurePack?: VoiceCaptureFeaturePack;
   recordingWarningMs?: number;
   recordingLimitMs?: number;
+  /**
+   * The saved dictation language, read at each start (SPEC-146 FR-5). Without
+   * it every session is Automatic.
+   */
+  dictationLanguage?: () => Promise<string>;
   logLine?: (line: string) => void;
 }
 
@@ -285,16 +293,11 @@ export function resolveVoiceCaptureHelperPath(input: {
   return null;
 }
 
-function buildVoiceCaptureHelperArgs(
-  options: VoiceCaptureStartOptions,
-  platform: NodeJS.Platform,
-): string[] {
-  // Linux never passes the renderer's locale: the pack takes a manifest
-  // language subtag, and Automatic means detection (SPEC-145 FR-D7).
-  const locale = platform === 'linux' ? undefined : options.locale;
+// SPEC-146 FR-5: the locale comes from Settings, never from the renderer.
+function buildVoiceCaptureHelperArgs(sessionId: string, locale: string | undefined): string[] {
   return [
     '--session-id',
-    options.sessionId,
+    sessionId,
     ...(locale ? ['--locale', locale] : []),
   ];
 }
@@ -330,7 +333,10 @@ function writeVoiceCaptureControl(
 
 export class DesktopVoiceCaptureController {
   private activeSession: ActiveVoiceCaptureSession | null = null;
-  /** A Linux start waiting for the pack check; stop or cancel ends it there. */
+  /**
+   * A start waiting for the saved language or, on Linux, the pack check. Stop
+   * or cancel ends it there, and a newer start supersedes it.
+   */
   private pendingStart: { sessionId: string; ended: boolean } | null = null;
 
   private readonly config: DesktopHostConfig;
@@ -345,6 +351,7 @@ export class DesktopVoiceCaptureController {
   private readonly featurePack: VoiceCaptureFeaturePack | undefined;
   private readonly recordingWarningMs: number;
   private readonly recordingLimitMs: number;
+  private readonly dictationLanguage: (() => Promise<string>) | undefined;
   private readonly logLine: (line: string) => void;
 
   constructor(options: DesktopVoiceCaptureControllerOptions) {
@@ -366,6 +373,7 @@ export class DesktopVoiceCaptureController {
     this.featurePack = options.featurePack;
     this.recordingWarningMs = options.recordingWarningMs ?? LINUX_RECORDING_WARNING_MS;
     this.recordingLimitMs = options.recordingLimitMs ?? LINUX_RECORDING_LIMIT_MS;
+    this.dictationLanguage = options.dictationLanguage;
     this.logLine = options.logLine ?? ((line) => {
       process.stderr.write(`${line}\n`);
     });
@@ -384,27 +392,39 @@ export class DesktopVoiceCaptureController {
       env: this.env,
       resourcesPath: this.resourcesPath,
     });
-    if (linux && !helperPath) {
-      // SPEC-145 FR-C1, FR-D2: the active pack's entry, after the FR-B5 check.
+    // SPEC-145 FR-C1, FR-D2: on Linux, the active pack's entry after the FR-B5 check.
+    const fromPack = linux && !helperPath;
+    let saved = DICTATION_LANGUAGE_AUTO;
+    if (this.dictationLanguage || fromPack) {
       // A newer start supersedes one still waiting here, so only one helper runs.
       if (this.pendingStart) {
         this.pendingStart.ended = true;
       }
       const pending = { sessionId: options.sessionId, ended: false };
       this.pendingStart = pending;
-      lease = this.featurePack
-        ? await this.featurePack.acquireHelper(() => {
-          this.revokeSession(options.sessionId);
-        })
-        : null;
-      if (this.pendingStart === pending) {
-        this.pendingStart = null;
+      try {
+        if (this.dictationLanguage) {
+          saved = await this.dictationLanguage().catch(() => DICTATION_LANGUAGE_AUTO);
+        }
+        if (fromPack && !pending.ended) {
+          lease = this.featurePack
+            ? await this.featurePack.acquireHelper(() => {
+              this.revokeSession(options.sessionId);
+            })
+            : null;
+        }
+      } finally {
+        if (this.pendingStart === pending) {
+          this.pendingStart = null;
+        }
       }
       if (pending.ended) {
         lease?.release();
         this.sendEvent({ type: 'end', sessionId: options.sessionId });
         return;
       }
+    }
+    if (fromPack) {
       if (!lease) {
         this.emitErrorAndEnd(options.sessionId, 'pack_required');
         return;
@@ -416,12 +436,17 @@ export class DesktopVoiceCaptureController {
       this.emitErrorAndEnd(options.sessionId, 'engine_unavailable');
       return;
     }
+    const locale = resolveDictationSessionLocale(
+      saved,
+      this.platform,
+      lease ? lease.languages : null,
+    );
 
     let child: ChildProcessWithoutNullStreams;
     try {
       child = this.spawnProcess(
         helperPath,
-        buildVoiceCaptureHelperArgs(options, this.platform),
+        buildVoiceCaptureHelperArgs(options.sessionId, locale),
         {
           cwd: dirname(helperPath),
           env: this.env,
