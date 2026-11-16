@@ -256,12 +256,18 @@ Each requirement names who implements it:
   `process.report.getReport().header.glibcVersionRuntime`) with `minGlibc`.
 - **The `prerequisite` check.**
   - It applies when the host determined that a library in `prerequisites` is
-    absent.
+    absent. The host decides that only when the loader cache works, which it
+    confirms by finding this architecture's `libc.so.6` there.
   - A check that cannot decide counts as satisfied. For example, the loader
     cache tool may be missing from a desktop session's `PATH`.
   - If the library really is missing, the helper fails to start (FR-D4).
 - **Which statuses allow dictation.** `installed` and `update_available` do;
   `update_available` runs the older active version (Q5).
+  - Dictation itself is decided by the FR-B5 check, not by the status. While
+    an update downloads, verifies or is paused, the status shows that, and an
+    older usable version keeps dictating.
+  - The status report therefore carries the active version and whether it is
+    usable.
 
 **FR-B3 — Resumable download (host).**
 
@@ -274,17 +280,21 @@ Each requirement names who implements it:
 - **Transport.** The download uses the lock URL over HTTPS, through a
   transport that the product supplies.
   - Desktop supplies Electron's `net`, so system proxy settings apply.
-  - Redirects are followed only to HTTPS URLs.
+  - The transport does not follow redirects itself. The host follows at most
+    five, and only to HTTPS URLs.
   - The host aborts when the received bytes would exceed `size`.
 - **Partial state.** The partial download is
   `.staging/<id>-<version>-<os>-<arch>.part`. It has a sidecar `.part.json`
   that records the lock entry's `url`, `size` and `sha256`, and the bytes
-  received.
+  received. The count is written only after the partial file is fsynced, at
+  checkpoints and when the download stops.
 - **Resuming.**
-  - The host first re-hashes the bytes already received, then requests
+  - The host trims the partial file to the sidecar's count, then requests
     `Range: bytes=<received>-`.
-  - A `206` response whose `Content-Range` total equals `size` continues the
-    download.
+  - A partial download that is already complete skips the request. The whole
+    archive is hashed once, after its last byte (FR-B4).
+  - A `206` response whose `Content-Range` starts at the received count and
+    totals `size` continues the download.
   - A `200` response restarts from zero.
   - Any other response pauses the download with reason `network`.
   - A sidecar that does not match the current lock entry discards the partial
@@ -301,6 +311,9 @@ Each requirement names who implements it:
 - **Hash check.** When `size` bytes have arrived, the whole archive's SHA-256
   must equal the lock. On a mismatch the host discards the partial download,
   sets the status to `not_installed` and does not retry by itself.
+- **Other failures.** Any FR-A2 or FR-A3 failure also discards the partial
+  download, because the same bytes would fail again. A failure such as a full
+  disk keeps it, so the next attempt verifies it without downloading again.
 - **Extraction.** The host extracts in streaming fashion, without holding the
   archive in memory. It enforces FR-A2 and FR-A3, and checks every file's size
   and SHA-256 against the manifest.
@@ -312,6 +325,9 @@ Each requirement names who implements it:
   - It then replaces `active.json` by writing a new file and renaming it.
   - It deletes the archive and any earlier version once the new one is active
     and no helper from the old one is running.
+  - Reinstalling the active version deletes `active.json` first. A crash then
+    leaves `not_installed` and a complete partial download, not a mix of the
+    two copies.
 - **No early execution.** No byte from the archive runs before activation
   completes.
 
@@ -323,18 +339,23 @@ Each requirement names who implements it:
   - every manifest file exists with its manifest size.
 - It does not hash the model at start. Full hashing happens at install, and
   again when the owner chooses **Check files** (FR-C2).
+- A **Check files** mismatch marks the version `damaged` for the rest of the
+  session, or until it is reinstalled or removed.
 
 **FR-B6 — Remove (host).**
 
 - Remove cancels any helper started from the pack.
-- It then deletes only the paths in the receipt, the version directory and
-  `active.json`.
+- It then deletes `active.json`, the paths in the receipt, and the directories
+  those deletions emptied, the version directory included. Any other file in
+  the version directory stays.
 - The status becomes `not_installed`.
 
 **FR-B7 — Startup cleanup (host).**
 
 - At startup the host keeps a partial download, with its sidecar, that matches
   the current lock entry, and reports it as `paused` with reason `quit`.
+  - The exception is a lock version that is already active and usable. The
+    crash then came after activation, so the partial download is deleted.
 - It deletes everything else in `.staging/`.
 - It deletes any version directory that is neither active nor the lock's
   version.
@@ -348,7 +369,9 @@ Each requirement names who implements it:
 **FR-B9 — Boundary (host).**
 
 - The manager is a Node-only module: it has no Electron imports, and the
-  transport, directories and clock are injected.
+  transport, directories and clock are injected. So are the §A contract's
+  functions, because Bot's vendoring allows no value import between the
+  manager's files.
 - The Electron IPC wiring lives separately, so the manager can move to
   `@cats-inc/platform-host` unchanged.
 
