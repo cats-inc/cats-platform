@@ -3642,6 +3642,10 @@ export const zhTWCatalog: MessageCatalog = {
   'catProfile.notFound.title': '找不到這隻貓',
   'catProfile.openSettingsLabel': '編輯 {name} 的設定',
   'catProfile.viewProfileAction': '查看個人檔案',
+  'catProfile.memberships.ariaLabel': '所屬的貓群與貓窩',
+  'catProfile.memberships.catteryLabel': '貓窩「{name}」：{role}，{status}',
+  'catProfile.memberships.clowderLabel': '貓群「{name}」：{role}，{status}',
+  'catProfile.memberships.clowderInCatteryLabel': '{catteryName} 的貓群「{name}」：{role}，{status}',
   'catProfile.notFound.body':
     '這裡沒有 id 為「{catId}」的貓。可能已被移除，或連結已失效。',
   'entitiesSidebar.section.cats': '我的貓咪',

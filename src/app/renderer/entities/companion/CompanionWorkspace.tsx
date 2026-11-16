@@ -57,6 +57,11 @@ export interface CompanionWorkspaceProps {
    * Entities mount where there is no chat surface to flip
    * back to. */
   hideCompanionToggle?: boolean;
+  /** Shown under the profile header, before the feed, such as the cat's
+   * Clowders and Catteries. It sits outside the header: the header centres
+   * its name beside the avatar, so anything taller there pushes the name up
+   * into the cover. */
+  profileMeta?: ReactNode;
 }
 
 export function CompanionWorkspace({
@@ -71,6 +76,7 @@ export function CompanionWorkspace({
   onOpenSettings,
   hideFeed = false,
   hideCompanionToggle = false,
+  profileMeta,
 }: CompanionWorkspaceProps) {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
@@ -386,6 +392,7 @@ export function CompanionWorkspace({
               </>
             )}
           />
+          {profileMeta}
           {hideFeed ? null : (
             <CompanionFeed
               cat={cat}

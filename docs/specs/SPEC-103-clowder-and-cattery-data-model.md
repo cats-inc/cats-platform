@@ -339,9 +339,18 @@ Two illustrative cases:
 
 ### Cat detail (`/cats/:catId`)
 
-- Default lens: `Overview`. New section needed: `Memberships` listing
-  Clowders and Catteries this Cat is in, with each row's
-  `role` + `status` chip.
+- Under the profile header (`/entities/cats/:catId`), the Clowders and
+  Catteries this Cat is in, as tags that open each group's home:
+  - Catteries first, then Clowders, each in Directory order.
+  - Each tag shows the role, and the status when it is not `formal`. A
+    passed end date is shown (FR-23).
+  - A Cattery is listed only for the Cat's own `CatteryMembership`, not
+    for a Clowder under it (FR-16). A Clowder's tag names its Cattery in
+    its label.
+  - A Cat in no group shows nothing. A failed read says so and offers a
+    retry. An archived Cat shows none, because the Directory hides its
+    memberships until it is restored.
+  - Read only: a group's Settings tab changes its members.
 - The `Overview / Chat / Work / Code` lens model from SPEC-064 is
   unchanged.
 

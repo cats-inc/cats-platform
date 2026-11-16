@@ -76,7 +76,7 @@ export function DirectoryGroupAvatar({
 }: {
   name: string;
   kind: 'clowder' | 'cattery';
-  size?: 'small' | 'large';
+  size?: 'tiny' | 'small' | 'large';
 }) {
   return (
     <span className={`directoryGroupAvatar directoryGroupAvatar--${kind} directoryGroupAvatar--${size}`} aria-hidden="true">
@@ -102,6 +102,24 @@ export function membershipStatusLabel(t: Translate, status: MembershipStatus): s
   return t(messageKeys.directoryStatusFormal);
 }
 
+/** A status with its end date, and whether that date has passed. */
+export function describeMembershipStatus(
+  t: Translate,
+  locale: MessageLocale,
+  status: MembershipStatus,
+  expiresAt: string | null | undefined,
+  now: Date,
+): { label: string; ended: boolean } {
+  // The end date is a whole day: a Cat temporary until 12/31 is still a member on 12/31.
+  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) + DAY_MS <= now.getTime() : false;
+  const label = status === 'temp' && expiresAt
+    ? t(ended ? messageKeys.directoryStatusTempEnded : messageKeys.directoryStatusTempUntil, {
+        date: formatDirectoryDate(expiresAt, locale),
+      })
+    : membershipStatusLabel(t, status);
+  return { label, ended };
+}
+
 /** A passed end date is shown, never hidden (SPEC-103 FR-23). */
 export function MembershipStatusChip({
   status,
@@ -116,13 +134,7 @@ export function MembershipStatusChip({
   now?: Date;
 }) {
   const { t, locale } = useI18n();
-  // The end date is a whole day: a Cat temporary until 12/31 is still a member on 12/31.
-  const ended = status === 'temp' && expiresAt ? Date.parse(expiresAt) + DAY_MS <= now.getTime() : false;
-  const label = status === 'temp' && expiresAt
-    ? t(ended ? messageKeys.directoryStatusTempEnded : messageKeys.directoryStatusTempUntil, {
-        date: formatDirectoryDate(expiresAt, locale),
-      })
-    : membershipStatusLabel(t, status);
+  const { label, ended } = describeMembershipStatus(t, locale, status, expiresAt, now);
   return (
     <span
       className={`directoryStatusChip directoryStatusChip--${ended ? 'ended' : status}`}
@@ -141,6 +153,13 @@ export function directoryErrorMessage(t: Translate, error: DirectoryRequestError
   return t(messageKeys.directoryErrorSaveFailed, { message: error.message });
 }
 
+/** Why the directory could not be read: a refused file says so, anything else gives the error. */
+export function directoryLoadErrorMessage(t: Translate, error: DirectoryRequestError): string {
+  return error.code === 'directory_unreadable' || error.code === 'directory_newer'
+    ? directoryErrorMessage(t, error)
+    : t(messageKeys.directoryErrorLoadFailed, { message: error.message });
+}
+
 export function DirectoryLoadError({
   error,
   onRetry,
@@ -149,9 +168,7 @@ export function DirectoryLoadError({
   onRetry: () => void;
 }) {
   const { t } = useI18n();
-  const message = error.code === 'directory_unreadable' || error.code === 'directory_newer'
-    ? directoryErrorMessage(t, error)
-    : t(messageKeys.directoryErrorLoadFailed, { message: error.message });
+  const message = directoryLoadErrorMessage(t, error);
   return (
     <section className="contentCard directoryLoadError" role="alert">
       <p>{message}</p>

@@ -15,6 +15,8 @@ import { messageKeys } from '../../../shared/i18n/index.js';
 import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
 import { useI18n } from '../i18n/index.js';
 import { CompanionWorkspace } from './companion/CompanionWorkspace.js';
+import { CatMemberships } from './CatMemberships.js';
+import { useDirectory } from './directoryApi.js';
 // Pull in the chat companion stylesheet so the header chrome / feed
 // tiles / side-panel styling render the same way they did under the
 // chat product surface.
@@ -54,6 +56,9 @@ export function CatProfilePage() {
   const { catId } = useParams<{ catId: string }>();
   const navigate = useNavigate();
   const [payload, setPayload] = useState<AppShellPayload | null>(null);
+  // Read beside the app shell, not after it, so the Cat's groups arrive with
+  // the header instead of pushing the feed down later.
+  const directory = useDirectory();
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +162,17 @@ export function CatProfilePage() {
       onOpenSettings={onOpenSettings}
       hideFeed={hideFeed}
       hideCompanionToggle
+      profileMeta={
+        // An archived Cat keeps its memberships, but the Directory hides
+        // them until it is restored.
+        cat.status === 'active' ? (
+          <CatMemberships
+            state={directory.state}
+            catId={cat.id}
+            onRetry={() => { void directory.reload(); }}
+          />
+        ) : null
+      }
     />
   );
 }
