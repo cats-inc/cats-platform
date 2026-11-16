@@ -238,4 +238,4 @@ The owner delegated D1–D3 on 2026-11-16.
 ---
 
 *Created: 2026-11-16*
-*Related Plan: not yet written*
+*Related Plan: [PLAN-138](../plans/PLAN-138-feature-packs-linux-dictation-and-dictation-language.md)*
