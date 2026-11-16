@@ -1,5 +1,10 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-155: Offer an asking Kimi target and owner-present standing grants](155-offer-an-asking-kimi-target-and-owner-present-standing-grants.md)
+  — accepted, 2026-11-16. Print-mode Kimi stays the default; an opt-in `kimi/cli/hosted` target asks
+  before acting. Cards that carry a grant category offer "for this conversation" and "for 30 minutes";
+  only messages the owner types into the local chat composer use those grants. A conversation bar,
+  a topmost notice, the tray and Ctrl+Alt+Shift+D always offer Stop. Desktop control is unchanged.
 - [ADR-154: Deliver optional native dependencies as host-managed feature packs](154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md)
   — proposed, 2026-11-16; documentation only. Native files that only host code runs (a speech
   helper and model, possibly FFmpeg later) are neither Plugins nor setup prerequisites: a product
