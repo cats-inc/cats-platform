@@ -11,13 +11,14 @@ function byCreation<T extends { createdAt: string; name: string; id: string }>(l
     || left.id.localeCompare(right.id);
 }
 
-function byJoined<T extends { joinedAt: string; catId: string }>(left: T, right: T): number {
-  return left.joinedAt.localeCompare(right.joinedAt) || left.catId.localeCompare(right.catId);
+/** Members joined in the same change keep the order they were given in (the sort is stable). */
+function byJoined<T extends { joinedAt: string }>(left: T, right: T): number {
+  return left.joinedAt.localeCompare(right.joinedAt);
 }
 
 /**
- * What the Directory shows. `catIds` are the Cats that exist (archived ones
- * included); a membership naming any other Cat is left out, not removed.
+ * What the Directory shows. `catIds` are the Cats it shows (the active ones);
+ * a membership naming any other Cat is left out, not removed.
  */
 export function buildDirectoryView(
   snapshot: DirectorySnapshot,

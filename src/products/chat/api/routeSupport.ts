@@ -396,7 +396,7 @@ export async function buildAppShellPayload(
   const platformPrefs = await readPlatformPreferences(dependencies.config.chatStatePath);
   const lobbyDirectory = await readLobbyDirectorySummaries(
     dependencies.config.chatStatePath,
-    new Set(resolvedState.cats.map((cat) => cat.id)),
+    new Set(resolvedState.cats.filter((cat) => cat.status === 'active').map((cat) => cat.id)),
   );
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,

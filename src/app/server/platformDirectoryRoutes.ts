@@ -58,9 +58,13 @@ async function readBody(context: DirectoryContext): Promise<Record<string, unkno
   return body as Record<string, unknown>;
 }
 
+/**
+ * The Cats the Directory shows and accepts: active ones, as in the lobby. An
+ * archived Cat keeps its memberships, hidden until it is restored.
+ */
 async function readCatIds(context: DirectoryContext): Promise<Set<string>> {
   const chat = await context.dependencies.chatStore.read();
-  return new Set(chat.cats.map((cat) => cat.id));
+  return new Set(chat.cats.filter((cat) => cat.status === 'active').map((cat) => cat.id));
 }
 
 function sendError(context: DirectoryContext, error: unknown): void {

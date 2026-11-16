@@ -8,7 +8,7 @@ import test from 'node:test';
 import { classifyPlatformAuthRoute } from '../build/server/app/server/authGatePolicy.js';
 import { createServer } from '../build/server/app/server/index.js';
 import { deriveDirectoryStatePath } from '../build/server/platform/directory/snapshot.js';
-import { createCat } from '../build/server/products/chat/state/model/index.js';
+import { archiveCat, createCat, unarchiveCat } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const NOW = new Date('2026-11-16T08:00:00.000Z');
@@ -53,7 +53,7 @@ async function withDirectoryServer(callback) {
     return { status: response.status, body: await response.json() };
   };
   try {
-    await callback({ call, cats, chatStatePath });
+    await callback({ call, cats, chatStatePath, chatStore });
   } finally {
     server.close();
     await once(server, 'close');
@@ -200,5 +200,24 @@ test('the app shell lobby summarizes groups; a membership whose Cat is gone is l
     ]);
     const directory = (await call('GET', '/api/platform/directory')).body.directory;
     assert.deepEqual(directory.clowders[0].members.map((member) => member.catId), [cats.mochi, cats.tiger]);
+  });
+});
+
+test('an archived Cat is hidden from the Directory and the lobby but keeps its memberships', async () => {
+  await withDirectoryServer(async ({ call, cats, chatStore }) => {
+    await call('POST', '/api/platform/clowders', { name: 'Dev', members: [{ catId: cats.mochi }, { catId: cats.tiger }] });
+    await chatStore.write(archiveCat(await chatStore.read(), cats.tiger, NOW));
+
+    let directory = (await call('GET', '/api/platform/directory')).body.directory;
+    assert.deepEqual(directory.clowders[0].members.map((member) => member.catId), [cats.mochi]);
+    assert.equal((await call('GET', '/api/app-shell')).body.lobby.clowders[0].catCount, 1);
+    const added = await call('POST', `/api/platform/clowders/${directory.clowders[0].id}/members`, { catId: cats.tofu });
+    assert.equal(added.status, 200);
+    const archivedJoin = await call('POST', '/api/platform/clowders', { name: 'Ops', members: [{ catId: cats.tiger }] });
+    assert.equal(archivedJoin.body.error.code, 'cat_not_found');
+
+    await chatStore.write(unarchiveCat(await chatStore.read(), cats.tiger, NOW));
+    directory = (await call('GET', '/api/platform/directory')).body.directory;
+    assert.deepEqual(directory.clowders[0].members.map((member) => member.catId), [cats.mochi, cats.tiger, cats.tofu]);
   });
 });
