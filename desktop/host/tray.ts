@@ -35,6 +35,7 @@ interface CreateDesktopTrayControllerOptions {
   // item that triggers this reads the same in every state.
   onOpenUpdateDialog?: () => Promise<void>;
   onStopDesktopControl?: () => void;
+  onStopStandingGrants?: () => void;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -129,7 +130,7 @@ function buildDesktopTrayMenuTemplate(
   options: Pick<
     CreateDesktopTrayControllerOptions,
     'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
-    | 'onOpenUpdateDialog' | 'onStopDesktopControl'
+    | 'onOpenUpdateDialog' | 'onStopDesktopControl' | 'onStopStandingGrants'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -147,6 +148,15 @@ function buildDesktopTrayMenuTemplate(
       template.push({ type: 'separator' });
     }
   };
+
+  if (state.standingGrantsStop) {
+    // ADR-155: works whatever the host is doing; it only ends grants and cancels turns.
+    template.push({
+      label: state.standingGrantsStop.label,
+      click: () => options.onStopStandingGrants?.(),
+    });
+    pushSeparator();
+  }
 
   if (state.desktopControlStop) {
     // Stop works even while the host is busy: it only releases control.
