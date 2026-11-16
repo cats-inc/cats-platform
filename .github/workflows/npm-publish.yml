@@ -41,16 +41,22 @@ jobs:
       - name: Install mobile dependencies
         run: npm ci --prefix mobile
 
-      # When CI already passed on this exact commit on main, it ran npm test, so
-      # the publish does not repeat it. Anything else, or a failed lookup, runs
-      # the gate here as before.
-      - name: Check whether CI passed on this commit on main
+      # When a passing CI run on this exact commit on main executed its Test step,
+      # the publish does not repeat npm test. A run that skipped its tests, as a
+      # documentation-only or already-tested change, does not count. Anything
+      # else, or a failed lookup, runs the gate here as before.
+      - name: Check whether CI ran the tests on this commit on main
         id: ci
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?head_sha=$GITHUB_SHA&event=push&branch=main&status=success&per_page=1" --jq '.total_count' 2>/dev/null || true)
-          if [[ "$passed" =~ ^[1-9][0-9]*$ ]]; then tested=true; else tested=false; fi
+          tested=false
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?head_sha=$GITHUB_SHA&event=push&branch=main&status=success&per_page=10" --jq '.workflow_runs[].id' 2>/dev/null || true)
+          for run in $runs; do
+            [[ "$run" =~ ^[0-9]+$ ]] || continue
+            ran=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("nodejs")) | .steps[]? | select(.name == "Test" and .conclusion == "success")] | length' 2>/dev/null || true)
+            if [[ "$ran" =~ ^[1-9][0-9]*$ ]]; then tested=true; break; fi
+          done
           echo "tested=$tested" | tee -a "$GITHUB_OUTPUT"
 
       - name: Run test gate

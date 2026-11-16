@@ -42,8 +42,8 @@ function gitFixture(t, prefix) {
     writeFileSync(join(work, path), content);
   };
   const remove = (path) => rmSync(join(work, path));
-  const commit = (message) => {
-    git(work, 'add', '.');
+  const commit = (message, { stage = true } = {}) => {
+    if (stage) git(work, 'add', '.');
     git(work, 'commit', '--quiet', '--allow-empty', '-m', message);
     return git(work, 'rev-parse', 'HEAD');
   };
@@ -59,6 +59,7 @@ const agents = 'AGENTS.md'; // docs-boundary-ignore: fixture path
 const claude = 'CLAUDE.md'; // docs-boundary-ignore: fixture path
 const codex = 'CODEX.md'; // docs-boundary-ignore: fixture path
 const gemini = 'GEMINI.md'; // docs-boundary-ignore: fixture path
+const unicodeGuide = 'docs/使用說明.md'; // docs-boundary-ignore: fixture path
 const nestedAgents = 'sub/AGENTS.md';
 
 // Each case commits one change on top of base and runs a step against it.
@@ -69,24 +70,32 @@ function seedAgentFixture(fixture) {
   fixture.write(claude, '# Claude\n');
   fixture.write(nestedAgents, '# Nested agents\n');
   const base = fixture.commit('base');
-  return (change) => {
-    fixture.git(fixture.work, 'checkout', '--quiet', '--detach', base);
+  // stage: false commits only what the change put in the index itself.
+  return (change, { stage = true } = {}) => {
+    fixture.git(fixture.work, 'checkout', '--quiet', '--force', '--detach', base);
     change();
-    fixture.commit('change');
+    fixture.commit('change', { stage });
     return base;
   };
+}
+
+// Turns the root AGENTS.md into a symlink in the index, keeping the working tree.
+function retypeAgents({ git, work }) {
+  const blob = git(work, 'rev-parse', `HEAD:${claude}`);
+  git(work, 'update-index', '--cacheinfo', `120000,${blob},${agents}`);
 }
 
 test('documentation is docs/ plus root agent instructions that still exist', (t) => {
   const fixture = gitFixture(t, 'cats-ci-paths-');
   const { git, work, write, remove } = fixture;
   const change = seedAgentFixture(fixture);
-  const detect = (edit, { event = 'push', before } = {}) => {
-    const base = change(edit);
+  const detect = (edit, { event = 'push', before, stage } = {}) => {
+    const base = change(edit, { stage });
     return runStep(step('paths').run, { cwd: work, env: { EVENT: event, BEFORE: before ?? base } });
   };
   const editAgents = () => write(agents, '# Edited\n');
   assert.equal(detect(() => write(guide, 'edited\n')), 'code=false');
+  assert.equal(detect(() => write(unicodeGuide, '# 使用說明\n')), 'code=false', 'a non-ASCII docs path is documentation');
   assert.equal(detect(editAgents), 'code=false', 'a root AGENTS.md-only edit is documentation');
   assert.equal(detect(editAgents, { event: 'pull_request', before: '' }), 'code=false',
     'a pull request compares against its base parent');
@@ -94,6 +103,7 @@ test('documentation is docs/ plus root agent instructions that still exist', (t)
     'adding a root agent file is documentation');
   assert.equal(detect(() => remove(claude)), 'code=true', 'a deleted root CLAUDE.md is code');
   assert.equal(detect(() => git(work, 'mv', agents, codex)), 'code=true', 'renaming a root agent file is code');
+  assert.equal(detect(() => retypeAgents(fixture), { stage: false }), 'code=true', 'a retyped root AGENTS.md is code');
   assert.equal(detect(() => git(work, 'mv', 'src/code.ts', codeInDocs)), 'code=true', 'moving code into docs/ is code');
   assert.equal(detect(() => write(nestedAgents, '# Edited\n')), 'code=true', 'a nested sub/AGENTS.md is code');
   assert.equal(detect(() => { editAgents(); write('src/code.ts', 'edited\n'); }), 'code=true');
@@ -106,8 +116,8 @@ test('the fingerprint keeps root agent instructions by path and mode, not conten
   const fixture = gitFixture(t, 'cats-ci-fingerprint-');
   const { work, write, remove } = fixture;
   const change = seedAgentFixture(fixture);
-  const fingerprint = (edit) => {
-    change(edit);
+  const fingerprint = (edit, options) => {
+    change(edit, options);
     return runStep(step('fingerprint').run, { cwd: work, env: {} });
   };
   const original = fingerprint(() => {});
@@ -115,8 +125,10 @@ test('the fingerprint keeps root agent instructions by path and mode, not conten
   assert.equal(fingerprint(() => write(agents, '# Edited\n')), original,
     'an AGENTS.md content edit leaves the fingerprint unchanged');
   assert.equal(fingerprint(() => { write(claude, '# Edited\n'); write(guide, 'edited\n'); }), original);
+  assert.equal(fingerprint(() => write(unicodeGuide, '# 使用說明\n')), original, 'a non-ASCII docs path stays out of it');
   assert.notEqual(fingerprint(() => remove(claude)), original, 'removing a root agent file changes it');
   assert.notEqual(fingerprint(() => write(gemini, '# Gemini\n')), original, 'adding a root agent file changes it');
+  assert.notEqual(fingerprint(() => retypeAgents(fixture), { stage: false }), original, 'retyping one changes it');
   assert.notEqual(fingerprint(() => write(nestedAgents, '# Edited\n')), original, 'a nested copy is code');
   assert.notEqual(fingerprint(() => write('src/code.ts', 'edited\n')), original);
   // The format changed with the agent-file placeholder, so markers saved under
@@ -124,6 +136,17 @@ test('the fingerprint keeps root agent instructions by path and mode, not conten
   const save = workflow.jobs.nodejs.steps.find((item) => item.name === 'Save the tested marker');
   assert.equal(step('green').with.key, 'ci-green-v2-${{ steps.fingerprint.outputs.fingerprint }}');
   assert.equal(save.with.key, 'ci-green-v2-${{ needs.changes.outputs.fingerprint }}');
+});
+
+test('the nodejs job takes its skip only from a successful changes job', () => {
+  const job = workflow.jobs.nodejs;
+  assert.equal(job.if, '${{ !cancelled() }}');
+  assert.equal(job.env.CHANGES_SKIP, "${{ needs.changes.result == 'success' && needs.changes.outputs.skip || '' }}");
+  const conditions = job.steps.map((item) => item.if);
+  assert.ok(conditions.every((condition) => !condition.includes('outputs.skip')), 'every step reads the guarded skip');
+  // npm-publish.yml and scripts/shared/source-selection.mjs look these steps up by name.
+  assert.equal(job.steps.find((item) => item.name === 'Documentation-only change')?.if, "env.CHANGES_SKIP == 'docs'");
+  assert.equal(job.steps.find((item) => item.name === 'Test')?.if, "env.CHANGES_SKIP == ''");
 });
 
 test('the plan skips docs-only changes first, then code that already passed', () => {
@@ -195,7 +218,7 @@ test('a main push reuses its merged pull request\'s green run only for that exac
     'a head without the previous main was tested on other code');
 });
 
-test('npm publication skips its test gate only after CI passed on the commit on main', (t) => {
+test('npm publication skips its test gate only after CI ran the tests on the commit on main', (t) => {
   const publish = load(readFileSync('.github/workflows/npm-publish.yml', 'utf8'));
   assert.equal(publish.permissions.actions, 'read');
   const steps = publish.jobs.publish.steps;
@@ -209,25 +232,41 @@ test('npm publication skips its test gate only after CI passed on the commit on 
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const bin = join(root, 'bin');
   mkdirSync(bin);
+  // gh applies --jq itself, so the stub prints what each filter would: the
+  // passing runs' ids, then per run the number of Test steps that succeeded.
   writeFileSync(join(bin, 'gh'), [
     '#!/usr/bin/env bash',
     'printf \'%s\\n\' "$2" >> "$STUB_LOG"',
     'case "$2" in',
-    '  */actions/workflows/*) [ -n "${STUB_PASSED:-}" ] || exit 1; printf \'%s\\n\' "$STUB_PASSED" ;;',
+    '  */actions/workflows/*) [ -n "${STUB_RUNS+set}" ] || exit 1; printf \'%s\\n\' "$STUB_RUNS" ;;',
+    '  */actions/runs/*/jobs*) [ -n "${STUB_TESTED:-}" ] || exit 1; printf \'%s\\n\' "$STUB_TESTED" ;;',
     '  *) exit 1 ;;',
     'esac',
   ].join('\n') + '\n', { mode: 0o755 });
+  assert.match(check.run, /select\(\.name \| startswith\("nodejs"\)\)/);
+  assert.match(check.run, /select\(\.name == "Test" and \.conclusion == "success"\)/);
+  const ciSteps = workflow.jobs.nodejs.steps;
+  assert.equal(ciSteps.find((item) => item.name === 'Test')?.run, 'npm test', 'the step the lookup names runs the suite');
   const sha = 'a'.repeat(40);
-  const lookup = (passed) => runStep(check.run, {
-    cwd: root,
-    env: {
+  const log = join(root, 'gh.log');
+  const lookup = (runs, tested) => {
+    rmSync(log, { force: true });
+    const env = {
       PATH: `${bin}${delimiter}${process.env.PATH}`, GITHUB_REPOSITORY: 'cats-inc/cats-platform', GITHUB_SHA: sha,
-      STUB_PASSED: passed, STUB_LOG: join(root, 'gh.log'),
-    },
-  });
-  assert.equal(lookup('1'), 'tested=true');
-  assert.match(readFileSync(join(root, 'gh.log'), 'utf8'),
+      STUB_LOG: log,
+    };
+    if (runs !== undefined) env.STUB_RUNS = runs;
+    if (tested !== undefined) env.STUB_TESTED = tested;
+    return runStep(check.run, { cwd: root, env });
+  };
+  assert.equal(lookup('42', '1'), 'tested=true');
+  assert.match(readFileSync(log, 'utf8'),
     new RegExp(`actions/workflows/ci\\.yaml/runs\\?head_sha=${sha}&event=push&branch=main&status=success`));
-  assert.equal(lookup('0'), 'tested=false', 'without a passing main run the gate runs as before');
-  assert.equal(lookup(''), 'tested=false', 'a failed lookup runs the gate');
+  assert.match(readFileSync(log, 'utf8'), /actions\/runs\/42\/jobs/);
+  assert.equal(lookup('42', '0'), 'tested=false', 'a passing run that skipped its Test step runs the gate');
+  assert.equal(lookup('', '1'), 'tested=false', 'without a passing main run the gate runs as before');
+  assert.equal(lookup(undefined, '1'), 'tested=false', 'a failed run lookup runs the gate');
+  assert.equal(lookup('42'), 'tested=false', 'a failed jobs lookup runs the gate');
+  assert.equal(lookup('not-a-run', '1'), 'tested=false');
+  assert.doesNotMatch(readFileSync(log, 'utf8'), /actions\/runs\/not-a-run/);
 });
