@@ -24,7 +24,15 @@ import {
   net,
   shell,
   systemPreferences,
+  globalShortcut,
 } from 'electron';
+import {
+  createStandingGrantsNotice,
+  createStandingGrantsWatcher,
+  STANDING_GRANTS_STOP_ACCELERATOR,
+  standingGrantsNoticeText,
+  type StandingGrantsState,
+} from './standingGrantsNotice.js';
 
 import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
 import {
@@ -330,6 +338,11 @@ let trayController: DesktopTrayController | null = null;
 // SPEC-133 DC-11: which apps a conversation currently holds desktop control of.
 let desktopControlHolding: DesktopControlHold[] = [];
 let stopDesktopControl: (() => void) | null = null;
+// ADR-155: standing grants Runtime holds, read by the host itself; Stop runs from the notice, tray and hotkey.
+let standingGrants: StandingGrantsState = { holders: [], unconfirmed: false };
+let standingGrantsHotkey = false;
+let standingGrantsStopFailed = false;
+let stopStandingGrants: (() => void) | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
 let updateState: DesktopUpdateSnapshot | null = null;
@@ -1055,9 +1068,12 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     locale: app.getLocale(),
     updates: updateState,
   });
-  if (!desktopControlHolding.length) return state;
+  const granted = standingGrants.holders.length > 0 || standingGrantsStopFailed
+    ? { standingGrantsStop: { label: standingGrantsNoticeText(standingGrants,
+      { hotkey: standingGrantsHotkey, stopFailed: standingGrantsStopFailed }, app.getLocale()).trayStop } } : {};
+  if (!desktopControlHolding.length) return { ...state, ...granted };
   const text = desktopControlNoticeText(desktopControlHolding, app.getLocale());
-  return { ...state, desktopControlStop: { label: text.trayStop }, tooltip: text.tooltip };
+  return { ...state, ...granted, desktopControlStop: { label: text.trayStop }, tooltip: text.tooltip };
 }
 
 function isSystemTrayEnabled(): boolean {
@@ -1198,6 +1214,7 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       void shutdownHost();
     },
     onStopDesktopControl: () => stopDesktopControl?.(),
+    onStopStandingGrants: () => stopStandingGrants?.(),
     canInteract: () => !shuttingDown,
     // One item, one handler, whatever state the host is in. The tray closes on
     // click, so the dialog is where every answer lives -- progress included.
@@ -2779,6 +2796,54 @@ async function main(): Promise<void> {
     };
     watcher.start();
     app.once('before-quit', () => { watcher.dispose(); notice.dispose(); });
+  }
+  {
+    // ADR-155 on every platform: the notice, the tray item and the hotkey exist only while a grant does.
+    const notice = createStandingGrantsNotice({
+      createWindow: (options) => new BrowserWindow(options),
+      workArea: () => screen.getPrimaryDisplay().workArea,
+      locale: () => app.getLocale(),
+      onStop: () => stopStandingGrants?.(),
+    });
+    const refresh = () => {
+      const wanted = (standingGrants.holders.length > 0 || standingGrantsStopFailed) && !shuttingDown;
+      if (wanted && !standingGrantsHotkey) {
+        try { standingGrantsHotkey = globalShortcut.register(STANDING_GRANTS_STOP_ACCELERATOR, () => stopStandingGrants?.()); }
+        catch { standingGrantsHotkey = false; }
+        if (!standingGrantsHotkey) hostLogger?.record('standing-grants-hotkey-unavailable');
+      } else if (!wanted && standingGrantsHotkey) {
+        globalShortcut.unregister(STANDING_GRANTS_STOP_ACCELERATOR);
+        standingGrantsHotkey = false;
+      }
+      // While quitting, nothing reopens the notice; the process is ending.
+      if (shuttingDown) { notice.update({ holders: [], unconfirmed: false }, { hotkey: false }); return; }
+      notice.update(standingGrants, { hotkey: standingGrantsHotkey, stopFailed: standingGrantsStopFailed });
+      if (latestSnapshot && !shuttingDown) trayController?.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
+    };
+    const watcher = createStandingGrantsWatcher({
+      runtimeBaseUrl: hostConfig.runtimeBaseUrl,
+      runtimeKey: process.env.CATS_RUNTIME_API_KEY || undefined,
+      platformBaseUrl: hostConfig.appBaseUrl,
+      desktopKey: desktopAuthKey,
+      onUnreadable: () => hostLogger?.record('standing-grants-unreadable'),
+      onChange: (state) => {
+        standingGrants = state;
+        // Runtime confirmed none are left: a failed Stop no longer needs saying.
+        if (!state.holders.length && !state.unconfirmed) standingGrantsStopFailed = false;
+        refresh();
+      },
+    });
+    let stopping = false;
+    stopStandingGrants = () => {
+      if (stopping) return;
+      stopping = true;
+      void watcher.stop().then((confirmed) => { standingGrantsStopFailed = !confirmed; })
+        .catch((error) => { standingGrantsStopFailed = true; reportHostError('Standing grants stop failed', error); })
+        .finally(() => { stopping = false; refresh(); });
+    };
+    watcher.start();
+    app.once('before-quit', () => { watcher.dispose(); notice.dispose(); });
+    app.once('will-quit', () => { if (standingGrantsHotkey) globalShortcut.unregister(STANDING_GRANTS_STOP_ACCELERATOR); });
   }
   latestSnapshot = buildSnapshot(null);
   voiceCaptureController = new DesktopVoiceCaptureController({

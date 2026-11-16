@@ -39,6 +39,7 @@ import { publishChannelMutation } from '../../products/chat/api/transportEventPu
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
+import { routeProviderGrantsHost } from '../../products/chat/api/providerGrantsHost.js';
 import { createChatCatImages, type ChatCatImages } from '../../products/chat/api/catImages.js';
 import { createCompanionPublications, COMPANION_PUBLICATION_TOOLS, COMPANION_PUBLICATION_INSTRUCTIONS,
   type ChatCompanionPublications } from '../../products/chat/api/companionPublications.js';
@@ -317,6 +318,9 @@ export function createServer(dependencies: ServerDependencies) {
     if (await catImageTools.route(request, response)) return;
     if (await desktopControl.route(request, response)) return;
     if (await routeDesktopControlHost(request, response, desktopControl, dependencies.shared.desktopAuthKey)) return;
+    // ADR-155: the host's Stop for standing grants cancels the turns of the conversations holding them.
+    if (await routeProviderGrantsHost(request, response, { chatStore: resolvedDependencies.chat.chatStore,
+      runtimeClient: resolvedDependencies.shared.runtimeClient, now: resolvedDependencies.shared.now }, dependencies.shared.desktopAuthKey)) return;
     if (await knowledge.route(request, response)) return;
     await routeRequest(request, response, resolvedDependencies);
   };

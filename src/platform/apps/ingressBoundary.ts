@@ -23,6 +23,7 @@ export function isInternalPlatformRoute(pathname: string, method: string): boole
     || pathname === '/api/desktop/auth/google' || pathname.startsWith('/api/desktop/auth/google/')
     || pathname === '/api/internal/cat-image-tools' || pathname.startsWith('/api/internal/cat-image-tools/')
     || pathname === '/api/internal/desktop-control' || pathname.startsWith('/api/internal/desktop-control/')
+    || pathname === '/api/internal/provider-grants' || pathname.startsWith('/api/internal/provider-grants/')
     || pathname === '/api/desktop-control' || pathname.startsWith('/api/desktop-control/')
     || pathname === '/api/code/knowledge/agent' || pathname.startsWith('/api/code/knowledge/agent/')
     || pathname === '/api/runtime/mcp' || pathname.startsWith('/api/runtime/mcp/')
