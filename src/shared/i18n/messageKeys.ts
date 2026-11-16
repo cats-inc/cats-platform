@@ -4556,6 +4556,8 @@ export const messageKeys = {
   catteryHomeEmptyMembers: 'catteryHome.empty.members',
   catteryHomeEmptyClowders: 'catteryHome.empty.clowders',
   catteryHomeEmptyCats: 'catteryHome.empty.cats',
+  catteryHomeDirectMember: 'catteryHome.directMember',
+  catteryHomeViaClowder: 'catteryHome.viaClowder',
   catteryHomeNotFoundTitle: 'catteryHome.notFound.title',
   catteryHomeNotFoundBody: 'catteryHome.notFound.body',
   providerControlsSettingsTitle: "providerControls.SettingsTitle",

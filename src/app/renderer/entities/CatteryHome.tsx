@@ -5,6 +5,15 @@ import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatterySummary } from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
+import { useDirectory } from './directoryApi.js';
+import {
+  DirectoryHomeCatList,
+  DirectoryHomeClowderList,
+  DirectoryHomeState,
+  catteryCatRows,
+  catteryMemberRows,
+} from './DirectoryHomeLists.js';
+import { useCatLookup } from './directoryParts.js';
 
 type CatteryTab = 'members' | 'clowders' | 'cats' | 'settings';
 
@@ -45,12 +54,46 @@ function CatteryAvatar({ cattery }: { cattery: PlatformLobbyCatterySummary }) {
   );
 }
 
-function CatteryEmptyTab({ tab }: { tab: Exclude<CatteryTab, 'settings'> }) {
+/**
+ * Members (direct only), Clowders (its org chart's units) and Cats (everyone
+ * reachable, once, SPEC-103 FR-10), read only; the Settings tab changes them.
+ */
+function CatteryTabContent({
+  tab,
+  catteryId,
+  envelope,
+}: {
+  tab: Exclude<CatteryTab, 'settings'>;
+  catteryId: string;
+  envelope: PlatformHostEnvelope;
+}) {
   const { t } = useI18n();
+  const { state, reload } = useDirectory();
+  const catLookup = useCatLookup(envelope.lobby.cats);
   return (
-    <div className="entityDetailLensStub">
-      <p>{t(TAB_EMPTY_KEY[tab])}</p>
-    </div>
+    <DirectoryHomeState state={state} onRetry={() => { void reload(); }}>
+      {(directory) => {
+        const cattery = directory.catteries.find((candidate) => candidate.id === catteryId);
+        const empty = t(TAB_EMPTY_KEY[tab]);
+        if (!cattery) return <DirectoryHomeCatList rows={[]} empty={empty} />;
+        if (tab === 'clowders') {
+          return (
+            <DirectoryHomeClowderList
+              clowders={directory.clowders.filter((clowder) => clowder.parentCatteryId === cattery.id)}
+              empty={empty}
+            />
+          );
+        }
+        return (
+          <DirectoryHomeCatList
+            rows={tab === 'members'
+              ? catteryMemberRows(cattery, catLookup, t)
+              : catteryCatRows(cattery, directory, catLookup, t)}
+            empty={empty}
+          />
+        );
+      }}
+    </DirectoryHomeState>
   );
 }
 
@@ -96,7 +139,12 @@ export function CatteryHome({ envelope }: { envelope: PlatformHostEnvelope }) {
       tabs={tabs}
     >
       {/* The Settings tab is the Cattery canvas, which App routes ahead of this page. */}
-      <CatteryEmptyTab tab={activeTab === 'settings' ? 'members' : activeTab} />
+      <CatteryTabContent
+        key={activeTab}
+        tab={activeTab === 'settings' ? 'members' : activeTab}
+        catteryId={cattery.id}
+        envelope={envelope}
+      />
     </EntityDetailPane>
   );
 }

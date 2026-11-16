@@ -236,7 +236,8 @@ export function PlaceholderGlyph({
   );
 }
 
-function MyCatPlaceholderRow({
+/** The "New …" row a section shows while it is empty. */
+export function MyCatPlaceholderRow({
   label,
   onClick,
   iconKind,

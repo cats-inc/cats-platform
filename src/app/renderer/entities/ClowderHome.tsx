@@ -5,6 +5,9 @@ import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyClowderSummary } from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
+import { useDirectory } from './directoryApi.js';
+import { DirectoryHomeCatList, DirectoryHomeState, clowderHomeRows } from './DirectoryHomeLists.js';
+import { useCatLookup } from './directoryParts.js';
 
 type ClowderTab = 'cats' | 'settings';
 
@@ -42,12 +45,23 @@ function ClowderAvatar({ clowder }: { clowder: PlatformLobbyClowderSummary }) {
   );
 }
 
-function ClowderCatsTab() {
+/** The Clowder's Cats, read only; the Settings tab (its canvas) changes them. */
+function ClowderCatsTab({ clowderId, envelope }: { clowderId: string; envelope: PlatformHostEnvelope }) {
   const { t } = useI18n();
+  const { state, reload } = useDirectory();
+  const catLookup = useCatLookup(envelope.lobby.cats);
   return (
-    <div className="entityDetailLensStub">
-      <p>{t(messageKeys.clowderHomeEmptyCats)}</p>
-    </div>
+    <DirectoryHomeState state={state} onRetry={() => { void reload(); }}>
+      {(directory) => {
+        const clowder = directory.clowders.find((candidate) => candidate.id === clowderId);
+        return (
+          <DirectoryHomeCatList
+            rows={clowder ? clowderHomeRows(clowder, catLookup, t) : []}
+            empty={t(messageKeys.clowderHomeEmptyCats)}
+          />
+        );
+      }}
+    </DirectoryHomeState>
   );
 }
 
@@ -102,7 +116,7 @@ export function ClowderHome({ envelope }: { envelope: PlatformHostEnvelope }) {
       subtitle={subtitle}
       tabs={tabs}
     >
-      <ClowderCatsTab />
+      <ClowderCatsTab clowderId={clowder.id} envelope={envelope} />
     </EntityDetailPane>
   );
 }
