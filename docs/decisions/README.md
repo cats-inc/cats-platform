@@ -7,7 +7,7 @@
   Desktop window use them. A conversation bar, a topmost notice that reads Runtime directly, the tray
   and Ctrl+Alt+Shift+D always offer Stop. Desktop control is unchanged.
 - [ADR-154: Deliver optional native dependencies as host-managed feature packs](154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md)
-  — proposed, 2026-11-16; documentation only. Native files that only host code runs (a speech
+  — accepted, 2026-11-17; Linux dictation is part of Desktop 0.18.0 with `linux-stt` 0.1.0, its model by the owner's D4 amendment. Native files that only host code runs (a speech
   helper and model, possibly FFmpeg later) are neither Plugins nor setup prerequisites: a product
   pins them by SHA-256 and either downloads them on first use with consent or bundles them. The
   mechanism targets `@cats-inc/platform-host`, a producer repository builds them, and each

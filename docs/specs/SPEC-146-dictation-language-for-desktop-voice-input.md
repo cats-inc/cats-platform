@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; D1–D3 resolved under the owner's delegation, 2026-11-16 |
+| **Status** | Implemented for Desktop 0.18.0 (PLAN-138 Phase 5). AC-01–AC-03 pass in automated tests; AC-04 (macOS) and AC-05 (Windows) are open, and the helpers' `--list-languages` is first compiled by that release's packaging. D1–D3 resolved under the owner's delegation, 2026-11-16 |
 | **Owner** | Desktop host maintainers |
 | **Reviewer** | Product owner |
 | **Amends** | [SPEC-084](SPEC-084-composer-voice-input-via-platform-native-stt.md) Req 15 and its locale-picker open question; [SPEC-145](SPEC-145-feature-packs-and-linux-dictation.md) FR-C2, FR-C4, FR-C5 and AC-06 (D2) |

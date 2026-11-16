@@ -1,4 +1,73 @@
 {
   "schemaVersion": 1,
-  "packs": []
+  "packs": [
+    {
+      "id": "linux-stt",
+      "version": "0.1.0",
+      "minUsableVersion": "0.1.0",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/cats-inc/cats-plugins/releases/download/linux-stt-v0.1.0/linux-stt-0.1.0-linux-x64.catspack",
+      "size": 63797586,
+      "sha256": "e1b41aec59f36305bab3b65518f863f27b426781c360b07b670954ea29614d23",
+      "unpackedSize": 63796726,
+      "helperProtocol": 1,
+      "minGlibc": "2.35",
+      "prerequisites": [
+        "libpulse.so.0"
+      ],
+      "licenses": [
+        {
+          "name": "MIT",
+          "component": "whisper.cpp and ggml"
+        },
+        {
+          "name": "MIT",
+          "component": "YaRN code in ggml"
+        },
+        {
+          "name": "MIT",
+          "component": "Whisper model weights (OpenAI), ggml conversion"
+        },
+        {
+          "name": "GPL-3.0 with GCC Runtime Library Exception",
+          "component": "GCC C++ runtime, statically linked"
+        }
+      ]
+    },
+    {
+      "id": "linux-stt",
+      "version": "0.1.0",
+      "minUsableVersion": "0.1.0",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/cats-inc/cats-plugins/releases/download/linux-stt-v0.1.0/linux-stt-0.1.0-linux-arm64.catspack",
+      "size": 63375316,
+      "sha256": "91b2d15a0350b300fb505bb8257b2d3ad79cb1b77bf4dd92edc85a067278e236",
+      "unpackedSize": 63374456,
+      "helperProtocol": 1,
+      "minGlibc": "2.35",
+      "prerequisites": [
+        "libpulse.so.0"
+      ],
+      "licenses": [
+        {
+          "name": "MIT",
+          "component": "whisper.cpp and ggml"
+        },
+        {
+          "name": "MIT",
+          "component": "YaRN code in ggml"
+        },
+        {
+          "name": "MIT",
+          "component": "Whisper model weights (OpenAI), ggml conversion"
+        },
+        {
+          "name": "GPL-3.0 with GCC Runtime Library Exception",
+          "component": "GCC C++ runtime, statically linked"
+        }
+      ]
+    }
+  ]
 }

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; Q1–Q5 resolved, 2026-11-16 (Q2–Q5 under the owner's delegation; Q1 by the owner's dictation-language decision) |
+| **Status** | Implemented for Desktop 0.18.0, whose lock pins `linux-stt` 0.1.0 (PLAN-138). AC-01–AC-06 pass on fixture packs; AC-07 is open apart from the arm64 English measurement. Q1–Q5 resolved, 2026-11-16 (Q2–Q5 under the owner's delegation; Q1 by the owner's dictation-language decision) |
 | **Owner** | Desktop host maintainers |
 | **Reviewer** | Product owner |
 | **Decision** | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -538,8 +538,9 @@ appear in Settings > Desktop > Voice input on every platform.
 - Linux's ready timeout and stop window come from ADR-154 D4's measurement. Each
   is at least twice the worst measured run, and never below 3 and 60 seconds
   respectively.
-- Until the measurement is recorded in the PLAN, the provisional values are 10
-  seconds for ready and 60 seconds for stop.
+- PLAN-138 records the measurement (2026-11-17). Twice its worst runs fall
+  below both floors, so the values are 3 seconds for ready and 60 seconds for
+  stop. Before it, the provisional values were 10 and 60 seconds.
 - A helper that exceeds either is killed, and the session reports
   `engine_unavailable`.
 - A helper that exits before `ready` reports `helper_crashed`, as today. A
@@ -723,8 +724,9 @@ mic click (Linux Desktop)
   builds `linux-stt` to FR-A2–FR-A4, FR-D6 and FR-D7, including the manifest's
   `languages`.
 - **The first release.** The first authorized cats-plugins `linux-stt`
-  release. Until it exists, Desktop ships an empty lock, so Linux shows no voice
-  button (FR-D1). AC-01 to AC-06 use fixture packs.
+  release, `linux-stt-v0.1.0`, which Desktop 0.18.0's lock pins. A build with
+  an empty lock shows no voice button on Linux (FR-D1). AC-01 to AC-06 use
+  fixture packs.
 - **Range requests.** The release asset host must honor them. Without them,
   FR-B3 restarts from zero, which is still correct.
 - **Existing pieces.** Two existing pieces are reused:
