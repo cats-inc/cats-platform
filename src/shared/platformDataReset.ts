@@ -118,7 +118,7 @@ export const PLATFORM_RESET_DIRECTORIES = [
   'runtime-history', 'runtime-history-cache', 'cache/runtime-history', 'knowledge',
 ] as const;
 export const PLATFORM_RESET_RETAINED = [
-  'Desktop startup and system tray preferences, configuration and installation identity', 'installed Apps/plugins and their data',
+  'Desktop startup, system tray and dictation language preferences, configuration and installation identity', 'installed Apps/plugins and their data',
   // SPEC-145 FR-B8: feature-packs/ stays out of PLATFORM_RESET_DIRECTORIES.
   'downloaded optional features', 'Desktop and Runtime data', 'provider CLI logins and native transcripts',
   'files in external workspaces',

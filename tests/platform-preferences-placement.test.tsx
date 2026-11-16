@@ -32,6 +32,7 @@ function baselinePreferences(): PlatformPreferences {
     claudeInChromeEnabled: false,
     desktopControlEnabled: false,
     desktopControlConversations: [],
+    dictationLanguage: 'auto',
   };
 }
 
@@ -153,6 +154,24 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
     assert.equal(result.value.lobbyAnimationMode, 'off');
     assert.equal(result.value.assistantResponseLanguage, 'ko');
     assert.equal(result.value.uiLanguagePreference, 'en');
+  }
+});
+
+test('parsePlatformPreferencesUpdate never changes the dictation language', () => {
+  // SPEC-146 FR-1, FR-7: only the Desktop host, which checks the value against
+  // the platform's options, writes it. The server keeps whatever is saved.
+  const current: PlatformPreferences = {
+    ...baselinePreferences(),
+    dictationLanguage: 'zh-TW',
+  };
+  const result = parsePlatformPreferencesUpdate(
+    { startAtLogin: false, dictationLanguage: 'ja-JP' } as PlatformPreferencesUpdateBody & Record<string, unknown>,
+    current,
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.startAtLogin, false);
+    assert.equal(result.value.dictationLanguage, 'zh-TW');
   }
 });
 

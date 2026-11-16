@@ -23,6 +23,7 @@ import {
   OPTIONAL_DOWNLOADS_SETTINGS_PATH,
   resolveFeaturePackRequiredMessage,
 } from '../../../../shared/featurePackLabels.js';
+import { VOICE_INPUT_SETTINGS_PATH } from '../../../../shared/dictationLanguageLabels.js';
 import { requestRendererNavigation } from '../../../../app/renderer/rendererNavigation.js';
 import { useNativeVoiceInput } from './useNativeVoiceInput.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
@@ -209,6 +210,17 @@ export function useVoiceInputComposer({
     (kind: string) => {
       if (kind === 'pack_required') {
         void showPackRequiredToast();
+        return;
+      }
+      // SPEC-146 D3: a saved language this machine lost fails closed, and the
+      // toast opens Voice input. Web Speech's `language-not-supported` is not this.
+      if (kind === 'language_not_supported' && resolveDesktopHostBridge()?.setDictationLanguage) {
+        showToast(t(messageKeys.sharedVoiceInputErrorDictationLanguageUnavailable), {
+          action: {
+            label: t(messageKeys.sharedOpenSettings),
+            onSelect: () => { requestRendererNavigation(VOICE_INPUT_SETTINGS_PATH); },
+          },
+        });
         return;
       }
       const pane = resolveVoiceErrorSystemSettingsPane(kind);

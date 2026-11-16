@@ -1018,6 +1018,20 @@ export const messageKeys = {
   settingsDesktopOptionalDownloadsFailureUnsupported: 'settings.desktop.optionalDownloads.failure.unsupported',
   settingsDesktopOptionalDownloadsFailureGeneric: 'settings.desktop.optionalDownloads.failure.generic',
   settingsDesktopOptionalDownloadsLoadFailed: 'settings.desktop.optionalDownloads.loadFailed',
+  settingsDesktopOptionalDownloadsVoiceInputLink: 'settings.desktop.optionalDownloads.voiceInputLink',
+  settingsDesktopVoiceInputTitle: 'settings.desktop.voiceInput.title',
+  settingsDesktopVoiceInputDescription: 'settings.desktop.voiceInput.description',
+  settingsDesktopVoiceInputLanguageLabel: 'settings.desktop.voiceInput.languageLabel',
+  settingsDesktopVoiceInputAutoDetect: 'settings.desktop.voiceInput.autoDetect',
+  settingsDesktopVoiceInputFollowSystem: 'settings.desktop.voiceInput.followSystem',
+  settingsDesktopVoiceInputFollowSystemWithLanguage: 'settings.desktop.voiceInput.followSystemWithLanguage',
+  settingsDesktopVoiceInputUnavailableOption: 'settings.desktop.voiceInput.unavailableOption',
+  settingsDesktopVoiceInputHelpLinux: 'settings.desktop.voiceInput.helpLinux',
+  settingsDesktopVoiceInputHelpMac: 'settings.desktop.voiceInput.helpMac',
+  settingsDesktopVoiceInputNeedsPack: 'settings.desktop.voiceInput.needsPack',
+  settingsDesktopVoiceInputShowOptionalDownloads: 'settings.desktop.voiceInput.showOptionalDownloads',
+  settingsDesktopVoiceInputLoadFailed: 'settings.desktop.voiceInput.loadFailed',
+  settingsDesktopVoiceInputSaveFailed: 'settings.desktop.voiceInput.saveFailed',
   settingsDesktopStartupTitle: 'settings.desktop.startupTitle',
   settingsDesktopStartupDescription: 'settings.desktop.startupDescription',
   settingsDesktopStartupSignInLabel: 'settings.desktop.startupSignInLabel',
@@ -2674,6 +2688,8 @@ export const messageKeys = {
   sharedVoiceInputErrorNetwork: 'shared.voiceInput.error.network',
   sharedVoiceInputErrorLanguageNotSupported:
     'shared.voiceInput.error.languageNotSupported',
+  sharedVoiceInputErrorDictationLanguageUnavailable:
+    'shared.voiceInput.error.dictationLanguageUnavailable',
   sharedVoiceInputErrorPermissionDenied:
     'shared.voiceInput.error.permissionDenied',
   sharedVoiceInputErrorSpeechPermissionDenied:
@@ -4481,6 +4497,10 @@ export const messageKeys = {
   catProfileNotFoundTitle: 'catProfile.notFound.title',
   catProfileOpenSettingsLabel: 'catProfile.openSettingsLabel',
   catProfileViewProfileAction: 'catProfile.viewProfileAction',
+  catProfileMembershipsAriaLabel: 'catProfile.memberships.ariaLabel',
+  catProfileMembershipsCatteryLabel: 'catProfile.memberships.catteryLabel',
+  catProfileMembershipsClowderLabel: 'catProfile.memberships.clowderLabel',
+  catProfileMembershipsClowderInCatteryLabel: 'catProfile.memberships.clowderInCatteryLabel',
   catProfileNotFoundBody: 'catProfile.notFound.body',
   // Entities sidebar reuses the ConversationSidebarMyCatsSection
   // primitive. The section needs only a header label and a "+ New X"

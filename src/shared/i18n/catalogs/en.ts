@@ -940,7 +940,7 @@ export const enCatalog: MessageCatalog = {
   'settings.data.resetConfirmationDescription': 'Permanently erase Platform chats, cats, accounts, preferences and related data, then return to setup. Runtime data and installed tools are kept by default. Erased data cannot be recovered.',
   'settings.data.resetConfirmLabel': 'Erase selected data',
   'settings.data.resetAllDataDescription':
-    'Permanently erases Platform chats, cats, Clowders and Catteries, accounts, login sessions, setup state, Catlas suggestions and receipts, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory, and returns interface and reply language, lobby animation, Code preview server and saved layout preferences to their defaults. Keeps Desktop startup and system tray preferences, configuration and installation identity, installed Apps/plugins and their data, downloaded optional features, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
+    'Permanently erases Platform chats, cats, Clowders and Catteries, accounts, login sessions, setup state, Catlas suggestions and receipts, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory, and returns interface and reply language, lobby animation, Code preview server and saved layout preferences to their defaults. Keeps Desktop startup, system tray and dictation language preferences, configuration and installation identity, installed Apps/plugins and their data, downloaded optional features, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
   'settings.data.resetButtonResetting': 'Resetting...',
   'settings.data.resetButtonLabel': 'Erase Platform data',
   'settings.data.resetFailure': 'Failed to reset setup.',
@@ -1076,6 +1076,20 @@ export const enCatalog: MessageCatalog = {
   'settings.desktop.optionalDownloads.failure.unsupported': 'This computer cannot use this feature.',
   'settings.desktop.optionalDownloads.failure.generic': 'The optional download did not complete.',
   'settings.desktop.optionalDownloads.loadFailed': 'Optional downloads could not be loaded.',
+  'settings.desktop.optionalDownloads.voiceInputLink': 'Choose the dictation language',
+  'settings.desktop.voiceInput.title': 'Voice input',
+  'settings.desktop.voiceInput.description': 'How the microphone button in the composer turns speech into text.',
+  'settings.desktop.voiceInput.languageLabel': 'Dictation language',
+  'settings.desktop.voiceInput.autoDetect': 'Automatic (detect from speech)',
+  'settings.desktop.voiceInput.followSystem': 'Follow system',
+  'settings.desktop.voiceInput.followSystemWithLanguage': 'Follow system ({language})',
+  'settings.desktop.voiceInput.unavailableOption': '{language} (not available)',
+  'settings.desktop.voiceInput.helpLinux': 'Automatic detects the language of each recording, and short phrases may be detected wrongly. Chinese may come out in Simplified characters.',
+  'settings.desktop.voiceInput.helpMac': 'Only languages this Mac can recognize on-device are listed.',
+  'settings.desktop.voiceInput.needsPack': 'To choose a language, download Offline speech recognition in Optional downloads first.',
+  'settings.desktop.voiceInput.showOptionalDownloads': 'Show Optional downloads',
+  'settings.desktop.voiceInput.loadFailed': 'Dictation languages could not be loaded.',
+  'settings.desktop.voiceInput.saveFailed': 'The dictation language could not be saved.',
   'settings.desktop.startupTitle': 'Startup behavior',
   'settings.desktop.startupDescription':
     'Control whether Cats Desktop starts when you sign in, whether it opens the main window automatically after sign-in startup, and whether closing the window keeps Cats available in the system tray.',
@@ -2628,6 +2642,8 @@ export const enCatalog: MessageCatalog = {
     'Voice input could not reach the recognition service.',
   'shared.voiceInput.error.languageNotSupported':
     'Voice input does not support the current language.',
+  'shared.voiceInput.error.dictationLanguageUnavailable':
+    'The dictation language is not available on this computer. Choose another one in Settings.',
   'shared.voiceInput.error.permissionDenied':
     'Microphone access was denied. Check your system voice permissions.',
   'shared.voiceInput.error.speechPermissionDenied':
@@ -3769,6 +3785,10 @@ export const enCatalog: MessageCatalog = {
   'catProfile.notFound.title': 'Cat not found',
   'catProfile.openSettingsLabel': "Edit {name}'s settings",
   'catProfile.viewProfileAction': 'View profile',
+  'catProfile.memberships.ariaLabel': 'Clowders and Catteries',
+  'catProfile.memberships.catteryLabel': 'Cattery {name}: {role}, {status}',
+  'catProfile.memberships.clowderLabel': 'Clowder {name}: {role}, {status}',
+  'catProfile.memberships.clowderInCatteryLabel': 'Clowder {name} in {catteryName}: {role}, {status}',
   'catProfile.notFound.body':
     'No Cat with id "{catId}" exists here. It may have been removed, or the link is stale.',
   'entitiesSidebar.section.cats': 'My Cats',

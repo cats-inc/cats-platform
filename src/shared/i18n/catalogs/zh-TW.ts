@@ -925,7 +925,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.data.resetConfirmationDescription': '永久清除 Platform 的聊天、貓咪、帳號、偏好與相關資料，並回到初始設定。預設保留 Runtime 資料與已安裝的工具。已清除的資料無法復原。',
   'settings.data.resetConfirmLabel': '清除所選資料',
   'settings.data.resetAllDataDescription':
-    '永久清除 Platform 的聊天、貓咪、貓群與貓窩、帳號、登入工作階段、初始設定狀態、Catlas 建議與收據、備份（含遷移備份）、記憶與陪伴資料、本機知識、證據紀錄、Telegram／LINE 綁定與交付狀態、排程、診斷快取，以及 Platform 目錄中的附件與 runtime-history 快取，並將介面與回覆語言、大廳動畫、Code 預覽伺服器與已存版面偏好恢復預設。保留 Desktop 開機啟動與系統匣偏好、組態與安裝識別、已安裝的 Apps／plugins 及其資料、已下載的選用功能、Desktop 與 Runtime 資料、供應器 CLI 登入與原生對話紀錄，以及外部工作空間檔案。Desktop 視窗會回到預設的大小與位置。請先停止進行中的對話與任務。完成後返回初始設定精靈；已清除的資料無法復原。',
+    '永久清除 Platform 的聊天、貓咪、貓群與貓窩、帳號、登入工作階段、初始設定狀態、Catlas 建議與收據、備份（含遷移備份）、記憶與陪伴資料、本機知識、證據紀錄、Telegram／LINE 綁定與交付狀態、排程、診斷快取，以及 Platform 目錄中的附件與 runtime-history 快取，並將介面與回覆語言、大廳動畫、Code 預覽伺服器與已存版面偏好恢復預設。保留 Desktop 開機啟動、系統匣與聽寫語言偏好、組態與安裝識別、已安裝的 Apps／plugins 及其資料、已下載的選用功能、Desktop 與 Runtime 資料、供應器 CLI 登入與原生對話紀錄，以及外部工作空間檔案。Desktop 視窗會回到預設的大小與位置。請先停止進行中的對話與任務。完成後返回初始設定精靈；已清除的資料無法復原。',
   'settings.data.resetButtonResetting': '重設中…',
   'settings.data.resetButtonLabel': '清除 Platform 資料',
   'settings.data.resetFailure': '重設安裝失敗。',
@@ -1051,6 +1051,20 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.optionalDownloads.failure.unsupported': '這台電腦無法使用這項功能。',
   'settings.desktop.optionalDownloads.failure.generic': '選用下載未完成。',
   'settings.desktop.optionalDownloads.loadFailed': '無法載入選用下載。',
+  'settings.desktop.optionalDownloads.voiceInputLink': '選擇聽寫語言',
+  'settings.desktop.voiceInput.title': '語音輸入',
+  'settings.desktop.voiceInput.description': '撰寫區的麥克風按鈕如何把語音轉成文字。',
+  'settings.desktop.voiceInput.languageLabel': '聽寫語言',
+  'settings.desktop.voiceInput.autoDetect': '自動（從語音偵測）',
+  'settings.desktop.voiceInput.followSystem': '跟隨系統',
+  'settings.desktop.voiceInput.followSystemWithLanguage': '跟隨系統（{language}）',
+  'settings.desktop.voiceInput.unavailableOption': '{language}（目前無法使用）',
+  'settings.desktop.voiceInput.helpLinux': '「自動」會偵測每段錄音的語言，短句可能偵測錯誤。中文可能會以簡體字輸出。',
+  'settings.desktop.voiceInput.helpMac': '只會列出這台 Mac 能在裝置上辨識的語言。',
+  'settings.desktop.voiceInput.needsPack': '要選擇語言，請先在「選用下載」下載「離線語音辨識」。',
+  'settings.desktop.voiceInput.showOptionalDownloads': '前往選用下載',
+  'settings.desktop.voiceInput.loadFailed': '無法載入聽寫語言。',
+  'settings.desktop.voiceInput.saveFailed': '無法儲存聽寫語言。',
   'settings.desktop.startupTitle': '啟動行為',
   'settings.desktop.startupDescription':
     '控制是否在登入時啟動 Cats 桌面版、是否自動打開主視窗，以及關閉視窗時是否保留在系統列。',
@@ -2573,6 +2587,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.voiceInput.error.network': '語音輸入無法連線到辨識服務。',
   'shared.voiceInput.error.languageNotSupported':
     '語音輸入不支援目前語言。',
+  'shared.voiceInput.error.dictationLanguageUnavailable':
+    '這台電腦無法使用目前的聽寫語言。請到設定選擇其他語言。',
   'shared.voiceInput.error.permissionDenied':
     '麥克風存取遭拒。請檢查系統語音權限。',
   'shared.voiceInput.error.speechPermissionDenied':
@@ -3698,6 +3714,10 @@ export const zhTWCatalog: MessageCatalog = {
   'catProfile.notFound.title': '找不到這隻貓',
   'catProfile.openSettingsLabel': '編輯 {name} 的設定',
   'catProfile.viewProfileAction': '查看個人檔案',
+  'catProfile.memberships.ariaLabel': '所屬的貓群與貓窩',
+  'catProfile.memberships.catteryLabel': '貓窩「{name}」：{role}，{status}',
+  'catProfile.memberships.clowderLabel': '貓群「{name}」：{role}，{status}',
+  'catProfile.memberships.clowderInCatteryLabel': '{catteryName} 的貓群「{name}」：{role}，{status}',
   'catProfile.notFound.body':
     '這裡沒有 id 為「{catId}」的貓。可能已被移除，或連結已失效。',
   'entitiesSidebar.section.cats': '我的貓咪',

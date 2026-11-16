@@ -736,6 +736,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       claudeInChromeEnabled: false,
       desktopControlEnabled: false,
       desktopControlConversations: [],
+      dictationLanguage: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -769,6 +770,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       claudeInChromeEnabled: false,
       desktopControlEnabled: false,
       desktopControlConversations: [],
+      dictationLanguage: 'auto',
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -792,6 +794,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       claudeInChromeEnabled: false,
       desktopControlEnabled: false,
       desktopControlConversations: [],
+      dictationLanguage: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);

@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; Phases 0–4 authorized by the owner and implemented, 2026-11-16 |
+| Status | In progress; Phases 0–5 authorized by the owner, 2026-11-16. Phases 0–4 done; Phase 5 implemented, its native helpers not yet compiled and its owner acceptance open |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -253,10 +253,11 @@ The tests are `tests/desktop-feature-pack-renderer.test.tsx`.
     strings; raw host messages never reach the owner.
   - It sits after Startup behavior, and its `id` exists before the list loads,
     so the hash can scroll to it.
-- [ ] **Voice input link and final order (FR-C2).** The row links to Voice
+- [x] **Voice input link and final order (FR-C2).** The row links to Voice
   input, and the order is Updates, Mobile pairing, Startup behavior, Voice
-  input, Optional downloads. This needs Phase 5's Voice input section, so it
-  stays open.
+  input, Optional downloads. Done with Phase 5's Voice input section.
+  - The link shows while the pack is `usable`. It scrolls within the page and
+    focuses the select, because the hash effect runs only on mount.
 - [x] **Composer states (FR-D5).** The `limit_warning` chip, and the
   `processing` busy state, which Escape cancels.
   - Escape is heard on the whole document while voice is active, because
@@ -265,39 +266,56 @@ The tests are `tests/desktop-feature-pack-renderer.test.tsx`.
   - The chip clears on `processing`, `end` and `error`.
 - [x] **Strings (FR-C3).** `en` and `zh-TW` entries for every new key.
 
-**Covers:** SPEC-145 AC-04 (renderer) and AC-05. AC-06 is covered except for
-the Voice input link, which waits for Phase 5.
+**Covers:** SPEC-145 AC-04 (renderer), AC-05 and AC-06.
 
 ## Phase 5 — Dictation language (SPEC-146; SPEC-145 FR-C5)
 
 This slice can merge on its own. Its Linux options appear once Phase 1's
 manifest reader exists.
 
-- [ ] **Preference (SPEC-146 FR-1).** `dictationLanguage` is stored in the
-  Desktop preferences file, unknown fields there are preserved, and an invalid
-  value reads as Automatic.
+The tests are `tests/desktop-dictation-language.test.js` (host) and
+`tests/desktop-voice-input-settings.test.tsx` (renderer).
+
+- [x] **Preference (SPEC-146 FR-1).** `dictationLanguage` is stored in the
+  Desktop preferences file, and an invalid value reads as Automatic.
+  - The server rewrites that file from its normalized fields and would have
+    dropped an unknown one. The field is now one of the shared Platform
+    preferences (`src/shared/platformPreferences.ts`), shape-checked only.
+  - Platform data reset keeps it, and the reset disclosure says so.
 - [ ] **macOS helper `--list-languages` (FR-3).** Implemented in `main.swift`,
-  with Swift tests under `desktop/native/macos-stt/Tests`.
-  - It must not request permission.
+  with Swift tests in `LanguageListTests.swift`.
+  - It branches before option parsing and any permission preflight.
+  - **Not compiled yet.** This machine is Linux, and CI builds no native
+    helpers. The first macOS build compiles and tests it.
+  - Apple's reference pages render client-side, so `supportedLocales()`,
+    `isAvailable` and `supportsOnDeviceRecognition` were not checked against
+    them.
   - Whether listing causes a prompt is checked on a real Mac.
 - [ ] **Windows helper `--list-languages` (FR-3).** Implemented in
-  `Program.cs`, listing the dictation topic languages.
-- [ ] **Listing in the host (FR-3, FR-4).**
+  `Program.cs`, listing `SpeechRecognizer.SupportedTopicLanguages` with
+  `SystemSpeechLanguage` as `system`. Both were checked against Microsoft's
+  reference. **Not compiled yet**, for the same reason as macOS.
+- [x] **Listing in the host (FR-3, FR-4).** `desktop/host/dictationLanguage.ts`.
   - A 5-second kill; a timeout, a non-zero exit or malformed output means
-    Automatic only.
-  - Results are cached per session and refreshed when the section opens.
-  - On Linux, options come from the active manifest (SPEC-145 FR-C5).
-- [ ] **Session arguments (FR-2, FR-5).**
+    Automatic only. Today's helpers exit 2 on the flag, so until the native
+    changes ship, macOS and Windows offer Automatic only.
+  - One listing at a time; each request for options lists again, and a new
+    value is checked against the latest list.
+  - On Linux, options come from the usable active manifest (SPEC-145 FR-C5).
+- [x] **Session arguments (FR-2, FR-5).**
   - A tag becomes `--locale`, and Automatic passes none: detection on Linux,
     the system language elsewhere.
   - Renderer locales are ignored on every platform.
-  - On macOS and Windows, `language_not_supported` gets **Open Settings** to
-    Voice input.
-  - On Linux, a subtag missing from the manifest runs as Automatic.
-- [ ] **Voice input section (FR-6), bridge (FR-7) and strings (FR-8).**
+  - On Linux, the leased version's languages decide, and a subtag missing
+    from them runs as Automatic.
+  - A stop or cancel while the setting is read ends the session.
+  - On Desktop, `language_not_supported` gets **Open Settings** to Voice input.
+    Web Speech's `language-not-supported` keeps its message.
+- [x] **Voice input section (FR-6), bridge (FR-7) and strings (FR-8).**
   - The Automatic label differs per platform.
-  - Native names come from `Intl.DisplayNames`.
-  - On Linux, the select stays disabled until the pack allows dictation.
+  - Native names come from `Intl.DisplayNames`, with the tag as a fallback.
+  - On Linux, the select stays disabled until the pack is `usable`.
+  - Both channels accept only the main window's main frame.
 - [ ] **Owner:** real-Mac acceptance (SPEC-146 AC-04).
 - [ ] **Owner:** real-Windows acceptance (SPEC-146 AC-05). It is blocked
   externally by SPEC-084's open Windows defect, in which text never reaches the
@@ -359,7 +377,8 @@ Empty until Phase 6. One row per run set.
 | `src/shared/voiceCaptureBridge.ts` | Modify | `pack_required`, `limit_warning`, `processing` |
 | `src/products/shared/renderer/hooks/useVoiceInputComposer.ts`, `useNativeVoiceInput.ts` | Modify | No Web Speech in Desktop, pack toasts, composer states |
 | `src/app/renderer/settings/PlatformSettingsDesktop*.tsx` | Modify / create | Voice input and Optional downloads sections |
-| `desktop/host/desktopStartup.ts` | Modify | `dictationLanguage` preference |
+| `desktop/host/dictationLanguage.ts` | Create | `dictationLanguage` read and write, listing, options, IPC |
+| `src/shared/platformPreferences.ts` | Modify | `dictationLanguage` kept by server writes and reset |
 | `src/shared/platformDataReset.ts` | Modify | Disclosure of retained packs |
 | `desktop/native/macos-stt/Sources/CatsSttMacos/main.swift`, `desktop/native/windows-stt/Program.cs` | Modify | `--list-languages` |
 | `config/desktop-feature-packs.lock.json` | Create | Empty lock |
@@ -396,6 +415,7 @@ Empty until Phase 6. One row per run set.
 | 2026-11-16 | The owner authorized Phase 2, and it was implemented. The Bot closure is now `desktop/host/featurePacks/featurePackContract.ts` and `featurePackManager.ts`. SPEC-145 FR-B2–FR-B7 and FR-B9 now match the manager. Electron 41.2.0 runs Node 24.14.0, which has what the manager uses: `AbortSignal.any`, `statfs` and the report's `glibcVersionRuntime` (2.41 on the arm64 board). |
 | 2026-11-16 | The owner authorized Phase 3, and it was implemented. With the shipped empty lock, Linux still exposes no voice bridge. SPEC-145 FR-C4, FR-D1 and FR-D2 now match the wiring. |
 | 2026-11-16 | The owner authorized Phase 4 ("cnr後繼續" after Phase 3), and it was implemented. The Voice input link and the final section order wait for Phase 5. |
+| 2026-11-16 | The owner authorized Phase 5 ("cnr後繼續" after Phase 4), and it was implemented. The server drops unknown preference fields, so `dictationLanguage` joined the shared Platform preferences; SPEC-145 FR-C5 and SPEC-146 FR-1 now say so. The macOS and Windows listing code is not compiled yet, and the owner's acceptance items stay open. |
 
 ### Voice path inventory (Phase 0, 2026-11-16)
 
