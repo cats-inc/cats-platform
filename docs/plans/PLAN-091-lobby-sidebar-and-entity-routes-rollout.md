@@ -203,18 +203,31 @@ Out of scope (covered elsewhere or deferred):
 - [x] Records `Clowder`, `Cattery`, `ClowderMembership`,
       `CatteryMembership` in the Platform directory file, not Core state
       (SPEC-103 §Storage), with the model in `src/platform/directory/`
-- [ ] Add platform contract entries / payloads exposing the list APIs
-      from SPEC-103 §FR 18-20
+- [x] Platform contract and API (2026-11-16): one `GET
+      /api/platform/directory` view (every Clowder and Cattery with its
+      members) answers the SPEC-103 FR-18 lists, and every mutation
+      returns it; the app shell carries `lobby.clowders` /
+      `lobby.catteries` summaries (`docs/api.md`)
 - [x] Storage: membership stored as separate normalized records, not as
       embedded arrays (SPEC-103 §Storage)
 - [x] A deleted Cat leaves every Clowder and Cattery; Platform data
       reset removes the directory file
-- [ ] Implement `ClowderHome.tsx`:
+- [x] Directory canvases (2026-11-16), URL-driven like the cats canvas:
+      `/entities/clowders` and `/entities/catteries`, with `/new` and
+      `/:id/settings`. The Clowder canvas edits a Clowder and its members
+      (status, end date, lead, move, also add, remove); the Cattery canvas
+      edits a Cattery, its direct members and its org chart (drag to move,
+      the copy key to also add, a lane for members in no Clowder). A
+      group's Settings tab is its canvas.
+- [x] Directory sidebar lists Clowders and Catteries under their nav
+      items, and every "New …" entry opens its create form
+- [x] Implement `ClowderHome.tsx` (read-only Cats list; filters live on
+      the canvas):
   - Header chip: "Part of [Cattery]" or "Cross-unit task force"
   - Tabs (locked): `Cats / Settings`, default = `Cats`
-  - Status chips on each Cat row (`formal | temp | external`)
-  - `Cats` tab default `statusFilter: 'all'`
-- [ ] Implement `CatteryHome.tsx`:
+  - Status chips on each Cat row (`temp | external`; formal is unmarked)
+- [x] Implement `CatteryHome.tsx` (read-only lists; filters live on the
+      canvas):
   - Tabs (locked): `Members / Clowders / Cats / Settings`, default
     = `Members`
   - Members tab: direct members only; `statusFilter` accepts
@@ -229,11 +242,11 @@ Out of scope (covered elsewhere or deferred):
     (SPEC-103 FR-21): `temp` involvement rejected at Cattery level
 - [ ] Add `Memberships` section to `CatHome.tsx` Overview lens listing
       Clowders + Catteries this Cat is in
-- [ ] Membership management UI initial pass: add member, change status,
+- [x] Membership management UI initial pass: add member, change status,
       remove. Invites / role permissions deferred to a follow-up plan
 - [ ] Audit trail: deferred until multi-user Catteries (SPEC-103
       §Non-Functional)
-- [ ] Tests: list endpoints, dedup logic, statusFilter, expired-temp
+- [x] Tests: list endpoints, dedup logic, statusFilter, expired-temp
       display (FR-23: listed with the passed date, never hidden)
 
 ## Files / Areas Likely Affected
