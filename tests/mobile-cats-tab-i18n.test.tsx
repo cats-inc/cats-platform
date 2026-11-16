@@ -83,6 +83,16 @@ test('selectMobileCatsDirectory projects chat cats into the mobile directory sha
   ]);
   assert.deepEqual(data.clowders, []);
   assert.deepEqual(data.catteries, []);
+
+  const withGroups = selectMobileCatsDirectory({
+    ...createPayload(),
+    lobby: {
+      clowders: [{ id: 'dev', name: 'Dev', catCount: 3 }],
+      catteries: [{ id: 'acme', name: 'Acme', catCount: 5 }],
+    },
+  });
+  assert.deepEqual(withGroups.clowders, [{ id: 'dev', name: 'Dev', catCount: 3 }]);
+  assert.deepEqual(withGroups.catteries, [{ id: 'acme', name: 'Acme', catCount: 5 }]);
 });
 
 test('mobile cats tab copy ships directory section labels and entity-detail strings', () => {

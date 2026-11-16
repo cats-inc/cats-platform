@@ -46,6 +46,8 @@ export interface MobileCatsTabCopy {
   emptyCats: string;
   emptyClowders: string;
   emptyCatteries: string;
+  /** `{count}` is replaced with the number of Cats in a Clowder or Cattery. */
+  groupCatCount: string;
   newCat: string;
   newClowder: string;
   newCattery: string;
@@ -206,6 +208,7 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     sectionMyCatteries: 'My Catteries',
     emptyCats: 'No cats yet.',
     emptyClowders: 'No clowders yet.',
+    groupCatCount: '{count} cats',
     emptyCatteries: 'No catteries yet.',
     newCat: '+ New Cat',
     newClowder: '+ New Clowder',
@@ -239,6 +242,7 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     sectionMyCatteries: '我的貓窩',
     emptyCats: '尚未有貓咪。',
     emptyClowders: '尚未有貓群。',
+    groupCatCount: '{count} 隻貓咪',
     emptyCatteries: '尚未有貓窩。',
     newCat: '+ 新增貓咪',
     newClowder: '+ 新增貓群',

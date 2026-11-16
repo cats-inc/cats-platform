@@ -1,13 +1,13 @@
-import type { MobileAppShellPayload } from './contracts.js';
+import type { MobileAppShellPayload, MobileDirectoryGroupSummary } from './contracts.js';
 
 /**
  * Mobile-side Cats tab directory content. The Cats tab IS the
  * directory landing — three sections (My Cats / My Clowders /
  * My Catteries) projected from the same `MobileAppShellPayload` the
  * sidebars consume. Web Lobby content (greeting, entity index cards)
- * is intentionally NOT mirrored here. Phase 6 (ADR-100 + SPEC-103)
- * lands the actual Clowder/Cattery registries; until then the latter
- * two sections render their empty state.
+ * is intentionally NOT mirrored here. Clowders and Catteries come from
+ * the lobby summaries (SPEC-103); creating and editing them stays on
+ * Desktop.
  */
 
 export interface MobileCatsDirectoryCatSummary {
@@ -20,13 +20,12 @@ export interface MobileCatsDirectoryCatSummary {
 
 export interface MobileCatsDirectoryData {
   cats: MobileCatsDirectoryCatSummary[];
-  /**
-   * Phase 6 (ADR-100 + SPEC-103) extends the mobile contract with
-   * real Clowder / Cattery summaries. Until then the section renders
-   * empty.
-   */
-  clowders: readonly unknown[];
-  catteries: readonly unknown[];
+  clowders: MobileDirectoryGroupSummary[];
+  catteries: MobileDirectoryGroupSummary[];
+}
+
+function summarizeGroups(groups: readonly MobileDirectoryGroupSummary[] | undefined): MobileDirectoryGroupSummary[] {
+  return (groups ?? []).map((group) => ({ id: group.id, name: group.name, catCount: group.catCount }));
 }
 
 export interface SelectMobileCatsDirectoryOptions {
@@ -57,7 +56,7 @@ export function selectMobileCatsDirectory(
 
   return {
     cats: limited,
-    clowders: [],
-    catteries: [],
+    clowders: summarizeGroups(payload.lobby?.clowders),
+    catteries: summarizeGroups(payload.lobby?.catteries),
   };
 }
