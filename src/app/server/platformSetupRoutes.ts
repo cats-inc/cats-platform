@@ -51,6 +51,7 @@ import {
 import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.js';
 import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
+import { routePlatformDirectoryApi } from './platformDirectoryRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 import { sendPlatformAuthError } from './authErrorResponses.js';
@@ -691,6 +692,10 @@ export async function routePlatformSetupApi(
   }
 
   if (await routePlatformAssistantPresetApi(context)) {
+    return true;
+  }
+
+  if (await routePlatformDirectoryApi(context)) {
     return true;
   }
 

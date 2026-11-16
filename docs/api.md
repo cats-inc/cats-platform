@@ -281,6 +281,52 @@ DELETE /api/platform/assistants/{assistantId}
 - Channel-only temporary participants are intentionally excluded from this
   registry and stay scoped to their room.
 
+### Clowders and Catteries (SPEC-103)
+
+```text
+GET    /api/platform/directory
+POST   /api/platform/clowders
+PATCH  /api/platform/clowders/{clowderId}
+DELETE /api/platform/clowders/{clowderId}
+POST   /api/platform/clowders/{clowderId}/members
+PATCH  /api/platform/clowders/{clowderId}/members/{catId}
+DELETE /api/platform/clowders/{clowderId}/members/{catId}
+POST   /api/platform/clowders/{clowderId}/members/{catId}/move
+POST   /api/platform/catteries
+PATCH  /api/platform/catteries/{catteryId}
+DELETE /api/platform/catteries/{catteryId}
+POST   /api/platform/catteries/{catteryId}/members
+PATCH  /api/platform/catteries/{catteryId}/members/{catId}
+DELETE /api/platform/catteries/{catteryId}/members/{catId}
+```
+
+- Authenticated in every phase; none is public before setup.
+- Every response is `{ directory: PlatformDirectoryView }`: all Clowders and
+  Catteries in creation order, each with its members. A membership whose Cat
+  no longer exists is left out. Creates answer `201`, everything else `200`.
+- Bodies:
+  - Create a Clowder with `{ name, description?, parentCatteryId?, members? }`.
+  - Create a Cattery with `{ name, description?, domain?, members? }`.
+  - A Clowder member is `{ catId, role?: 'lead' | 'member', status?: 'formal' | 'temp' | 'external', expiresAt? }`.
+  - A Cattery member is `{ catId, role?: 'owner' | 'admin' | 'member', status?: 'formal' | 'external' }`.
+  - `PATCH` takes the same fields, minus `catId` for members.
+  - `move` takes `{ toClowderId }`.
+- Rules:
+  - Deleting a Clowder or a Cattery never deletes a Cat. A deleted Cattery's
+    Clowders stay, with their members, and belong to no Cattery.
+  - A Clowder keeps the Cattery it was created in (`clowder_parent_fixed`).
+  - Adding an existing member changes nothing.
+  - `move` is one step that keeps the Cat's status and end date.
+  - Cattery members are never `temp` (`cattery_temp_not_allowed`).
+  - Only a `temp` member has an `expiresAt` (`expires_at_requires_temp`).
+- Errors use the canonical `{ error: { code, message } }` shape:
+  - `400` validation codes, such as `directory_name_required` or `cat_not_found`.
+  - `404` for `clowder_not_found`, `cattery_not_found` and `membership_not_found`.
+  - `500` for `directory_unreadable` and `directory_newer`. The file is
+    left unchanged, and the app shell's lobby lists are then empty.
+- `GET /api/app-shell` carries `lobby.clowders` and `lobby.catteries`
+  summaries with the counts the sidebar and Directory cards use.
+
 ## Canonical Public API (SPEC-009)
 
 ### Cats

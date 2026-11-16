@@ -33,6 +33,7 @@ import type {
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { removeCatFromDirectory } from '../../../platform/directory/model.js';
 import { directoryStoreFor } from '../../../platform/directory/store.js';
+import { readLobbyDirectorySummaries } from '../../../platform/directory/lobby.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { isAdminCat } from '../../shared/catGroups.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -393,6 +394,10 @@ export async function buildAppShellPayload(
   });
 
   const platformPrefs = await readPlatformPreferences(dependencies.config.chatStatePath);
+  const lobbyDirectory = await readLobbyDirectorySummaries(
+    dependencies.config.chatStatePath,
+    new Set(resolvedState.cats.filter((cat) => cat.status === 'active').map((cat) => cat.id)),
+  );
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,
   );
@@ -449,6 +454,7 @@ export async function buildAppShellPayload(
       lobby: {
         animationMode: platformPrefs.lobbyAnimationMode,
       },
+      lobbyDirectory,
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChat,
       codeGuideCatAssist: guideCatAssist.newCode,
