@@ -315,6 +315,18 @@ PLAN-124 records the candidate source identity and evidence scope.
   - The route revokes every session's grants at once. It answers 200 only when Runtime confirmed each one: an empty list, or 404 for a session Runtime no longer has.
   - Otherwise it answers 409 `standing_grants_unconfirmed`, and the bar says Stop was not confirmed.
 
+## Standing grants on the Desktop host (2026-11-16, ADR-155)
+
+- The host polls Runtime's `GET /interactions/grants` itself. It sends a bearer key only when `CATS_RUNTIME_API_KEY` is set. While any session holds a grant, it shows three things on every platform:
+  - a topmost notice that takes no focus, "A cat may act without asking", with Stop. It sits above the SPEC-133 notice.
+  - a first tray item, "Stop actions allowed without asking".
+  - the global hotkey `CommandOrControl+Alt+Shift+D`, registered only while grants exist. When registration fails, the notice and tray omit the chord.
+- A failed read keeps the known grants and marks them unconfirmed. It never clears them.
+- Stop revokes every held session's grants in Runtime and cancels their turns at the same time.
+  - Cancelling goes through `POST /api/internal/provider-grants/host-cancel`, which is key-authenticated, loopback-only and refused on ingress. It requests chat cancellation for every conversation holding those sessions and cancels the sessions.
+  - If Platform does not answer, the host cancels the sessions in Runtime, and those turns show as failed rather than stopped.
+  - Stop is confirmed only by Runtime: an empty list or a 404. Otherwise the notice and tray stay, saying Stop was not confirmed.
+
 ## Remaining environment validation
 
 - The supported fixture contract of Runtime SPEC-039 is wired; new native schemas still need

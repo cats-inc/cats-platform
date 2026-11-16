@@ -85,18 +85,23 @@ export async function routeDesktopControl(context: RouteContext<{ desktopControl
 export const DESKTOP_CONTROL_HOST_STATE_PATH = '/api/internal/desktop-control/host-state';
 export const DESKTOP_CONTROL_HOST_STOP_PATH = '/api/internal/desktop-control/host-stop';
 
+/** Only the local Desktop host holds the key: a loopback request with no Origin and the exact key. */
+export function isDesktopHostRequest(request: IncomingMessage, expected: string | undefined): boolean {
+  const supplied = request.headers[PLATFORM_DESKTOP_AUTH_KEY_HEADER];
+  const address = request.socket.remoteAddress?.replace(/^::ffff:/u, '');
+  return request.headers.origin === undefined && ['127.0.0.1', '::1'].includes(address ?? '')
+    && typeof supplied === 'string' && Boolean(expected) && expected!.length >= 32
+    && Buffer.byteLength(supplied) === Buffer.byteLength(expected!)
+    && timingSafeEqual(Buffer.from(supplied), Buffer.from(expected!));
+}
+
 /** Only the local Desktop host holds the key; the ingress listener strips this header and refuses the path. */
 export async function routeDesktopControlHost(request: IncomingMessage, response: ServerResponse,
   service: Pick<DesktopControlService, 'hostState' | 'stop'>, expected: string | undefined): Promise<boolean> {
   const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
   if (pathname !== DESKTOP_CONTROL_HOST_STATE_PATH && pathname !== DESKTOP_CONTROL_HOST_STOP_PATH) return false;
   const headers = { 'cache-control': 'no-store' };
-  const supplied = request.headers[PLATFORM_DESKTOP_AUTH_KEY_HEADER];
-  const address = request.socket.remoteAddress?.replace(/^::ffff:/u, '');
-  if (request.headers.origin !== undefined || !['127.0.0.1', '::1'].includes(address ?? '')
-    || typeof supplied !== 'string' || !expected || expected.length < 32
-    || Buffer.byteLength(supplied) !== Buffer.byteLength(expected)
-    || !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
+  if (!isDesktopHostRequest(request, expected)) {
     sendJson(response, 403, { error: 'desktop_authority_required' }, headers);
     return true;
   }
