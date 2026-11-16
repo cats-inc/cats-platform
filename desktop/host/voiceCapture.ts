@@ -32,6 +32,12 @@ export {
 const DEFAULT_READY_TIMEOUT_MS = 3_000;
 const DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS = 1_000;
 const DEFAULT_STOP_CLEANUP_TIMEOUT_MS = 5_000;
+// SPEC-145 FR-D4: provisional until PLAN-138 Phase 6 records the measurement.
+const LINUX_READY_TIMEOUT_MS = 10_000;
+const LINUX_STOP_CLEANUP_TIMEOUT_MS = 60_000;
+// SPEC-145 FR-D3: timed from `ready`.
+const LINUX_RECORDING_WARNING_MS = 25_000;
+const LINUX_RECORDING_LIMIT_MS = 30_000;
 const MAX_HELPER_STDERR_LINE_LENGTH = 500;
 
 const VOICE_CAPTURE_MODE_SET = new Set<string>(VOICE_CAPTURE_MODES);
@@ -48,6 +54,27 @@ interface ActiveVoiceCaptureSession {
   stderrBuffer: string;
   readyTimer: ReturnType<typeof setTimeout> | null;
   cleanupTimer: ReturnType<typeof setTimeout> | null;
+  /** A Linux session: recording cap, `processing`, and the Linux stop window. */
+  linux: boolean;
+  stopping: boolean;
+  warningTimer: ReturnType<typeof setTimeout> | null;
+  limitTimer: ReturnType<typeof setTimeout> | null;
+  lease: VoiceCaptureHelperLease | null;
+}
+
+/** A started helper's hold on the installed pack version (SPEC-145 FR-B4, FR-B6). */
+export interface VoiceCaptureHelperLease {
+  entryPath: string;
+  release(): void;
+}
+
+/**
+ * Linux's helper source: the linux-stt pack's start-time check (SPEC-145 FR-B5).
+ * It returns null when the pack cannot dictate. `onRevoke` asks the session to
+ * stop because the pack is being removed.
+ */
+export interface VoiceCaptureFeaturePack {
+  acquireHelper(onRevoke: () => void): Promise<VoiceCaptureHelperLease | null>;
 }
 
 type VoiceCaptureSpawn = (
@@ -67,6 +94,10 @@ export interface DesktopVoiceCaptureControllerOptions {
   cleanupTimeoutMs?: number;
   stopCleanupTimeoutMs?: number;
   cancelCleanupTimeoutMs?: number;
+  /** Linux only: where the helper comes from (SPEC-145 FR-D2). */
+  featurePack?: VoiceCaptureFeaturePack;
+  recordingWarningMs?: number;
+  recordingLimitMs?: number;
   logLine?: (line: string) => void;
 }
 
@@ -254,11 +285,17 @@ export function resolveVoiceCaptureHelperPath(input: {
   return null;
 }
 
-function buildVoiceCaptureHelperArgs(options: VoiceCaptureStartOptions): string[] {
+function buildVoiceCaptureHelperArgs(
+  options: VoiceCaptureStartOptions,
+  platform: NodeJS.Platform,
+): string[] {
+  // Linux never passes the renderer's locale: the pack takes a manifest
+  // language subtag, and Automatic means detection (SPEC-145 FR-D7).
+  const locale = platform === 'linux' ? undefined : options.locale;
   return [
     '--session-id',
     options.sessionId,
-    ...(options.locale ? ['--locale', options.locale] : []),
+    ...(locale ? ['--locale', locale] : []),
   ];
 }
 
@@ -293,6 +330,8 @@ function writeVoiceCaptureControl(
 
 export class DesktopVoiceCaptureController {
   private activeSession: ActiveVoiceCaptureSession | null = null;
+  /** A Linux start waiting for the pack check; stop or cancel ends it there. */
+  private pendingStart: { sessionId: string; ended: boolean } | null = null;
 
   private readonly config: DesktopHostConfig;
   private readonly sendEvent: (event: VoiceCaptureEvent) => void;
@@ -303,6 +342,9 @@ export class DesktopVoiceCaptureController {
   private readonly readyTimeoutMs: number;
   private readonly stopCleanupTimeoutMs: number;
   private readonly cancelCleanupTimeoutMs: number;
+  private readonly featurePack: VoiceCaptureFeaturePack | undefined;
+  private readonly recordingWarningMs: number;
+  private readonly recordingLimitMs: number;
   private readonly logLine: (line: string) => void;
 
   constructor(options: DesktopVoiceCaptureControllerOptions) {
@@ -312,13 +354,18 @@ export class DesktopVoiceCaptureController {
     this.env = options.env ?? process.env;
     this.resourcesPath = options.resourcesPath;
     this.spawnProcess = options.spawnProcess ?? spawn;
-    this.readyTimeoutMs = options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
+    const linux = this.platform === 'linux';
+    this.readyTimeoutMs = options.readyTimeoutMs
+      ?? (linux ? LINUX_READY_TIMEOUT_MS : DEFAULT_READY_TIMEOUT_MS);
     this.stopCleanupTimeoutMs = options.stopCleanupTimeoutMs
       ?? options.cleanupTimeoutMs
-      ?? DEFAULT_STOP_CLEANUP_TIMEOUT_MS;
+      ?? (linux ? LINUX_STOP_CLEANUP_TIMEOUT_MS : DEFAULT_STOP_CLEANUP_TIMEOUT_MS);
     this.cancelCleanupTimeoutMs = options.cancelCleanupTimeoutMs
       ?? options.cleanupTimeoutMs
       ?? DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS;
+    this.featurePack = options.featurePack;
+    this.recordingWarningMs = options.recordingWarningMs ?? LINUX_RECORDING_WARNING_MS;
+    this.recordingLimitMs = options.recordingLimitMs ?? LINUX_RECORDING_LIMIT_MS;
     this.logLine = options.logLine ?? ((line) => {
       process.stderr.write(`${line}\n`);
     });
@@ -329,13 +376,43 @@ export class DesktopVoiceCaptureController {
       await this.cancelVoiceCapture(this.activeSession.sessionId);
     }
 
-    const helperPath = resolveVoiceCaptureHelperPath({
+    const linux = this.platform === 'linux';
+    let lease: VoiceCaptureHelperLease | null = null;
+    let helperPath = resolveVoiceCaptureHelperPath({
       config: this.config,
       platform: this.platform,
       env: this.env,
       resourcesPath: this.resourcesPath,
     });
+    if (linux && !helperPath) {
+      // SPEC-145 FR-C1, FR-D2: the active pack's entry, after the FR-B5 check.
+      // A newer start supersedes one still waiting here, so only one helper runs.
+      if (this.pendingStart) {
+        this.pendingStart.ended = true;
+      }
+      const pending = { sessionId: options.sessionId, ended: false };
+      this.pendingStart = pending;
+      lease = this.featurePack
+        ? await this.featurePack.acquireHelper(() => {
+          this.revokeSession(options.sessionId);
+        })
+        : null;
+      if (this.pendingStart === pending) {
+        this.pendingStart = null;
+      }
+      if (pending.ended) {
+        lease?.release();
+        this.sendEvent({ type: 'end', sessionId: options.sessionId });
+        return;
+      }
+      if (!lease) {
+        this.emitErrorAndEnd(options.sessionId, 'pack_required');
+        return;
+      }
+      helperPath = lease.entryPath;
+    }
     if (!helperPath || !existsSync(helperPath)) {
+      lease?.release();
       this.emitErrorAndEnd(options.sessionId, 'engine_unavailable');
       return;
     }
@@ -344,7 +421,7 @@ export class DesktopVoiceCaptureController {
     try {
       child = this.spawnProcess(
         helperPath,
-        buildVoiceCaptureHelperArgs(options),
+        buildVoiceCaptureHelperArgs(options, this.platform),
         {
           cwd: dirname(helperPath),
           env: this.env,
@@ -352,6 +429,7 @@ export class DesktopVoiceCaptureController {
         },
       );
     } catch {
+      lease?.release();
       this.emitErrorAndEnd(options.sessionId, 'engine_unavailable');
       return;
     }
@@ -365,6 +443,11 @@ export class DesktopVoiceCaptureController {
       stderrBuffer: '',
       readyTimer: null,
       cleanupTimer: null,
+      linux,
+      stopping: false,
+      warningTimer: null,
+      limitTimer: null,
+      lease,
     };
     this.activeSession = session;
 
@@ -448,6 +531,9 @@ export class DesktopVoiceCaptureController {
         session.readyTimer = null;
       }
       this.sendEvent(event);
+      if (session.linux) {
+        this.startRecordingCap(session);
+      }
       return;
     }
     if (event.type === 'error') {
@@ -463,10 +549,46 @@ export class DesktopVoiceCaptureController {
     this.sendEvent(event);
   }
 
-  private requestSessionEnd(sessionId: string, type: VoiceCaptureControlType): void {
+  /** SPEC-145 FR-D3: warn 5 s before the cap, then stop as the owner would. */
+  private startRecordingCap(session: ActiveVoiceCaptureSession): void {
+    const secondsRemaining = Math.round((this.recordingLimitMs - this.recordingWarningMs) / 1000);
+    session.warningTimer = setTimeout(() => {
+      if (this.activeSession === session && !session.stopping) {
+        this.sendEvent({ type: 'limit_warning', sessionId: session.sessionId, secondsRemaining });
+      }
+    }, this.recordingWarningMs);
+    session.limitTimer = setTimeout(() => {
+      this.requestSessionEnd(session.sessionId, 'stop');
+    }, this.recordingLimitMs);
+  }
+
+  /** Remove needs the pack's helper gone (SPEC-145 FR-B6). */
+  private revokeSession(sessionId: string): void {
     const session = this.activeSession;
     if (!session || session.sessionId !== sessionId) {
       return;
+    }
+    this.sendEvent({ type: 'error', sessionId, reason: 'aborted' });
+    this.finishSession(session, { emitEnd: true, kill: true });
+  }
+
+  private requestSessionEnd(sessionId: string, type: VoiceCaptureControlType): void {
+    if (this.pendingStart?.sessionId === sessionId) {
+      this.pendingStart.ended = true;
+      return;
+    }
+    const session = this.activeSession;
+    if (!session || session.sessionId !== sessionId) {
+      return;
+    }
+    if (session.linux && type === 'stop') {
+      if (session.stopping) {
+        return;
+      }
+      session.stopping = true;
+      this.clearRecordingCap(session);
+      // SPEC-145 FR-D3: every stop says transcription has started.
+      this.sendEvent({ type: 'processing', sessionId });
     }
     session.expectedExit = true;
     try {
@@ -486,8 +608,27 @@ export class DesktopVoiceCaptureController {
       if (this.activeSession !== session) {
         return;
       }
+      if (session.linux && type === 'stop') {
+        // SPEC-145 FR-D4: a helper that outlives the stop window is killed.
+        this.sendEvent({
+          type: 'error',
+          sessionId: session.sessionId,
+          reason: 'engine_unavailable',
+        });
+      }
       this.finishSession(session, { emitEnd: true, kill: true });
     }, cleanupTimeoutMs);
+  }
+
+  private clearRecordingCap(session: ActiveVoiceCaptureSession): void {
+    if (session.warningTimer) {
+      clearTimeout(session.warningTimer);
+      session.warningTimer = null;
+    }
+    if (session.limitTimer) {
+      clearTimeout(session.limitTimer);
+      session.limitTimer = null;
+    }
   }
 
   private emitErrorAndEnd(sessionId: string, reason: VoiceCaptureErrorReason): void {
@@ -511,6 +652,9 @@ export class DesktopVoiceCaptureController {
       clearTimeout(session.cleanupTimer);
       session.cleanupTimer = null;
     }
+    this.clearRecordingCap(session);
+    session.lease?.release();
+    session.lease = null;
     if (options.kill && !session.child.killed) {
       session.child.kill();
     }

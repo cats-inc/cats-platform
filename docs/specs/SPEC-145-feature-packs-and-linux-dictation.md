@@ -447,11 +447,13 @@ entries.
 
 **FR-C4 — Pack bridge and IPC trust (host).**
 
-- Preload exposes a pack bridge with these operations:
+- Preload exposes a pack bridge, `featurePacks`, with these operations:
   - `list()` and `get(id)` return status, version, sizes and lock licenses;
   - `download(id)`, `pause(id)`, `resume(id)`, `cancel(id)`, `check(id)` and
     `remove(id)`;
   - `onChange(listener)` reports status and progress.
+- `download` and `resume` return once the transfer starts. Its outcome,
+  failures included, arrives through `onChange`.
 - The dictation language has its own bridge (SPEC-146 FR-7).
 - Pack channels accept only the Platform window's main frame, like the
   existing voice channels.
@@ -493,18 +495,24 @@ appear in Settings > Desktop > Voice input on every platform.
 - Preload exposes the voice bridge on Linux when the lock has an entry for the
   machine's architecture. Otherwise there is no Linux bridge.
 - The host decides this when it creates the window and passes the answer to
-  preload, for example through `webPreferences.additionalArguments`. Preload
-  reads no files.
+  preload through `webPreferences.additionalArguments`, as
+  `--cats-feature-packs=<ids>`. Preload reads no files. The same argument
+  exposes the pack bridge (FR-C4) on any platform with a lock entry.
 - The Desktop renderer never falls back to Web Speech. Without a native bridge
   the composer shows no voice button.
 - The Web deployment keeps its current Web Speech path.
 
 **FR-D2 — Helper path (host).**
 
-- On Linux, `resolveVoiceCaptureHelperPath` returns the active version's
-  `entry`, or null when FR-B5 fails.
+- On Linux, the voice controller asks the pack manager for the active
+  version's `entry`. The manager runs the FR-B5 check and returns a lease, or
+  nothing, which becomes `pack_required` (FR-C1).
+- The lease keeps the version until the helper exits (FR-B4). Remove revokes
+  it, and the session ends with `aborted` (FR-B6).
 - `CATS_VOICE_CAPTURE_HELPER` still overrides the path for development and
   bypasses the pack checks.
+- Linux sessions never pass the renderer's locale. Until SPEC-146's setting
+  exists, a Linux session runs as Automatic.
 
 **FR-D3 — Recording cap (host).** For `linux-stt` sessions, the clock starts at
 `ready`, which matches the helper's 31-second overrun in FR-D6.

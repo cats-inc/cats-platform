@@ -15,6 +15,8 @@ export const VOICE_CAPTURE_ERROR_REASONS = [
   'cancelled',
   // Reserved for helper/OS aborts where the user did not request cancellation.
   'aborted',
+  // Linux: the linux-stt feature pack cannot dictate yet (SPEC-145 FR-C1).
+  'pack_required',
 ] as const;
 
 export type VoiceCaptureErrorReason = typeof VOICE_CAPTURE_ERROR_REASONS[number];
@@ -48,6 +50,16 @@ export type VoiceCaptureEvent =
     }
   | {
       type: 'end';
+      sessionId: VoiceCaptureSessionId;
+    }
+  // Host-only events for Linux sessions (SPEC-145 FR-D3); helpers never send them.
+  | {
+      type: 'limit_warning';
+      sessionId: VoiceCaptureSessionId;
+      secondsRemaining: number;
+    }
+  | {
+      type: 'processing';
       sessionId: VoiceCaptureSessionId;
     };
 

@@ -36,6 +36,15 @@ import {
 
 import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
 import {
+  createElectronFeaturePackTransport,
+  featurePackPreloadArguments,
+  hasLinuxVoicePack,
+  LINUX_STT_PACK_ID,
+  loadDesktopFeaturePacks,
+  registerFeaturePackIpc,
+  type DesktopFeaturePacks,
+} from './featurePackHost.js';
+import {
   createDesktopControlHoldWatcher,
   createDesktopControlNotice,
   desktopControlNoticeText,
@@ -362,6 +371,7 @@ let latestDesktopStartupPreferences: DesktopStartupPreferences = {
 };
 let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = null;
 let voiceCaptureController: DesktopVoiceCaptureController | null = null;
+let featurePacks: DesktopFeaturePacks | null = null;
 const RUNTIME_SETUP_STATE_TIMEOUT_MS = 2_000;
 const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
 const RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS = 8_000;
@@ -2430,6 +2440,8 @@ async function createMainWindow(
   config: DesktopHostConfig,
   options: {
     showWindowOnStartup: boolean;
+    /** SPEC-145 FR-D1: what preload may expose, decided here, not by preload. */
+    preloadArguments: string[];
   },
 ): Promise<BrowserWindow> {
   const windowIconPath = resolveDesktopWindowIconPath(app.getAppPath());
@@ -2452,6 +2464,9 @@ async function createMainWindow(
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      ...(options.preloadArguments.length > 0
+        ? { additionalArguments: options.preloadArguments }
+        : {}),
     },
   });
 
@@ -2569,6 +2584,18 @@ async function shutdownHost(exitCode = 0): Promise<void> {
       if (hostConfig?.candidateProfile) await settleDesktopCandidateStartup(bootstrapPromise);
       voiceCaptureController?.dispose();
       voiceCaptureController = null;
+      // SPEC-145 FR-B3: quitting pauses a download with reason `quit`. A stuck
+      // transfer must not hold up quitting; its sidecar is fsynced already.
+      if (featurePacks) {
+        const pausing = featurePacks.manager.shutdown().catch((error: unknown) => {
+          reportHostError('Optional download shutdown failed', error);
+        });
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([pausing, new Promise((resolve) => {
+          timer = setTimeout(resolve, 5_000);
+        })]);
+        clearTimeout(timer);
+      }
       activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
       const { timedOut } = await drainManagedServices();
       hostLogger?.record('shutdown-drain', { timedOut }, timedOut ? 'error' : 'info');
@@ -2846,13 +2873,49 @@ async function main(): Promise<void> {
     app.once('will-quit', () => { if (standingGrantsHotkey) globalShortcut.unregister(STANDING_GRANTS_STOP_ACCELERATOR); });
   }
   latestSnapshot = buildSnapshot(null);
+  // SPEC-145: optional native features, pinned by the lock this release ships.
+  featurePacks = await loadDesktopFeaturePacks({
+    packageRoot: hostConfig.packageRoot,
+    platformDir: hostConfig.paths.platformDir,
+    platform: process.platform,
+    arch: process.arch,
+    transport: createElectronFeaturePackTransport(net),
+    log: (record) => {
+      const severity = record.outcome === 'failed' ? 'error' : 'info';
+      hostLogger?.record('feature-pack', { ...record }, severity);
+    },
+  });
+  const linuxVoicePacks = hasLinuxVoicePack(featurePacks, process.platform) ? featurePacks : null;
   voiceCaptureController = new DesktopVoiceCaptureController({
     config: hostConfig,
     resourcesPath: nodeProcess.resourcesPath,
     sendEvent: (event) => {
       sendMainWindowEvent(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, event);
     },
+    ...(linuxVoicePacks
+      ? {
+        featurePack: {
+          acquireHelper: async (onRevoke: () => void) => {
+            try {
+              await linuxVoicePacks.ready;
+              return await linuxVoicePacks.manager.acquireHelper(LINUX_STT_PACK_ID, onRevoke);
+            } catch (error) {
+              reportHostError('Optional download check failed', error);
+              return null;
+            }
+          },
+        },
+      }
+      : {}),
   });
+  if (featurePacks.entries.length > 0) {
+    registerFeaturePackIpc({
+      ipcMain,
+      packs: featurePacks,
+      mainWindow: () => mainWindow,
+      sendEvent: sendMainWindowEvent,
+    });
+  }
 
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
@@ -3403,6 +3466,7 @@ async function main(): Promise<void> {
 
   const window = await createMainWindow(hostConfig, {
     showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    preloadArguments: featurePacks ? featurePackPreloadArguments(featurePacks) : [],
   });
   mainWindow = window;
   window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {

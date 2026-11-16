@@ -162,6 +162,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
     'packages/app-sdk',
     'packages/provider-setup',
     'config/provider-capability-bootstrap.yaml.example',
+    'config/desktop-feature-packs.lock.json',
     'config/catlas-knowledge.json',
     'config/orchestrator-knowledge.json',
     '.env.example',

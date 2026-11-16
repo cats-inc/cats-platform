@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; Phases 0–2 authorized by the owner and implemented, 2026-11-16 |
+| Status | In progress; Phases 0–3 authorized by the owner and implemented, 2026-11-16 |
 | Owner | Product owner |
 | Specs | [SPEC-145](../specs/SPEC-145-feature-packs-and-linux-dictation.md), [SPEC-146](../specs/SPEC-146-dictation-language-for-desktop-voice-input.md) |
 | Decision | [ADR-154](../decisions/154-deliver-optional-native-dependencies-as-host-managed-feature-packs.md) |
@@ -171,29 +171,58 @@ the AC-01 defects run through `download()` and leave no version directory, no
 
 ## Phase 3 — Host wiring (SPEC-145 FR-C1 host side, FR-C4, FR-D1–FR-D4, FR-D8)
 
-- [ ] **Transport and pack bridge (FR-C4).** The transport uses Electron `net`.
+The wiring is `desktop/host/featurePackHost.ts`, outside the vendored
+directory. Its tests are `tests/desktop-feature-pack-host.test.js`.
+
+- [x] **Transport and pack bridge (FR-C4).** The transport uses Electron `net`.
   The bridge channels accept the main frame only and validate `id` against the
   lock.
-- [ ] **Bridge exposure on Linux (FR-D1).** The window-creation code decides
+  - `net.request` with `redirect: 'manual'` hands each 3xx back to the
+    manager. Probes on Electron 41.2.0 confirmed this and two more facts:
+    - the response is a Readable, read as an async iterable;
+    - aborting mid-body makes that read throw at once ("Premature close").
+      Pause and quit therefore never wait on the network.
+  - The main-frame check compares the sender frame's process and routing ids.
+  - The renderer's types are `src/shared/featurePackBridge.ts`, exposed as
+    `featurePacks` on the Desktop bridge.
+- [x] **Bridge exposure on Linux (FR-D1).** The window-creation code decides
   whether to expose it and passes the answer to preload through
   `additionalArguments`. Preload reads no files.
-- [ ] **Helper path (FR-D2).** `resolveVoiceCaptureHelperPath` resolves the
+  - The argument is `--cats-feature-packs=<ids>`. Linux voice needs
+    `linux-stt` among the ids.
+  - A probe on Electron 41.2.0 confirmed that a sandboxed preload sees it in
+    `process.argv`.
+- [x] **Helper path (FR-D2).** `resolveVoiceCaptureHelperPath` resolves the
   active pack's `entry`, and `CATS_VOICE_CAPTURE_HELPER` still overrides it.
-- [ ] **Voice events.**
+  - The controller takes a lease from the manager instead, because the FR-B5
+    check is asynchronous. `resolveVoiceCaptureHelperPath` keeps the override
+    and the macOS and Windows paths. SPEC-145 FR-D2 now says so.
+  - Linux sessions ignore the renderer's locale and run as Automatic until
+    Phase 5.
+- [x] **Voice events.**
   - `pack_required` (FR-C1) is added to `VOICE_CAPTURE_ERROR_REASONS`.
   - `limit_warning` and `processing` (FR-D3) are added to `VoiceCaptureEvent`.
-- [ ] **Recording cap (FR-D3).** It is timed from `ready`, with a warning at 25
+- [x] **Recording cap (FR-D3).** It is timed from `ready`, with a warning at 25
   seconds and a stop at 30 seconds. Every stop emits `processing` first.
-- [ ] **Linux timeouts (FR-D4).** Provisionally 10 seconds for ready and 60 for
+- [x] **Linux timeouts (FR-D4).** Provisionally 10 seconds for ready and 60 for
   stop. A helper that exits before `ready` reports `helper_crashed`.
-- [ ] **Permission handler (FR-D8).** A regression test proves it is unchanged
+  - Only Linux sessions report `engine_unavailable` when the stop window
+    passes. macOS and Windows keep ending quietly.
+  - A newer start supersedes one still waiting for the pack check, so only one
+    helper runs.
+- [x] **Permission handler (FR-D8).** A regression test proves it is unchanged
   and that the renderer stays denied for `media`.
-- [ ] **Helper contract tests (FR-D6).** The scripted fixture helper drives every
+- [x] **Helper contract tests (FR-D6).** The scripted fixture helper drives every
   FR-D6 event sequence through the host: `mic_unavailable`,
   `engine_unavailable`, a single `final`, `cancelled` and `aborted`. The real
   helper is tested by cats-plugins.
-- [ ] **Lock packaging.** `config/desktop-feature-packs.lock.json` ships in the
+  - The fixture helper gained the `overrun` and `hang_on_stop` scenarios.
+- [x] **Lock packaging.** `config/desktop-feature-packs.lock.json` ships in the
   packaged app, starting empty, and the packaging test covers it.
+  - It is staged to `app-sidecar/config/`, which is where the host reads it.
+    The npm package's `files` list carries it too.
+  - Removing a pack stops a running helper first, with `aborted`. Quitting
+    pauses a download with reason `quit`, waiting at most 5 seconds.
 
 **Covers:** the host parts of SPEC-145 AC-04.
 
@@ -343,6 +372,7 @@ Empty until Phase 6. One row per run set.
 | 2026-11-16 | The owner authorized Phases 0–1. This does not authorize the rest of SPEC-145 or SPEC-146, so the first Phase 0 item stays open. |
 | 2026-11-16 | Phases 0–1 implemented. The Bot closure is `desktop/host/featurePacks/featurePackContract.ts`. SPEC-145 FR-A2 gained the ZIP subset, and its dependencies use `node:zlib` instead of fflate. |
 | 2026-11-16 | The owner authorized Phase 2, and it was implemented. The Bot closure is now `desktop/host/featurePacks/featurePackContract.ts` and `featurePackManager.ts`. SPEC-145 FR-B2–FR-B7 and FR-B9 now match the manager. Electron 41.2.0 runs Node 24.14.0, which has what the manager uses: `AbortSignal.any`, `statfs` and the report's `glibcVersionRuntime` (2.41 on the arm64 board). |
+| 2026-11-16 | The owner authorized Phase 3, and it was implemented. With the shipped empty lock, Linux still exposes no voice bridge. SPEC-145 FR-C4, FR-D1 and FR-D2 now match the wiring. |
 
 ### Voice path inventory (Phase 0, 2026-11-16)
 
