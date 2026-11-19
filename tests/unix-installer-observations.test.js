@@ -100,6 +100,57 @@ PATH=/usr/bin:/bin bash ${helper} --check --json`);
   }
 });
 
+test('Unix GitHub CLI check offers installation when gh is missing', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const helper = quote(bashPath(join(process.cwd(), `scripts/${platform}/install-github-cli.sh`)));
+    const { stdout, stderr } = await run(platform, `
+command() {
+  if [ "$1" = '-v' ] && [ "$2" = 'gh' ]; then return 1; fi
+  builtin command "$@"
+}
+gh() { return 127; }
+export -f command gh
+PATH=/usr/bin:/bin bash ${helper} -CheckOnly -Json`);
+    const result = JSON.parse(stdout);
+    assert.equal(stderr, '');
+    assert.equal(result.status, 'changes_required');
+    assert.equal(result.installed, false);
+    assert.equal(result.commandPath, '');
+    assert.equal(result.detectedVersion, '');
+    assert.deepEqual(result.plannedActions, ['install_github_cli']);
+  }
+});
+
+test('Unix GitHub CLI install reads the entire release response and selects ARM64', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const helper = quote(bashPath(join(process.cwd(), `scripts/${platform}/install-github-cli.sh`)));
+    const releasePlatform = platform === 'macos' ? 'darwin' : 'linux';
+    const { stdout } = await run(platform, `
+mkdir -p "$HOME/archive/bin"
+printf '#!/bin/sh\\nprintf "gh version 2.0.0\\\\n"\\n' > "$HOME/archive/bin/gh"
+tar -czf "$HOME/fixture.tar.gz" -C "$HOME/archive" .
+printf '{\\n "tag_name": "v2.0.0",\\n "body": "%0131072d"\\n}\\n' 0 > "$HOME/release.json"
+brew() { return 1; }
+uname() { printf 'aarch64\\n'; }
+curl() {
+  case "$2" in
+    -H) cat "$HOME/release.json" ;;
+    -o)
+      [ "$4" = 'https://github.com/cli/cli/releases/download/v2.0.0/gh_2.0.0_${releasePlatform}_arm64.tar.gz' ] || return 90
+      cp "$HOME/fixture.tar.gz" "$3"
+      ;;
+    *) return 91 ;;
+  esac
+}
+export -f brew uname curl
+PATH=/usr/bin:/bin bash ${helper} -Apply -Json --install-state missing`);
+    const result = JSON.parse(stdout);
+    assert.equal(result.status, 'ready');
+    assert.equal(result.detectedVersion, '2.0.0');
+    assert.deepEqual(result.appliedChanges, ['installed_gh_v2.0.0_to_local_bin']);
+  }
+});
+
 test('Unix Node checks load an existing nvm installation and require npm as well', async () => {
   for (const platform of ['linux', 'macos']) {
     const helper = quote(bashPath(join(process.cwd(), `scripts/${platform}/install-node.sh`)));
