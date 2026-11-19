@@ -78,8 +78,10 @@ resolve_gh_version() {
     return
   fi
   local raw
-  raw="$(gh --version 2>/dev/null | head -n 1 || true)"
-  printf '%s' "$raw" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1
+  raw="$(gh --version 2>/dev/null)" || return 0
+  if [[ "${raw%%$'\n'*}" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+  fi
 }
 
 is_gh_installed() {
@@ -203,12 +205,15 @@ install_via_release_tarball() {
   esac
 
   local api_url='https://api.github.com/repos/cli/cli/releases/latest'
-  local tag download_url tmp_dir
-  if ! tag="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url" | grep -m 1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"; then
+  local release tag download_url tmp_dir
+  # Read the whole response so an early tag match cannot interrupt curl.
+  if ! release="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")"; then
     warnings+=('Failed to query GitHub Releases API.')
     return 1
   fi
-  if [ -z "$tag" ]; then
+  if [[ "$release" =~ \"tag_name\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]]; then
+    tag="${BASH_REMATCH[1]}"
+  else
     warnings+=('Empty tag from GitHub Releases API.')
     return 1
   fi

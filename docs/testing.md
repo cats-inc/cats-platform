@@ -145,6 +145,11 @@ stopped during compilation because the shared checkout's installed dependencies
 lacked its pinned UI package; locked dependencies in the task worktree resolved it.
 No installed application, real user profile or provider selection was changed.
 
+The Unix GitHub CLI fixtures check both Linux and macOS helper scripts. An
+absent gh returns an install plan, and a fresh install reads the entire release
+response before choosing the ARM64 asset. Both cases use disposable homes and
+the install case uses a fixture archive.
+
 Windows npm-provider checks in `tests/desktop-installer-observations.test.js`
 cover a fresh account whose global npm prefix does not exist. Native npm
 `ENOENT` under Windows PowerShell must yield a JSON install plan without creating
